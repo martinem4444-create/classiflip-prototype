@@ -321,9 +321,16 @@ h4.st{margin:18px 0 4px;font-size:14px;color:var(--navy)}
 <div class="inv"><div class="d"><b>Sep 18, 2026</b><span>Homepage Spotlight · monthly</span></div><b>$79.00</b><span class="pill live">Paid</span></div>
 <div class="inv"><div class="d"><b>Aug 18, 2026</b><span>Featured listing · founding rate</span></div><b>$14.50</b><span class="pill live">Paid</span></div>
 <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-<button class="btn pri" style="flex:1" onclick="toast('Plan upgrade options would open here')">Upgrade plan</button>
+<button class="btn pri" style="flex:1" onclick="openPlan()">Upgrade plan</button>
 <button class="btn gho" onclick="if(confirm('Cancel your subscription at the end of the billing period?'))toast('Subscription set to cancel Nov 18')">Cancel</button>
 </div></div></div>
+
+<!-- ============ PLAN PICKER ============ -->
+<div class="mback" id="mPlan"><div class="mcard">
+<button class="mx" onclick="closeM('mPlan')">&times;</button>
+<h3>Change plan</h3><p class="sub">Display advertising &middot; takes effect on your next invoice (Nov 18).</p>
+<div id="planList"></div>
+</div></div>
 
 <!-- ============ PUBLIC PAGE PREVIEW ============ -->
 <div class="mback" id="mPublic"><div class="mcard">
@@ -471,6 +478,11 @@ setTimeout(()=>{b.disabled=false;b.textContent='Pay $2.99 & boost';
 $('boostForm').classList.add('hidden');$('boostDone').classList.remove('hidden');},1200);
 }
 function openBilling(){openM('mBilling');}
+const PLANS=[{n:'Featured placement',p:29,d:'Your logo in the homepage featured strip'},{n:'Homepage Spotlight',p:79,d:'Hero placement on the homepage'},{n:'Messages sponsor rail',p:79,d:'Desktop-only rail beside every chat'},{n:'Category Takeover',p:149,d:'Own an entire category page'}];
+let CURPLAN='Homepage Spotlight';
+function openPlan(){renderPlans();closeM('mBilling');openM('mPlan');}
+function renderPlans(){$('planList').innerHTML=PLANS.map((x,i)=>{const cur=x.n===CURPLAN;return '<div class="sellcard" style="margin-bottom:10px"><div class="av" style="background:'+(cur?'var(--ok)':'var(--navy)')+'">'+(cur?'&#10003;':'&#9733;')+'</div><div><div class="n">'+x.n+'</div><div class="s">$'+x.p+'/mo &middot; '+x.d+'</div></div>'+(cur?'<span class="pill live" style="margin-left:auto">Current</span>':'<button class="btn pri" style="margin-left:auto" onclick="switchPlan('+i+')">Switch</button>')+'</div>';}).join('');}
+function switchPlan(i){const x=PLANS[i];CURPLAN=x.n;closeM('mPlan');const b=document.querySelector('#mBilling .badge');if(b)b.textContent=x.n;const mt=document.querySelector('#mBilling .plan .meta');if(mt)mt.innerHTML='<b>$'+x.p+'/mo</b> &middot; next invoice Nov 18';openM('mBilling');toast('Plan changed to '+x.n+' \u2014 starts Nov 18');}
 function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function openPublic(){
 const logo=$('logoImg').classList.contains('hidden')?'':'<img src="'+$('logoImg').src+'">';

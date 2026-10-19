@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClassiFlip — Advertise (Prototype)</title>
+<style>
+:root{--navy:#18365F;--navy2:#0F2547;--navy3:#1B2150;--orange:#F4511E;--orange2:#D63E0F;--bg:#F4F6FA;--card:#fff;--ink:#1B2A41;--mu:#68788F;--ln:#E4E9F2;--sh:0 10px 30px rgba(24,54,95,.10)}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+.top{background:var(--navy);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50}
+.top .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;color:#fff;text-decoration:none}
+.top .logo .dot{width:30px;height:30px;border-radius:50%;background:var(--orange);display:grid;place-items:center;font-size:15px}
+.top nav{margin-left:auto;display:flex;gap:16px}
+.top nav a{color:#BCD;text-decoration:none;font-size:13.5px}
+.top nav a:hover{color:#fff}
+.hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:56px 20px 48px;text-align:center}
+.hero h1{margin:0 0 12px;font-size:clamp(28px,5vw,44px);letter-spacing:-.5px}
+.hero p{margin:0 auto 22px;max-width:620px;color:#BCD;font-size:16.5px;line-height:1.6}
+.found{background:var(--orange);border-radius:18px;padding:20px 24px;max-width:760px;margin:0 auto;box-shadow:var(--sh);text-align:left}
+.found b.t{display:block;font-size:17px;margin-bottom:8px;letter-spacing:.5px}
+.found ul{margin:0;padding-left:20px;font-size:14.5px;line-height:1.7}
+.wrap{max-width:1100px;margin:0 auto;padding:36px 20px 60px}
+.sect{margin-bottom:44px}
+.sect>h2{font-size:22px;margin:0 0 4px;color:var(--navy)}
+.sect>p{margin:0 0 18px;color:var(--mu);font-size:14.5px}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+.plan{background:linear-gradient(160deg,#1E3A6E,#16294E);border:1px solid #2C4A80;border-radius:18px;padding:22px;color:#fff;position:relative;display:flex;flex-direction:column;gap:6px}
+.plan.hl{border:2px solid var(--orange)}
+.plan .chip{position:absolute;top:-12px;left:18px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:999px}
+.plan .price{font-size:34px;font-weight:800}
+.plan .price small{font-size:15px;font-weight:600;color:#BCD}
+.plan .nm{font-weight:700;font-size:16.5px}
+.plan .ds{font-size:13.5px;color:#BCD;line-height:1.55;flex:1}
+.plan .frow{display:flex;align-items:baseline;gap:10px;margin-top:8px}
+.plan .fnd{font-size:13px;color:#FFB59D}
+.plan .fnd b{color:#fff}
+.plan button{margin-top:12px;background:var(--orange);color:#fff;border:0;border-radius:999px;padding:12px;font-weight:800;font-size:14.5px;cursor:pointer}
+.plan button:hover{background:var(--orange2)}
+.boost{background:#fff;border:1px solid var(--ln);border-radius:18px;padding:22px;box-shadow:var(--sh)}
+.boost .row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.boost .row:last-child{border-bottom:0}
+.boost .row .n{font-weight:700;flex:1;min-width:180px}
+.boost .row .n small{display:block;font-weight:400;color:var(--mu);font-size:12.5px;margin-top:2px}
+.boost .row .p{font-weight:800;color:var(--navy);font-size:17px}
+.boost .row .f{font-size:12.5px;color:var(--orange2);font-weight:700}
+.cta{background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:22px;padding:40px 28px;text-align:center;color:#fff;box-shadow:var(--sh)}
+.cta h2{margin:0 0 10px;font-size:26px}
+.cta p{margin:0 0 20px;color:#BCD}
+.cta button{background:var(--orange);color:#fff;border:0;border-radius:999px;padding:15px 42px;font-weight:800;font-size:16px;cursor:pointer}
+.cta button:hover{background:var(--orange2)}
+.cta small{display:block;margin-top:14px;color:#BCD;font-size:12.5px}
+footer{padding:28px 20px;text-align:center;color:var(--mu);font-size:13px}
+/* claim modal */
+.mback{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(13,21,38,.62);backdrop-filter:blur(4px);display:none;z-index:60;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mback.on{display:block}
+.mcard{background:#fff;border-radius:22px;padding:26px;max-width:min(520px,calc(100vw - 32px));width:100%;margin:5vh auto;position:relative;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.mx{position:absolute;top:12px;right:14px;border:0;background:none;font-size:24px;cursor:pointer;color:var(--mu)}
+.mcard h3{margin:0 0 4px;color:var(--navy)}
+.mcard .sub{color:var(--mu);font-size:13.5px;margin:0 0 16px}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:5px}
+.fld input,.fld select,.fld textarea{width:100%;border:1px solid var(--ln);border-radius:12px;padding:11px 14px;font:inherit;font-size:14.5px;background:#FAFBFD}
+.fld textarea{resize:vertical;min-height:70px}
+.mcard .go{width:100%;background:var(--orange);color:#fff;border:0;border-radius:999px;padding:14px;font-weight:800;font-size:15.5px;cursor:pointer;margin-top:6px}
+.mcard .go:hover{background:var(--orange2)}
+.msg{display:none;margin-top:10px;font-size:13.5px}
+.msg.ok{display:block;color:#1E9E6A}
+@media(max-width:640px){.top nav{display:none}.hero{padding:40px 16px 36px}}
+</style>
+</head>
+<body>
+<div class="top">
+<a class="logo" href="index.html"><span class="dot">&#8646;</span>ClassiFlip</a>
+<nav><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="messaging.html">Messages</a></nav>
+</div>
+
+<div class="hero">
+<h1>Put your business in front of local buyers.</h1>
+<p>ClassiFlip is the GTA's local marketplace. No national noise, no bidding wars for attention — just nearby customers ready to buy, hire, and book.</p>
+<div class="found">
+<b class="t">FOUNDING ADVERTISERS — first 10 per category</b>
+<ul>
+<li><b>50% off</b> all rates below, locked for 12 months</li>
+<li><b>First month FREE</b> with any 3-month commitment</li>
+<li>Free placement during pre-launch — billing starts on launch day</li>
+</ul>
+</div>
+</div>
+
+<div class="wrap">
+
+<div class="sect">
+<h2>Jobs — for employers</h2>
+<p>Reach local talent without the $20-a-post job-board markup.</p>
+<div class="plans">
+<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single job post</div><div class="ds">One opening, live for 30 days. Half the single-post price of the big boards.</div><div class="frow"><span class="fnd">Founding: <b>$24.50</b></span></div><button onclick="claim('Jobs — Single post')">Claim founding rate</button></div>
+<div class="plan hl"><span class="chip">BEST FOR FREQUENT HIRING</span><div class="price">$179 <small>/ mo</small></div><div class="nm">Employer Unlimited</div><div class="ds">Post as many openings as you need, all month. One simple subscription.</div><div class="frow"><span class="fnd">Founding: <b>$89.50/mo</b></span></div><button onclick="claim('Jobs — Unlimited')">Claim founding rate</button></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Real estate — for agents &amp; brokers</h2>
+<p>Homes, condos and townhomes for sale. Every eyeball local.</p>
+<div class="plans">
+<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single listing</div><div class="ds">One property, live for 30 days with full photo gallery.</div><div class="frow"><span class="fnd">Founding: <b>$19.50</b></span></div><button onclick="claim('Real estate — Single')">Claim founding rate</button></div>
+<div class="plan"><div class="price">$129 <small>/ 30 days</small></div><div class="nm">5-pack</div><div class="ds">Five listings for the price of three. Great for active agents.</div><div class="frow"><span class="fnd">Founding: <b>$64.50</b></span></div><button onclick="claim('Real estate — 5-pack')">Claim founding rate</button></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$199 <small>/ mo</small></div><div class="nm">Agent Unlimited</div><div class="ds">Unlimited listings, all month. Less than half of AutoTrader's cheapest dealer tier.</div><div class="frow"><span class="fnd">Founding: <b>$99.50/mo</b></span></div><button onclick="claim('Real estate — Unlimited')">Claim founding rate</button></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Rentals — for landlords &amp; managers</h2>
+<p>One filled vacancy pays for years of listings.</p>
+<div class="plans">
+<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single rental listing</div><div class="ds">One property, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$19.50</b></span></div><button onclick="claim('Rentals — Single')">Claim founding rate</button></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$129 <small>/ mo</small></div><div class="nm">Landlord Unlimited</div><div class="ds">Every unit you manage, all month long.</div><div class="frow"><span class="fnd">Founding: <b>$64.50/mo</b></span></div><button onclick="claim('Rentals — Unlimited')">Claim founding rate</button></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Services — for pros &amp; local shops</h2>
+<p>Plumbers, electricians, cleaners, barbers, salons — get found by neighbours.</p>
+<div class="plans">
+<div class="plan"><div class="price">$29 <small>/ 30 days</small></div><div class="nm">Single service ad</div><div class="ds">One service, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$14.50</b></span></div><button onclick="claim('Services — Single')">Claim founding rate</button></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$99 <small>/ mo</small></div><div class="nm">Pro Unlimited</div><div class="ds">Every service you offer, all month. One invoice.</div><div class="frow"><span class="fnd">Founding: <b>$49.50/mo</b></span></div><button onclick="claim('Services — Unlimited')">Claim founding rate</button></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Auto — for dealers</h2>
+<p>Your whole lot, in front of local buyers, for less than half of AutoTrader's cheapest tier.</p>
+<div class="plans">
+<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single vehicle</div><div class="ds">One vehicle, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$24.50</b></span></div><button onclick="claim('Dealer — Single')">Claim founding rate</button></div>
+<div class="plan"><div class="price">$149 <small>/ 30 days</small></div><div class="nm">Lot pack — 25 vehicles</div><div class="ds">Twenty-five listings for the price of three.</div><div class="frow"><span class="fnd">Founding: <b>$74.50</b></span></div><button onclick="claim('Dealer — Lot pack')">Claim founding rate</button></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$249 <small>/ mo</small></div><div class="nm">Dealer Unlimited</div><div class="ds">Your entire inventory, all month. AutoTrader charges $450–$2,000+ for this.</div><div class="frow"><span class="fnd">Founding: <b>$124.50/mo</b></span></div><button onclick="claim('Dealer — Unlimited')">Claim founding rate</button></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Boosts &amp; display ads</h2>
+<p>Extra visibility for any listing — or your brand across the site.</p>
+<div class="boost">
+<div class="row"><div class="n">Listing Boost — 7 days<small>Pinned to the top of its category + homepage featured strip</small></div><span class="p">$2.99</span></div>
+<div class="row"><div class="n">Featured placement<small>Your logo in the homepage featured strip</small></div><span class="p">$29/mo</span><span class="f">Founding $14.50</span></div>
+<div class="row"><div class="n">Messages sponsor rail<small>Desktop-only rail beside every chat — prime screen time</small></div><span class="p">$79/mo</span><span class="f">Founding $39.50</span></div>
+<div class="row"><div class="n">Homepage spotlight<small>Hero placement on the homepage</small></div><span class="p">$79/mo</span><span class="f">Founding $39.50</span></div>
+<div class="row"><div class="n">Category takeover<small>Own an entire category page</small></div><span class="p">$149/mo</span><span class="f">Founding $74.50</span></div>
+</div>
+</div>
+
+<div class="cta">
+<h2>Claim your founding spot.</h2>
+<p>10 spots per category. When they're gone, they're gone — and rates go up.</p>
+<button onclick="claim('')">Claim a founding spot</button>
+<small>Pay by Interac e-Transfer — no fees, no middlemen. First month free with any 3-month commitment.</small>
+</div>
+
+</div>
+
+<div class="mback" id="mClaim" onclick="if(event.target===this)closeClaim()"><div class="mcard">
+<button class="mx" onclick="closeClaim()">&times;</button>
+<h3>Claim your founding spot</h3>
+<p class="sub">10 spots per category. Founding rates locked for 12 months.</p>
+<div class="fld"><label>Business name</label><input id="cBiz" placeholder="e.g. Dixie Auto Mall"></div>
+<div class="fld"><label>Your name</label><input id="cName" placeholder="Full name"></div>
+<div class="fld"><label>Email</label><input id="cEmail" type="email" placeholder="you@business.com"></div>
+<div class="fld"><label>Phone (optional)</label><input id="cPhone" placeholder="(416) 555-0100"></div>
+<div class="fld"><label>Package</label><select id="cPkg"></select></div>
+<div class="fld"><label>Anything we should know? (optional)</label><textarea id="cMsg" placeholder="Tell us about your business…"></textarea></div>
+<button class="go" onclick="submitClaim()">Claim my spot</button>
+<div class="msg" id="cMsg2"></div>
+<p class="sub" style="margin-top:12px;font-size:12px">Prototype demo — nothing is submitted or charged. At launch this connects to our signup flow.</p>
+</div></div>
+
+<footer>
+<b>ClassiFlip</b> · Toronto, Ontario · Launching in the GTA<br>
+<span style="font-size:12px">Concept pricing for the prototype. Final rates confirmed before launch.</span>
+</footer>
+
+<script>
+const PKGS=['Jobs — Single post','Jobs — Unlimited','Real estate — Single','Real estate — 5-pack','Real estate — Unlimited','Rentals — Single','Rentals — Unlimited','Services — Single','Services — Unlimited','Dealer — Single','Dealer — Lot pack','Dealer — Unlimited','Boost — $2.99','Display — Featured','Display — Messages rail','Display — Homepage spotlight','Display — Category takeover'];
+function claim(pkg){
+  const sel=document.getElementById('cPkg');
+  sel.innerHTML=PKGS.map(p=>'<option'+(p===pkg?' selected':'')+'>'+p+'</option>').join('');
+  document.getElementById('cMsg2').className='msg';
+  document.getElementById('mClaim').classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function closeClaim(){document.getElementById('mClaim').classList.remove('on');document.body.style.overflow='';}
+function submitClaim(){
+  const biz=document.getElementById('cBiz').value.trim(),em=document.getElementById('cEmail').value.trim();
+  const m=document.getElementById('cMsg2');
+  if(!biz||!em||em.indexOf('@')<0){m.textContent='Please add your business name and a valid email.';m.className='msg';m.style.display='block';m.style.color='#B3372A';return;}
+  m.textContent='Spot claimed — we will reach out before launch with your founding rate locked in.';
+  m.className='msg ok';m.style.display='block';
+  setTimeout(closeClaim,2600);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClaim();});
+</script>
+</body>
+</html>

@@ -159,12 +159,28 @@ return '<div class="bub '+m[0]+'">'+m[1]+'<span class="tm">'+m[2]+'</span></div>
 }
 function showThreads(){$('threads').classList.remove('hide');$('chat').classList.remove('show');}
 function nowT(){const d=new Date();let h=d.getHours(),m=('0'+d.getMinutes()).slice(-2),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap;}
+function ding(){try{
+var C=window.__ac||(window.__ac=new (window.AudioContext||window.webkitAudioContext)());
+if(C.state==='suspended')C.resume();
+function strike(t,freqs,dur,vol){
+freqs.forEach(function(f){
+var o=C.createOscillator(),g=C.createGain();
+o.type='triangle';o.frequency.value=f;
+g.gain.setValueAtTime(0.0001,t);
+g.gain.exponentialRampToValueAtTime(vol,t+0.015);
+g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+o.connect(g);g.connect(C.destination);
+o.start(t);o.stop(t+dur+0.05);});}
+var t0=C.currentTime;
+strike(t0,[1568,2093,2637],0.22,0.18);
+strike(t0+0.09,[2093,2637,3136],0.4,0.22);
+}catch(e){}}
 function pushMine(text,offer){
 const t=THREADS.find(x=>x.id===cur);
 t.msgs.push(offer?['offer',text,nowT(),'You offered '+text]:['me',text,nowT()]);
 t.time='now';renderMsgs();renderThreads();
 const m=$('msgs');m.scrollTop=m.scrollHeight;
-setTimeout(()=>{t.msgs.push(['them',REPLIES[Math.floor(Math.random()*REPLIES.length)],nowT()]);renderMsgs();renderThreads();$('msgs').scrollTop=$('msgs').scrollHeight;},1600);
+setTimeout(()=>{t.msgs.push(['them',REPLIES[Math.floor(Math.random()*REPLIES.length)],nowT()]);renderMsgs();renderThreads();$('msgs').scrollTop=$('msgs').scrollHeight;ding();},1600);
 }
 function sendMsg(){const v=$('box').value.trim();if(!v||!cur)return;$('box').value='';pushMine(v);}
 function quickRe(q){if(!cur)return;pushMine(q);}

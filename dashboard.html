@@ -8,7 +8,7 @@
 :root{--navy:#18365F;--navy2:#0F2547;--orange:#F4511E;--orange2:#D63E0F;--bg:#F4F6FA;--card:#fff;--ink:#1B2A41;--mu:#68788F;--ln:#E4E9F2;--tint:#FFF3EC;--ok:#1E9E6A;--sh:0 10px 30px rgba(24,54,95,.10)}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
-.top{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.top{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 12px rgba(0,0,0,.18)}.snav{margin-left:auto;display:flex;gap:16px}.snav a{color:#BCD;text-decoration:none;font-size:13.5px}.snav a:hover{color:#fff}@media(max-width:700px){.snav{display:none}}
 .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.3px}
 .logo .dot{width:34px;height:34px;border-radius:50%;background:var(--orange);display:grid;place-items:center;font-size:18px}
 .top .who{margin-left:auto;font-size:13px;color:#BCD;display:flex;align-items:center;gap:8px}
@@ -154,7 +154,8 @@ h4.st{margin:18px 0 4px;font-size:14px;color:var(--navy)}
 <body>
 <div class="top">
 <div class="logo"><span class="dot">&#8646;</span> ClassiFlip</div>
-<div class="who"><span class="av">M</span><span class="nm" id="whoName">Martin · Seller</span></div>
+<nav class="snav"><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="messaging.html">Messages</a><a href="advertise.html">Advertise</a></nav>
+<div class="who" style="margin-left:0"><span class="av">M</span><span class="nm" id="whoName">Martin · Seller</span></div>
 </div>
 <div class="wrap">
 

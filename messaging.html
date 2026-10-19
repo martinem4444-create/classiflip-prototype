@@ -190,8 +190,9 @@ pushMine('$'+v.replace('$',''),true);
 }
 $('box').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
 renderThreads();
-// Deep link: messaging.html?thread=<id> opens that conversation directly
-(function(){try{var q=new URLSearchParams(location.search).get('thread');if(q&&THREADS.some(t=>t.id===q))openThread(q);}catch(e){}})();
+// Deep link: messaging.html?thread=<id> opens that conversation directly;
+// otherwise auto-open the first thread so the chat box always works
+(function(){try{var q=new URLSearchParams(location.search).get('thread');if(q&&THREADS.some(t=>t.id===q)){openThread(q);}else if(THREADS.length){openThread(THREADS[0].id);}}catch(e){}})();
 </script>
 </body>
 </html>

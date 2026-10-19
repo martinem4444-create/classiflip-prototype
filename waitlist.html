@@ -66,6 +66,11 @@ footer{padding:0 0 40px;font-size:13px;color:var(--mu)}
 .tprice span{font-size:14px;font-weight:600;color:var(--mu)}
 .tier ul{margin:0;padding-left:18px;color:var(--mu);font-size:14px;line-height:1.7}
 .hot-tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--rose);color:#fff;font-size:12px;font-weight:800;padding:4px 14px;border-radius:20px;white-space:nowrap}
+.fdeal{max-width:520px;margin:0 auto 20px;background:var(--bg);border:2px solid var(--rose);border-radius:18px;padding:28px;text-align:center;position:relative}
+.fdeal-off{font-size:64px;font-weight:800;color:var(--rose);line-height:1;letter-spacing:-2px}
+.fdeal-off span{display:block;font-size:22px;letter-spacing:6px;margin-top:2px}
+.fdeal ul{margin:18px 0 0;padding:0;list-style:none;color:var(--mu);font-size:15px;line-height:2}
+.fdeal ul li::before{content:"✓ ";color:var(--rose);font-weight:800}
 .adv .fine{text-align:center}
 .opts{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 4px}
 @media(max-width:720px){.tiers{grid-template-columns:1fr}.tier.hot{transform:none}}
@@ -118,15 +123,20 @@ footer{padding:0 0 40px;font-size:13px;color:var(--mu)}
 <div class="mt"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F4511E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7H4a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1z"/><path d="M20 7 12 13 4 7"/></svg>Just sold nearby</div></div></div></main>
 <section class="fts"><div class="ft"><div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--nv)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9z"/></svg></div><div><b>Free to list</b><div class="mu">Posting an ad costs nothing, ever.</div></div></div><div class="ft"><div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--nv)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg></div><div><b>GTA first</b><div class="mu">Local buyers and sellers across Toronto and the GTA, meeting up in person.</div></div></div><div class="ft"><div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--nv)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></div><div><b>Human-moderated</b><div class="mu">Real people review listings to keep scams out.</div></div></div></section>
 <section class="adv">
-<div class="adv-head"><div class="badge">For local businesses</div>
-<h2>Be a founding advertiser.</h2>
-<p class="lead">We are opening <b>10 founding spots</b> for GTA businesses. Lock in launch pricing for 12 months and put your brand in front of the whole region from day one.</p></div>
-<div class="tiers">
-<div class="tier"><h3>Featured listing</h3><div class="tprice">$29<span>/mo</span></div><ul><li>Pinned to the top of your category</li><li>Featured badge on every ad</li><li>Monthly performance snapshot</li></ul></div>
-<div class="tier hot"><div class="hot-tag">Most popular</div><h3>Homepage spotlight</h3><div class="tprice">$79<span>/mo</span></div><ul><li>Rotating banner on the ClassiFlip homepage</li><li>Seen by every visitor, every day</li><li>Links straight to your site</li></ul></div>
-<div class="tier"><h3>Category takeover</h3><div class="tprice">$149<span>/mo</span></div><ul><li>Your brand owns a full category page</li><li>Banner plus featured placement combined</li><li>First refusal as we expand cities</li></ul></div>
+<div class="adv-head"><div class="badge">Founders deal</div>
+<h2>50% off, locked for 12 months.</h2>
+<p class="lead">Be one of the first <b>10 advertisers in your segment</b> and get half-price rates for a full year — plus your <b>first month free</b> with any 3-month plan.</p></div>
+<div class="fdeal">
+<div class="fdeal-off">50%<span>OFF</span></div>
+<ul>
+<li>First month free with any 3-month plan</li>
+<li>Rates locked for 12 months from launch</li>
+<li>Only 10 spots per business segment</li>
+<li>Free placement during pre-launch</li>
+</ul>
 </div>
-<p class="fine">Founding rates lock for 12 months from launch. Only 10 spots — when they are gone, they are gone.</p>
+
+<p class="fine">Packages for dealers, agents, services, rentals &amp; jobs — <a href="advertise.html" style="color:var(--rose);font-weight:700">see all packages</a>.</p>
 <button class="btn" id="claimBtn" type="button" onclick="return advOpen()" style="display:table;width:auto;margin:18px auto 0;padding:0 56px;cursor:pointer">Claim a founding spot</button>
 </section>
 <footer id="privacy">

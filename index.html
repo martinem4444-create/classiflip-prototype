@@ -376,7 +376,7 @@ function openJobApply(id,preset){
   preset=preset||{};
   document.getElementById('detailTitle').textContent='Apply: '+x.title;
   document.getElementById('detailBody').innerHTML='<div>'+applySteps(1)+jobHead(x)
-  +'<form id="jobApplyForm" data-job="'+x.id+'"><div class="form-grid">'
+  +'<form id="jobApplyForm"><div class="form-grid">'
   +'<div class="field"><label for="jaName">Full name</label><input id="jaName" required maxlength="60" autocomplete="name" placeholder="Your name" value="'+safe(preset.name||'')+'"></div>'
   +'<div class="field"><label for="jaPhone">Phone</label><input id="jaPhone" required type="tel" autocomplete="tel" placeholder="(905) 555-0100" value="'+safe(preset.phone||'')+'"></div>'
   +'<div class="field full"><label for="jaEmail">Email</label><input id="jaEmail" required type="email" autocomplete="email" placeholder="you@example.com" value="'+safe(preset.email||'')+'"></div>'

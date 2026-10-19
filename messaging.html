@@ -190,6 +190,8 @@ pushMine('$'+v.replace('$',''),true);
 }
 $('box').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
 renderThreads();
+// Deep link: messaging.html?thread=<id> opens that conversation directly
+(function(){try{var q=new URLSearchParams(location.search).get('thread');if(q&&THREADS.some(t=>t.id===q))openThread(q);}catch(e){}})();
 </script>
 </body>
 </html>

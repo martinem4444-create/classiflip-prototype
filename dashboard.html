@@ -143,7 +143,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .sellcard{display:flex;gap:12px;align-items:center;border:1px solid var(--ln);border-radius:14px;padding:12px}
 .sellcard .av{width:46px;height:46px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800}
 .sellcard .n{font-weight:700;font-size:14px}.sellcard .s{font-size:12.5px;color:var(--mu)}
-.sellcard button{margin-left:auto}
+.sellcard button{margin-left:auto}@media(max-width:480px){.sellcard .av{width:40px;height:40px}.sellcard button{flex:1 1 100%;margin-left:0;margin-top:2px}}
 h4.st{margin:18px 0 4px;font-size:14px;color:var(--navy)}
 .pvinfo{overflow-wrap:anywhere}
 .pvad{min-width:0}
@@ -483,7 +483,7 @@ function openBilling(){openM('mBilling');}
 const PLANS=[{n:'Featured placement',p:29,d:'Your logo in the homepage featured strip'},{n:'Homepage Spotlight',p:79,d:'Hero placement on the homepage'},{n:'Messages sponsor rail',p:79,d:'Desktop-only rail beside every chat'},{n:'Category Takeover',p:149,d:'Own an entire category page'}];
 let CURPLAN='Homepage Spotlight';
 function openPlan(){renderPlans();closeM('mBilling');openM('mPlan');}
-function renderPlans(){$('planList').innerHTML=PLANS.map((x,i)=>{const cur=x.n===CURPLAN;return '<div class="sellcard" style="margin-bottom:10px"><div class="av" style="background:'+(cur?'var(--ok)':'var(--navy)')+'">'+(cur?'&#10003;':'&#9733;')+'</div><div><div class="n">'+x.n+'</div><div class="s">$'+x.p+'/mo &middot; '+x.d+'</div></div>'+(cur?'<span class="pill live" style="margin-left:auto">Current</span>':'<button class="btn pri" style="margin-left:auto" onclick="switchPlan('+i+')">Switch</button>')+'</div>';}).join('');}
+function renderPlans(){$('planList').innerHTML=PLANS.map((x,i)=>{const cur=x.n===CURPLAN;return '<div class="sellcard" style="margin-bottom:10px"><div class="av" style="background:'+(cur?'var(--ok)':'var(--navy)')+'">'+(cur?'&#10003;':'&#9733;')+'</div><div style="flex:1;min-width:0"><div class="n">'+x.n+'</div><div class="s">$'+x.p+'/mo &middot; '+x.d+'</div></div>'+(cur?'<span class="pill live" style="margin-left:auto">Current</span>':'<button class="btn pri" style="margin-left:auto" onclick="switchPlan('+i+')">Switch</button>')+'</div>';}).join('');}
 function switchPlan(i){const x=PLANS[i];CURPLAN=x.n;closeM('mPlan');const b=document.querySelector('#mBilling .badge');if(b)b.textContent=x.n;const mt=document.querySelector('#mBilling .plan .meta');if(mt)mt.innerHTML='<b>$'+x.p+'/mo</b> &middot; next invoice Nov 18';openM('mBilling');toast('Plan changed to '+x.n+' \u2014 starts Nov 18');}
 function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function openPublic(){

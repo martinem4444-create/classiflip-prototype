@@ -376,7 +376,7 @@ function openJobApply(id,preset){
   preset=preset||{};
   document.getElementById('detailTitle').textContent='Apply: '+x.title;
   document.getElementById('detailBody').innerHTML='<div>'+applySteps(1)+jobHead(x)
-  +'<form id="jobApplyForm"><div class="form-grid">'
+  +'<form id="jobApplyForm" data-job-id="'+x.id+'"><div class="form-grid">'
   +'<div class="field"><label for="jaName">Full name</label><input id="jaName" required maxlength="60" autocomplete="name" placeholder="Your name" value="'+safe(preset.name||'')+'"></div>'
   +'<div class="field"><label for="jaPhone">Phone</label><input id="jaPhone" required type="tel" autocomplete="tel" placeholder="(905) 555-0100" value="'+safe(preset.phone||'')+'"></div>'
   +'<div class="field full"><label for="jaEmail">Email</label><input id="jaEmail" required type="email" autocomplete="email" placeholder="you@example.com" value="'+safe(preset.email||'')+'"></div>'
@@ -572,7 +572,7 @@ function openMessageThread(x){
     document.getElementById('postForm').addEventListener('submit',e=>{e.preventDefault();openAdPreview(collectAdForm());});
     document.getElementById('jobPostForm').addEventListener('submit',e=>{e.preventDefault();const category=document.getElementById('jobCategoryInput').value;jobs.unshift({id:Date.now(),title:document.getElementById('jobTitleInput').value.trim(),company:document.getElementById('companyInput').value.trim(),category,type:document.getElementById('jobTypeInput').value,location:document.getElementById('jobLocationInput').value.trim()||'Mississauga',pay:document.getElementById('jobPayInput').value.trim()||'Pay not listed',desc:document.getElementById('jobDescriptionInput').value.trim()||'Your job post preview.'});closeModals();e.target.reset();activeJobCategory=category;renderJobs();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})});
     document.addEventListener('submit',e=>{
-      if(e.target.id==='jobApplyForm'){e.preventDefault();const fid=e.target.dataset.job;const rf=e.target.querySelector('#jaResume');openJobReview(fid,{name:document.getElementById('jaName').value.trim(),email:document.getElementById('jaEmail').value.trim(),phone:document.getElementById('jaPhone').value.trim(),resume:rf&&rf.files&&rf.files[0]?rf.files[0].name:'',note:document.getElementById('jaNote').value.trim()});return;}
+      if(e.target.id==='jobApplyForm'){e.preventDefault();const fid=e.target.dataset.jobId;const rf=e.target.querySelector('#jaResume');openJobReview(fid,{name:document.getElementById('jaName').value.trim(),email:document.getElementById('jaEmail').value.trim(),phone:document.getElementById('jaPhone').value.trim(),resume:rf&&rf.files&&rf.files[0]?rf.files[0].name:'',note:document.getElementById('jaNote').value.trim()});return;}
       if(e.target.id!=='messageForm')return;e.preventDefault();const input=document.getElementById('messageInput'),text=input.value.trim();if(!text)return;const messages=document.getElementById('threadMessages');messages.insertAdjacentHTML('beforeend',`<div class="message-bubble you"><small>You</small><p>${safe(text)}</p></div><div class="message-bubble seller"><small>Seller</small><p>Thanks! I’ll get back to you shortly.</p></div>`);input.value='';messages.scrollTop=messages.scrollHeight;input.focus()});
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals()});
     updateAccountUI();render();renderFeatured();renderJobs();

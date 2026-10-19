@@ -69,9 +69,9 @@ footer{padding:0 0 40px;font-size:13px;color:var(--mu)}
 .adv .fine{text-align:center}
 .opts{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 4px}
 @media(max-width:720px){.tiers{grid-template-columns:1fr}.tier.hot{transform:none}}
-.mback{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(13,21,38,.62);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}
-.mback.on{display:flex}
-.mcard{background:var(--sf);border:1px solid var(--ln);border-radius:24px;padding:30px 28px;max-width:480px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:var(--sh);position:relative}
+.mback{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(13,21,38,.62);backdrop-filter:blur(4px);display:none;z-index:60;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mback.on{display:block}
+.mcard{background:var(--sf);border:1px solid var(--ln);border-radius:24px;padding:30px 28px;max-width:480px;width:100%;margin:5vh auto;box-shadow:var(--sh);position:relative}
 .mx{position:absolute;top:12px;right:16px;border:0;background:none;font-size:24px;cursor:pointer;color:var(--mu);line-height:1}
 .mcard h3{margin:0 0 4px;font-size:22px;color:var(--ink);letter-spacing:-.3px}
 .mcard .sub{color:var(--mu);font-size:14px;margin:0 0 16px}

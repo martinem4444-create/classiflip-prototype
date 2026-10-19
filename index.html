@@ -59,6 +59,16 @@
 .photo-thumb .prm{right:4px;top:4px;background:rgba(20,25,40,.72);color:#fff}
 .preview-actions{display:flex;gap:10px;margin-top:18px}
 .preview-actions .primary,.preview-actions .ghost{flex:1;min-height:48px}
+.apply-steps{display:flex;gap:8px;margin:2px 0 18px}
+.apply-steps span{flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding-bottom:8px;border-bottom:3px solid var(--line)}
+.apply-steps span.on{color:var(--navy);border-color:var(--orange)}
+.review-row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.review-row b{color:var(--muted);font-weight:600;flex:none}
+.review-row span{text-align:right;overflow-wrap:anywhere}
+.apply-success{text-align:center;padding:6px 0}
+.apply-success .big{font-size:52px;line-height:1;margin-bottom:10px}
+.apply-success h3{margin:0 0 8px;font-size:22px}
+.apply-success p{color:var(--muted);font-size:14px}
 </style>
 <style>
 .pagination{display:flex;gap:8px;justify-content:center;align-items:center;margin:28px 0 12px;flex-wrap:wrap}
@@ -350,7 +360,57 @@
       document.getElementById('detailBody').innerHTML=`<div class="detail">${galleryMarkup(x)}<div><div class="prototype-tag">SAMPLE LISTING · ${safe(x.category).toUpperCase()}${x.postingLabel?' · '+safe(x.postingLabel).toUpperCase():''}</div><h3>${safe(x.title)}</h3><div class="detail-price">${displayPrice(x)}</div><div class="meta"><span>${safe(x.condition)}</span><span>•</span><span>${safe(x.location)}</span></div>${x.verified?verifiedMark:''}<p>${safe(x.desc)}</p><div class="notice">This is an interactive prototype listing, not a real item for sale.</div>${listingContactMarkup()}</div></div>`;
       openModal('detailModal');
     }
-    function openMessageThread(x){
+    const appliedJobs=new Set();
+function jobById(id){return jobs.find(y=>y.id===Number(id));}
+function applySteps(n){return '<div class="apply-steps"><span class="'+(n===1?'on':'')+'">1. Your details</span><span class="'+(n===2?'on':'')+'">2. Review</span><span class="'+(n===3?'on':'')+'">3. Sent</span></div>';}
+function jobHead(x){return '<div class="notice" style="margin-top:0"><strong>'+safe(x.title)+'</strong><br>'+safe(x.company)+' \u00B7 '+safe(x.pay)+' \u00B7 '+safe(x.location)+'</div>';}
+function openJobDetail(x){
+  if(!x)return;
+  const applied=appliedJobs.has(x.id);
+  document.getElementById('detailTitle').textContent='Job details';
+  document.getElementById('detailBody').innerHTML='<div class="detail"><div class="detail-visual"><svg viewBox="0 0 240 150" fill="none" aria-hidden="true"><rect x="38" y="45" width="164" height="88" rx="12" fill="#203B62"/><path d="M85 45V31c0-8 6-14 14-14h42c8 0 14 6 14 14v14" stroke="#F4511E" stroke-width="9"/><path d="M38 76h164M102 76v14h36V76" stroke="#EDF6FF" stroke-width="7"/></svg></div><div><div class="prototype-tag">SAMPLE JOB \u00B7 '+safe(x.category).toUpperCase()+'</div><h3>'+safe(x.title)+'</h3><div class="detail-price">'+safe(x.pay)+'</div><div class="job-company">'+safe(x.company)+'</div><div class="meta"><span>'+safe(x.type)+'</span><span>\u2022</span><span>'+safe(x.location)+'</span></div><p>'+safe(x.desc)+'</p><div class="notice">This is an interactive prototype job, not a live opening.</div>'+(applied?'<div class="notice">\u2713 You applied to this job in this demo.</div><button class="primary" disabled>Applied \u2713</button>':'<button class="primary" data-apply-job="'+x.id+'">Apply now</button>')+'</div></div>';
+  openModal('detailModal');
+}
+function openJobApply(id,preset){
+  const x=jobById(id);if(!x)return;
+  preset=preset||{};
+  document.getElementById('detailTitle').textContent='Apply: '+x.title;
+  document.getElementById('detailBody').innerHTML='<div>'+applySteps(1)+jobHead(x)
+  +'<form id="jobApplyForm" data-job="'+x.id+'"><div class="form-grid">'
+  +'<div class="field"><label for="jaName">Full name</label><input id="jaName" required maxlength="60" autocomplete="name" placeholder="Your name" value="'+esc(preset.name||'')+'"></div>'
+  +'<div class="field"><label for="jaPhone">Phone</label><input id="jaPhone" required type="tel" autocomplete="tel" placeholder="(905) 555-0100" value="'+esc(preset.phone||'')+'"></div>'
+  +'<div class="field full"><label for="jaEmail">Email</label><input id="jaEmail" required type="email" autocomplete="email" placeholder="you@example.com" value="'+esc(preset.email||'')+'"></div>'
+  +'<div class="field full"><label for="jaResume">Resume <span style="font-weight:400;color:var(--muted)">(optional \u2014 demo only, never uploaded)</span></label><input id="jaResume" type="file" accept=".pdf,.doc,.docx,.txt"></div>'
+  +'<div class="field full"><label for="jaNote">Why are you a good fit? <span style="font-weight:400;color:var(--muted)">(optional)</span></label><textarea id="jaNote" maxlength="600" placeholder="Two or three sentences\u2026">'+esc(preset.note||'')+'</textarea></div>'
+  +'</div><div class="form-actions"><button type="button" class="ghost" data-back-job="'+x.id+'">\u2190 Back to job</button><button type="submit" class="primary">Review application \u2192</button></div>'
+  +'<p style="font-size:12px;color:var(--muted)">Demo only \u2014 nothing is sent or stored.</p></form></div>';
+  openModal('detailModal');
+}
+function openJobReview(id,d){
+  const x=jobById(id);if(!x)return;
+  window._jobApp={id:id,d:d};
+  document.getElementById('detailTitle').textContent='Review application';
+  document.getElementById('detailBody').innerHTML='<div>'+applySteps(2)+jobHead(x)
+  +'<div class="review-row"><b>Name</b><span>'+safe(d.name)+'</span></div>'
+  +'<div class="review-row"><b>Email</b><span>'+safe(d.email)+'</span></div>'
+  +'<div class="review-row"><b>Phone</b><span>'+safe(d.phone)+'</span></div>'
+  +(d.resume?'<div class="review-row"><b>Resume</b><span>'+safe(d.resume)+'</span></div>':'')
+  +(d.note?'<div class="review-row"><b>Note</b><span>'+safe(d.note)+'</span></div>':'')
+  +'<div class="form-actions"><button type="button" class="ghost" data-edit-apply>\u2190 Edit</button><button type="button" class="primary" data-submit-apply>Submit application</button></div></div>';
+  openModal('detailModal');
+}
+function submitJobApp(){
+  const a=window._jobApp;if(!a)return;window._jobApp=null;
+  const x=jobById(a.id);appliedJobs.add(Number(a.id));
+  document.getElementById('detailTitle').textContent='Application sent';
+  document.getElementById('detailBody').innerHTML='<div class="apply-success">'+applySteps(3)
+  +'<div class="big">\u2705</div><h3>Application sent!</h3>'
+  +'<p>Your application'+(x?' for <strong>'+safe(x.title)+'</strong>'+(x.company?' at '+safe(x.company):''):'')+' is on its way. Employers typically reply within a few days.</p>'
+  +'<div class="notice">Demo only \u2014 no real application was sent.</div>'
+  +'<button type="button" class="primary" data-close style="width:100%;min-height:48px">Back to jobs</button></div>';
+  openModal('detailModal');
+}
+function openMessageThread(x){
       activeListingId=x.id;
       document.getElementById('detailTitle').textContent='Message seller';
       document.getElementById('detailBody').innerHTML=`<div class="message-thread"><button type="button" class="link-btn thread-back" data-back-listing>← Back to listing</button><div class="thread-listing"><div class="thread-listing-icon">${icons[x.icon]}</div><div><h3>${safe(x.title)}</h3><span>${displayPrice(x)} · ${safe(x.location)}</span></div></div><div class="thread-messages" id="threadMessages" aria-live="polite"><div class="message-bubble seller"><small>Seller</small><p>Hi! Yes, it’s still available.</p></div><div class="message-bubble you"><small>You</small><p>Great — could I pick it up tomorrow?</p></div><div class="message-bubble seller"><small>Seller</small><p>Tomorrow works. What time suits you?</p></div></div><form class="thread-compose" id="messageForm"><input id="messageInput" maxlength="240" required aria-label="Message" placeholder="Write a message…"><button class="primary" type="submit">Send</button></form><p class="thread-note">Prototype conversation only. Messages stay on this page while it is open.</p></div>`;
@@ -436,10 +496,14 @@
       const messageSeller=e.target.closest('[data-message-seller]');if(messageSeller){const x=listings.find(y=>y.id===activeListingId);loggedIn?openMessageThread(x):openAccountForMessage('login')}
       const messageCreate=e.target.closest('[data-message-create]');if(messageCreate)openAccountForMessage('create');
       const backListing=e.target.closest('[data-back-listing]');if(backListing){const x=listings.find(y=>y.id===activeListingId);openListingDetail(x)}
-      const contact=e.target.closest('[data-demo-contact]');if(contact){contact.textContent='Contact flow confirmed';contact.disabled=true}
+      
       const jobCategory=e.target.closest('[data-job-category]');if(jobCategory){activeJobCategory=jobCategory.dataset.jobCategory;renderJobs();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})}
       const allJobsBack=e.target.closest('#allJobsBack');if(allJobsBack){activeJobCategory='All';renderJobs();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})}
-      const job=e.target.closest('[data-job]');if(job){const x=jobs.find(y=>y.id===Number(job.dataset.job));document.getElementById('detailBody').innerHTML=`<div class="detail"><div class="detail-visual"><svg viewBox="0 0 240 150" fill="none" aria-hidden="true"><rect x="38" y="45" width="164" height="88" rx="12" fill="#203B62"/><path d="M85 45V31c0-8 6-14 14-14h42c8 0 14 6 14 14v14" stroke="#F4511E" stroke-width="9"/><path d="M38 76h164M102 76v14h36V76" stroke="#EDF6FF" stroke-width="7"/></svg></div><div><div class="prototype-tag">SAMPLE JOB · ${safe(x.category).toUpperCase()}</div><h3>${safe(x.title)}</h3><div class="detail-price">${safe(x.pay)}</div><div class="job-company">${safe(x.company)}</div><div class="meta"><span>${safe(x.type)}</span><span>•</span><span>${safe(x.location)}</span></div><p>${safe(x.desc)}</p><div class="notice">This is an interactive prototype job, not a live opening.</div><button class="primary" data-demo-contact>Preview application flow</button></div></div>`;openModal('detailModal')}
+      const applyJob=e.target.closest('[data-apply-job]');if(applyJob){openJobApply(applyJob.dataset.applyJob);}
+      const backJob=e.target.closest('[data-back-job]');if(backJob){openJobDetail(jobById(backJob.dataset.backJob));}
+      if(e.target.closest('[data-edit-apply]')){const a=window._jobApp;if(a)openJobApply(a.id,a.d);}
+      if(e.target.closest('[data-submit-apply]')){submitJobApp();}
+      const job=e.target.closest('[data-job]');if(job){openJobDetail(jobs.find(y=>y.id===Number(job.dataset.job)))}
       const jobsCategory=e.target.closest('[data-jobs]');if(jobsCategory){currentCategory='Jobs';savedOnly=false;document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c===jobsCategory));render();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})}
       const cat=e.target.closest('[data-category]');if(cat){currentCategory=cat.dataset.category;savedOnly=false;document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c.dataset.category===currentCategory));render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'})}
     });
@@ -507,7 +571,9 @@
     }
     document.getElementById('postForm').addEventListener('submit',e=>{e.preventDefault();openAdPreview(collectAdForm());});
     document.getElementById('jobPostForm').addEventListener('submit',e=>{e.preventDefault();const category=document.getElementById('jobCategoryInput').value;jobs.unshift({id:Date.now(),title:document.getElementById('jobTitleInput').value.trim(),company:document.getElementById('companyInput').value.trim(),category,type:document.getElementById('jobTypeInput').value,location:document.getElementById('jobLocationInput').value.trim()||'Mississauga',pay:document.getElementById('jobPayInput').value.trim()||'Pay not listed',desc:document.getElementById('jobDescriptionInput').value.trim()||'Your job post preview.'});closeModals();e.target.reset();activeJobCategory=category;renderJobs();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})});
-    document.addEventListener('submit',e=>{if(e.target.id!=='messageForm')return;e.preventDefault();const input=document.getElementById('messageInput'),text=input.value.trim();if(!text)return;const messages=document.getElementById('threadMessages');messages.insertAdjacentHTML('beforeend',`<div class="message-bubble you"><small>You</small><p>${safe(text)}</p></div><div class="message-bubble seller"><small>Seller</small><p>Thanks! I’ll get back to you shortly.</p></div>`);input.value='';messages.scrollTop=messages.scrollHeight;input.focus()});
+    document.addEventListener('submit',e=>{
+      if(e.target.id==='jobApplyForm'){e.preventDefault();const fid=e.target.dataset.job;const rf=e.target.querySelector('#jaResume');openJobReview(fid,{name:document.getElementById('jaName').value.trim(),email:document.getElementById('jaEmail').value.trim(),phone:document.getElementById('jaPhone').value.trim(),resume:rf&&rf.files&&rf.files[0]?rf.files[0].name:'',note:document.getElementById('jaNote').value.trim()});return;}
+      if(e.target.id!=='messageForm')return;e.preventDefault();const input=document.getElementById('messageInput'),text=input.value.trim();if(!text)return;const messages=document.getElementById('threadMessages');messages.insertAdjacentHTML('beforeend',`<div class="message-bubble you"><small>You</small><p>${safe(text)}</p></div><div class="message-bubble seller"><small>Seller</small><p>Thanks! I’ll get back to you shortly.</p></div>`);input.value='';messages.scrollTop=messages.scrollHeight;input.focus()});
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals()});
     updateAccountUI();render();renderFeatured();renderJobs();
   </script>

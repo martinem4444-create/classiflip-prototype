@@ -157,7 +157,7 @@ function wlSubmit(){
 function wlShare(){
   var u=location.href;
   try{
-    if(navigator.share){navigator.share({title:"ClassiFlip",url:u});}
+    if(navigator.share){navigator.share({title:"ClassiFlip",text:"ClassiFlip is coming to the GTA — local buy & sell, no national noise. Join the waitlist:"url:u});}
     else if(navigator.clipboard){navigator.clipboard.writeText(u);wlG("share").textContent="Link copied";}
   }catch(_){}
   return false;

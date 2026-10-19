@@ -504,8 +504,8 @@ function openMessageThread(x){
       if(e.target.closest('[data-edit-apply]')){const a=window._jobApp;if(a)openJobApply(a.id,a.d);}
       if(e.target.closest('[data-submit-apply]')){submitJobApp();}
       const job=e.target.closest('[data-job]');if(job){openJobDetail(jobs.find(y=>y.id===Number(job.dataset.job)))}
-      const jobsCategory=e.target.closest('[data-jobs]');if(jobsCategory){currentCategory='Jobs';savedOnly=false;document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c===jobsCategory));render();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})}
-      const cat=e.target.closest('[data-category]');if(cat){currentCategory=cat.dataset.category;savedOnly=false;document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c.dataset.category===currentCategory));render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'})}
+      const jobsCategory=e.target.closest('[data-jobs]');if(jobsCategory){currentCategory='Jobs';savedOnly=false;document.getElementById('searchInput').value='';document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c===jobsCategory));render();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})}
+      const cat=e.target.closest('[data-category]');if(cat){currentCategory=cat.dataset.category;savedOnly=false;document.getElementById('searchInput').value='';document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c.dataset.category===currentCategory));render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'})}
     });
     document.getElementById('searchBtn').addEventListener('click',()=>{savedOnly=false;render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'})});
     document.getElementById('searchInput').addEventListener('input',()=>{savedOnly=false;render()});

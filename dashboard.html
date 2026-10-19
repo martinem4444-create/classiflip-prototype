@@ -412,7 +412,7 @@ $('edDesc').placeholder=isNew?'Condition, size, pickup details\u2026':'';
 $('edSave').textContent=isNew?'Post ad':'Save changes';
 const g=$('pgrid');g.innerHTML='';
 const key=/bike/i.test(name)?'bike':/laptop/i.test(name)?'laptop':/civic|rav4/i.test(name)?'car':null;
-if(key){g.innerHTML='<div class="ptile cover"><img src="'+PHOTOS[key]+'"><button class="star" title="Cover photo">&#9733;</button></div>';}
+if(key){g.innerHTML='<div class="ptile cover"><img src="'+PHOTOS[key]+'"><button class="star" title="Cover photo">&#9733;</button><button class="rm" title="Remove photo">&times;</button></div>';}
 g.innerHTML+='<div class="ptile add" title="Add photo" onclick="pickEditorPhoto()">+</div>';
 openM('mEditor');
 }
@@ -447,7 +447,7 @@ if(stb){openStats(stb);return;}
 const star=e.target.closest('.ptile .star');
 if(star){const grid=star.closest('.pgrid');if(grid)grid.querySelectorAll('.ptile').forEach(t=>t.classList.remove('cover'));star.closest('.ptile').classList.add('cover');return;}
 const rmt=e.target.closest('.ptile .rm');
-if(rmt){rmt.closest('.ptile').remove();}
+if(rmt){const tile=rmt.closest('.ptile');const wasCover=tile.classList.contains('cover');const grid=tile.closest('.pgrid');tile.remove();if(wasCover){const first=grid.querySelector('.ptile:not(.add)');if(first)first.classList.add('cover');}}
 });
 function openBoost(name){
 $('boostFor').textContent=name;
@@ -490,15 +490,17 @@ $('stBars').innerHTML=d.bars.map(v=>'<div class="bar" style="height:'+v+'%"><spa
 openM('mStats');
 }
 function openAdPreview(){
-const t=esc($('edName').value||'Untitled ad'), pr=esc($('edPrice').value||'—');
+const t=esc($('edName').value||'Untitled ad'), pr=esc($('edPrice').value||'\u2014');
 const d=esc($('edDesc').value||'');
-const key=/bike/i.test(t)?'bike':/laptop/i.test(t)?'laptop':/civic|rav4/i.test(t)?'car':null;
-$('adpvBody').innerHTML=(key?'<img class="hero" src="'+PHOTOS[key]+'">':'')
+let cover='';
+const covTile=document.querySelector('#pgrid .ptile.cover')||document.querySelector('#pgrid .ptile:not(.add)');
+if(covTile){const im=covTile.querySelector('img');if(im)cover=im.getAttribute('src');}
+if(!cover){const key=/bike/i.test(t)?'bike':/laptop/i.test(t)?'laptop':/civic|rav4/i.test(t)?'car':null;if(key)cover=PHOTOS[key];}
+$('adpvBody').innerHTML=(cover?'<img class="hero" src="'+cover+'">':'')
 +'<div class="t">'+t+'</div><div class="pr">$'+pr+'</div>'
-+'<div class="meta">Mississauga, ON · Posted Oct 18 · 214 impressions</div>'
-+'<div class="desc">'+d.replace(/\n/g,'<br>')+'</div>'
-+'<div class="sellcard"><div class="av">M</div><div><div class="n">Martin</div><div class="s">Private seller · 12 reviews</div></div>'
-+'<button class="btn pri" onclick="toast(\'Message thread would open here\')">Message</button></div>';
++'<div class="meta"><span>'+(ROLE==='biz'?'Business':'Private seller')+'</span><span>\u2022</span><span>Mississauga</span></div>'
++(d?'<p>'+d+'</p>':'')
++'<div class="notice">Buyer preview \u2014 this is how your ad will look.</div>';
 openM('mAdPrev');
 }
 </script>

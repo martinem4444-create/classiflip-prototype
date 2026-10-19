@@ -377,11 +377,11 @@ function openJobApply(id,preset){
   document.getElementById('detailTitle').textContent='Apply: '+x.title;
   document.getElementById('detailBody').innerHTML='<div>'+applySteps(1)+jobHead(x)
   +'<form id="jobApplyForm" data-job="'+x.id+'"><div class="form-grid">'
-  +'<div class="field"><label for="jaName">Full name</label><input id="jaName" required maxlength="60" autocomplete="name" placeholder="Your name" value="'+esc(preset.name||'')+'"></div>'
-  +'<div class="field"><label for="jaPhone">Phone</label><input id="jaPhone" required type="tel" autocomplete="tel" placeholder="(905) 555-0100" value="'+esc(preset.phone||'')+'"></div>'
-  +'<div class="field full"><label for="jaEmail">Email</label><input id="jaEmail" required type="email" autocomplete="email" placeholder="you@example.com" value="'+esc(preset.email||'')+'"></div>'
+  +'<div class="field"><label for="jaName">Full name</label><input id="jaName" required maxlength="60" autocomplete="name" placeholder="Your name" value="'+safe(preset.name||'')+'"></div>'
+  +'<div class="field"><label for="jaPhone">Phone</label><input id="jaPhone" required type="tel" autocomplete="tel" placeholder="(905) 555-0100" value="'+safe(preset.phone||'')+'"></div>'
+  +'<div class="field full"><label for="jaEmail">Email</label><input id="jaEmail" required type="email" autocomplete="email" placeholder="you@example.com" value="'+safe(preset.email||'')+'"></div>'
   +'<div class="field full"><label for="jaResume">Resume <span style="font-weight:400;color:var(--muted)">(optional \u2014 demo only, never uploaded)</span></label><input id="jaResume" type="file" accept=".pdf,.doc,.docx,.txt"></div>'
-  +'<div class="field full"><label for="jaNote">Why are you a good fit? <span style="font-weight:400;color:var(--muted)">(optional)</span></label><textarea id="jaNote" maxlength="600" placeholder="Two or three sentences\u2026">'+esc(preset.note||'')+'</textarea></div>'
+  +'<div class="field full"><label for="jaNote">Why are you a good fit? <span style="font-weight:400;color:var(--muted)">(optional)</span></label><textarea id="jaNote" maxlength="600" placeholder="Two or three sentences\u2026">'+safe(preset.note||'')+'</textarea></div>'
   +'</div><div class="form-actions"><button type="button" class="ghost" data-back-job="'+x.id+'">\u2190 Back to job</button><button type="submit" class="primary">Review application \u2192</button></div>'
   +'<p style="font-size:12px;color:var(--muted)">Demo only \u2014 nothing is sent or stored.</p></form></div>';
   openModal('detailModal');

@@ -588,6 +588,7 @@ function openMessageThread(x){
         note(1567.98,0.40,0.5,0.06);note(2093.00,0.48,0.5,0.05);
       }catch(e){}
     }
+    document.addEventListener('pointerdown',()=>{try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();}catch(e){}},{passive:true});
     let currentView='grid',mapSelId=null;
     const HOOD_POS={'Churchill Meadows':[22,29],'Meadowvale':[27,15],'Streetsville':[36,24],'Erin Mills':[33,42],'City Centre':[50,39],'Cooksville':[56,58],'Port Credit':[47,79],'Mississauga':[45,32]};
     function shortPrice(x){if(x.category==='Rentals')return money(x.price)+'/mo';if(x.price>=10000)return '$'+Math.round(x.price/1000)+'K';return money(x.price);}
@@ -775,7 +776,7 @@ function renderFeatured(){
       }
       document.getElementById('detailTitle').textContent='Ad preview';
       document.getElementById('detailBody').innerHTML='<div class="detail">'+gal+'<div><div class="prototype-tag">PREVIEW \u00B7 '+safe(ad.category).toUpperCase()+(ad.postingLabel?' \u00B7 '+safe(ad.postingLabel).toUpperCase():'')+'</div><h3>'+safe(ad.title)+'</h3><div class="detail-price">'+displayPrice(ad)+'</div><div class="meta"><span>'+safe(ad.condition)+'</span><span>\u2022</span><span>'+safe(ad.location)+'</span></div><p>'+safe(ad.desc)+'</p><div class="notice">This is how your ad will look to buyers. Nothing is published yet.</div><div class="preview-actions"><button type="button" class="ghost" data-preview-edit>\u2190 Edit ad</button><button type="button" class="primary" data-preview-post>Post my ad</button></div></div></div>';
-      openModal('detailModal');
+      closeModals();openModal('detailModal');
     }
     document.getElementById('postForm').addEventListener('submit',e=>{e.preventDefault();openAdPreview(collectAdForm());});
     document.getElementById('jobPostForm').addEventListener('submit',e=>{e.preventDefault();const category=document.getElementById('jobCategoryInput').value;jobs.unshift({id:Date.now(),title:document.getElementById('jobTitleInput').value.trim(),company:document.getElementById('companyInput').value.trim(),category,type:document.getElementById('jobTypeInput').value,location:document.getElementById('jobLocationInput').value.trim()||'Mississauga',pay:document.getElementById('jobPayInput').value.trim()||'Pay not listed',desc:document.getElementById('jobDescriptionInput').value.trim()||'Your job post preview.'});closeModals();e.target.reset();activeJobCategory=category;renderJobs();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})});

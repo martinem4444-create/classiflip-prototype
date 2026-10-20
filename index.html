@@ -59,6 +59,27 @@
 .view-toggle{display:flex;gap:6px;margin-left:auto}
 .view-toggle button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;display:grid;place-items:center}
 .view-toggle button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+    .map-wrap{display:grid;grid-template-columns:minmax(0,1fr) 302px;gap:14px;margin-top:14px}
+    .map-stage{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#EDF3F9;aspect-ratio:1000/620;box-shadow:var(--soft-shadow)}
+    .map-stage svg{position:absolute;inset:0;width:100%;height:100%}
+    .map-pin{position:absolute;transform:translate(-50%,-100%);background:var(--navy);color:#fff;border:2px solid #fff;border-radius:999px;padding:5px 10px;font:800 12px/1 'Manrope',sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(22,45,76,.35);white-space:nowrap;z-index:2}
+    .map-pin::after{content:"";position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);border:4px solid transparent;border-top:6px solid var(--navy)}
+    .map-pin.hot{background:var(--orange)}.map-pin.hot::after{border-top-color:var(--orange)}
+    .map-pin.sel{background:var(--orange);transform:translate(-50%,-100%) scale(1.15);z-index:3}.map-pin.sel::after{border-top-color:var(--orange)}
+    .map-side{display:flex;flex-direction:column;gap:10px;min-width:0}
+    .map-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--soft-shadow)}
+    .map-card img{width:100%;height:150px;object-fit:cover;display:block}
+    .map-card .mc-body{padding:14px}
+    .map-card .price{font:800 20px/1.2 'Manrope';color:var(--orange);margin-bottom:4px}
+    .map-card h3{font:700 15px/1.3 'Manrope';margin:0 0 6px}
+    .map-card p{color:var(--muted);font-size:13px;margin:8px 0 0}
+    .map-card .view{margin-top:10px;font-size:14px}
+    .map-hint{background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:18px;color:var(--muted);font-size:14px;text-align:center}
+    .map-list{display:flex;flex-direction:column;gap:7px}
+    .map-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:9px 12px;cursor:pointer;font:600 13px 'Manrope',sans-serif;color:var(--ink)}
+    .map-row b{color:var(--orange);font-weight:800;white-space:nowrap}
+    .map-row.sel{border-color:var(--orange);background:color-mix(in srgb,var(--orange) 7%,var(--surface))}
+    @media(max-width:860px){.map-wrap{grid-template-columns:1fr}.map-pin{font-size:11px;padding:4px 8px}}
 .view-toggle svg{width:18px;height:18px}
 .listing-grid.list-view{grid-template-columns:1fr}.marketplace-shell.show-pricing .listing-grid.list-view{grid-template-columns:1fr}
 .listing-grid.list-view .listing{display:grid;grid-template-columns:150px 1fr}
@@ -174,12 +195,47 @@
       <div class="view-toggle" role="group" aria-label="Listing layout">
         <button id="gridViewBtn" aria-pressed="true" aria-label="Grid view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
         <button id="listViewBtn" aria-pressed="false" aria-label="List view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg></button>
+        <button id="mapViewBtn" aria-pressed="false" aria-label="Map view" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></button>
       </div></div>
       <div class="marketplace-shell" id="marketplaceShell">
         <div class="marketplace-content">
           <aside class="safety-strip" aria-label="Marketplace safety tips"><h3>Buy and sell safely</h3><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Meet in a busy public place.</span></div><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Inspect the item before paying.</span></div><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Pay in person and report suspicious ads.</span></div></aside>
           <div class="filters"><select id="conditionFilter" aria-label="Condition"><option value="All">Any condition</option><option>New</option><option>Like new</option><option>Good</option><option>Used</option></select><select id="sortFilter" aria-label="Sort listings"><option value="featured">Featured</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select><span class="results-note" id="resultsNote">6 prototype listings</span></div>
           <div class="listing-grid" id="listingGrid"></div><div class="pagination" id="pagination" style="display:none"></div>
+          <div class="map-wrap" id="mapWrap" hidden>
+            <div class="map-stage" id="mapStage" role="img" aria-label="Map of Mississauga with property pins">
+              <svg viewBox="0 0 1000 620" preserveAspectRatio="none" aria-hidden="true">
+                <rect width="1000" height="620" fill="#EDF3F9"/>
+                <g stroke="#DCE6F0" stroke-width="2"><path d="M0 120H1000M0 240H1000M0 360H1000M0 470H1000M140 0V620M300 0V620M460 0V620M620 0V620M780 0V620"/></g>
+                <path d="M0 512 C 220 488, 420 540, 640 522 C 800 510, 920 528, 1000 518 L1000 620 L0 620 Z" fill="#C7DFF2"/>
+                <path d="M505 0 C 495 120, 470 240, 462 360 C 456 440, 462 490, 470 540" fill="none" stroke="#A9CCE8" stroke-width="11" stroke-linecap="round" opacity=".85"/>
+                <path d="M0 74 H1000" stroke="#D3DAE4" stroke-width="15"/><path d="M0 74 H1000" stroke="#fff" stroke-width="2" stroke-dasharray="16 14"/>
+                <path d="M60 620 C 260 430, 480 300, 760 190" fill="none" stroke="#D3DAE4" stroke-width="13"/><path d="M60 620 C 260 430, 480 300, 760 190" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="14 12"/>
+                <path d="M0 500 C 260 478, 520 512, 1000 500" fill="none" stroke="#C9D2DE" stroke-width="12"/>
+                <g font-family="Manrope,sans-serif" font-weight="700" fill="#7A8AA0">
+                  <text x="880" y="66" font-size="17">401</text>
+                  <text x="700" y="238" font-size="15">403</text>
+                  <text x="120" y="492" font-size="15">QEW</text>
+                  <text x="742" y="586" font-size="19" letter-spacing="3" fill="#5B84A8">LAKE ONTARIO</text>
+                  <text x="486" y="330" font-size="12" transform="rotate(84 486 330)" fill="#5B84A8">Credit River</text>
+                </g>
+                <g font-family="Manrope,sans-serif" font-size="15" font-weight="600" fill="#54687F">
+                  <circle cx="220" cy="176" r="4" fill="#93A6BB"/><text x="232" y="181">Churchill Meadows</text>
+                  <circle cx="270" cy="92" r="4" fill="#93A6BB"/><text x="282" y="97">Meadowvale</text>
+                  <circle cx="360" cy="150" r="4" fill="#93A6BB"/><text x="372" y="155">Streetsville</text>
+                  <circle cx="330" cy="262" r="4" fill="#93A6BB"/><text x="342" y="267">Erin Mills</text>
+                  <circle cx="500" cy="243" r="4" fill="#93A6BB"/><text x="512" y="248">City Centre · Square One</text>
+                  <circle cx="560" cy="360" r="4" fill="#93A6BB"/><text x="572" y="365">Cooksville</text>
+                  <circle cx="470" cy="487" r="4" fill="#93A6BB"/><text x="482" y="492">Port Credit</text>
+                </g>
+              </svg>
+              <div id="mapPins"></div>
+            </div>
+            <div class="map-side">
+              <div id="mapCard"><div class="map-hint">Tap a price pin to preview the property here.</div></div>
+              <div class="map-list" id="mapList"></div>
+            </div>
+          </div>
         </div>
         <aside class="dealer-panel" id="autoPosting" aria-labelledby="autoPostingTitle" hidden>
           <div class="dealer-copy">
@@ -382,6 +438,8 @@
       else if(showHomes){title.textContent='Homes for sale';subtitle.textContent='Sample home ads show featured and sponsored placement costs at a glance.'}
       else if(currentCategory==='Free'&&!savedOnly){title.textContent='Free stuff';subtitle.textContent='Giveaways, curb alerts and free-to-taker items — always free to post.'}
       else{title.textContent='Fresh near you';subtitle.textContent='Sample content for the ClassiFlip prototype.'}
+      const mb=document.getElementById('mapViewBtn');if(mb)mb.hidden=!(showHomes||showRentals);
+      if(currentView==='map'&&!(showHomes||showRentals))setView('grid');
     }
     const money=n=>new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
     const displayPrice=x=>x.category==='Free'?'FREE':`${money(x.price)}${x.category==='Rentals'?'/mo':''}`;
@@ -489,14 +547,61 @@ function openMessageThread(x){
       renderPagination(totalPages);
       document.getElementById('savedCount').textContent=saved.size;
       updateMarketplaceView();
+      syncMapView(rows);
     }
 
+    let currentView='grid',mapSelId=null;
+    const HOOD_POS={'Churchill Meadows':[22,29],'Meadowvale':[27,15],'Streetsville':[36,24],'Erin Mills':[33,42],'City Centre':[50,39],'Cooksville':[56,58],'Port Credit':[47,79],'Mississauga':[45,32]};
+    function shortPrice(x){if(x.category==='Rentals')return money(x.price)+'/mo';if(x.price>=10000)return '$'+Math.round(x.price/1000)+'K';return money(x.price);}
+    function setView(v){
+      currentView=v;
+      const gridEl=document.getElementById('listingGrid'),pg=document.getElementById('pagination'),mw=document.getElementById('mapWrap');
+      const isMap=v==='map';
+      gridEl.classList.toggle('list-view',v==='list');
+      gridEl.style.display=isMap?'none':'';
+      if(pg)pg.style.display=isMap?'none':'';
+      if(mw)mw.hidden=!isMap;
+      document.getElementById('gridViewBtn').setAttribute('aria-pressed',v==='grid');
+      document.getElementById('listViewBtn').setAttribute('aria-pressed',v==='list');
+      const mb=document.getElementById('mapViewBtn');if(mb)mb.setAttribute('aria-pressed',isMap);
+      try{localStorage.setItem('cf-view',v);}catch(e){}
+      if(isMap)render();
+    }
+    function selectMapPin(id){
+      mapSelId=id;
+      document.querySelectorAll('.map-pin').forEach(p=>p.classList.toggle('sel',Number(p.dataset.pin)===id));
+      document.querySelectorAll('.map-row').forEach(r=>r.classList.toggle('sel',Number(r.dataset.mapsel)===id));
+      const x=listings.find(y=>y.id===id),card=document.getElementById('mapCard');
+      if(!x||!card)return;
+      card.innerHTML='<div class="map-card">'+(x.photo?'<img src="'+x.photo+'" alt="">':'')+'<div class="mc-body"><div class="price">'+displayPrice(x)+'</div><h3>'+safe(x.title)+'</h3><div class="meta"><span>'+safe(x.condition)+'</span><span>\u2022</span><span>'+safe(x.location)+'</span></div><p>'+safe(x.desc)+'</p><button class="view" data-view="'+x.id+'">View details \u2192</button></div></div>';
+    }
+    function syncMapView(rows){
+      const mw=document.getElementById('mapWrap');if(!mw)return;
+      const isMap=currentView==='map';
+      mw.hidden=!isMap;
+      if(!isMap)return;
+      const pins=document.getElementById('mapPins'),list=document.getElementById('mapList');
+      const props=rows.filter(x=>x.category==='Homes'||x.category==='Rentals');
+      pins.innerHTML=props.map(x=>{
+        const base=HOOD_POS[x.location]||HOOD_POS['Mississauga'];
+        const jx=((x.id*29)%9)-4,jy=((x.id*41)%9)-4;
+        const hot=x.promotion||x.featured;
+        return '<button class="map-pin'+(hot?' hot':'')+(mapSelId===x.id?' sel':'')+'" data-pin="'+x.id+'" style="left:'+(base[0]+jx)+'%;top:'+(base[1]+jy)+'%" aria-label="'+safe(x.title)+' '+shortPrice(x)+'">'+shortPrice(x)+'</button>';
+      }).join('');
+      list.innerHTML=props.map(x=>'<button class="map-row'+(mapSelId===x.id?' sel':'')+'" data-mapsel="'+x.id+'"><span>'+safe(x.title)+'</span><b>'+shortPrice(x)+'</b></button>').join('')||'<div class="map-hint">No properties match those filters.</div>';
+      if(mapSelId&&props.some(x=>x.id===mapSelId))selectMapPin(mapSelId);
+      else if(props.length)selectMapPin(props[0].id);
+      else document.getElementById('mapCard').innerHTML='<div class="map-hint">No properties to show on the map.</div>';
+    }
+    document.addEventListener('click',e=>{
+      const pin=e.target.closest('[data-pin]');if(pin){selectMapPin(Number(pin.dataset.pin));return;}
+      const row=e.target.closest('[data-mapsel]');if(row){selectMapPin(Number(row.dataset.mapsel));}
+    });
     (function(){
-      const gridEl=document.getElementById('listingGrid'),gb=document.getElementById('gridViewBtn'),lb=document.getElementById('listViewBtn');
-      if(!gridEl||!gb||!lb)return;
-      const set=v=>{gridEl.classList.toggle('list-view',v==='list');gb.setAttribute('aria-pressed',v==='grid');lb.setAttribute('aria-pressed',v==='list');try{localStorage.setItem('cf-view',v);}catch(e){}};
-      gb.onclick=()=>set('grid');lb.onclick=()=>set('list');
-      try{const sv=localStorage.getItem('cf-view');if(sv==='list'||sv==='grid')set(sv);}catch(e){}
+      const gb=document.getElementById('gridViewBtn'),lb=document.getElementById('listViewBtn'),mb=document.getElementById('mapViewBtn');
+      if(!gb||!lb)return;
+      gb.onclick=()=>setView('grid');lb.onclick=()=>setView('list');if(mb)mb.onclick=()=>setView('map');
+      try{const sv=localStorage.getItem('cf-view');if(sv==='list'||sv==='grid')setView(sv);}catch(e){}
     })();
     function renderHeroCarousel(){
   const track=document.getElementById('hcarTrack'),dots=document.getElementById('hcarDots');

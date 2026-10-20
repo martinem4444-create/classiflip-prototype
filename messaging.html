@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script>try{var __t=localStorage.getItem('cf-theme');if(__t)document.documentElement.dataset.theme=__t;}catch(e){}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClassiFlip — Messages (Prototype)</title>
@@ -73,14 +73,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .chat.show{display:flex}
 .backbtn{display:block}
 }
-</style>
+html[data-theme="dark"]{--bg:#0D1524;--card:#16233C;--ink:#EDF2F9;--mu:#9DB0C9;--ln:#2A3B5C;--tint:#40261A;--sh:0 10px 30px rgba(0,0,0,.45);color-scheme:dark}html[data-theme="dark"] .mcard{background:#16233C;color:var(--ink)}html[data-theme="dark"] .chat{background:#101C31}html[data-theme="dark"] .spon .spn-card{background:#16233C}html[data-theme="dark"] .bub.offer{background:#16233C}html[data-theme="dark"] .bub.them{background:#22345A}html[data-theme="dark"] .qr button{background:#16233C;color:var(--ink)}html[data-theme="dark"] .iconbtn{background:#16233C;color:var(--ink)}.tbtn{margin-left:6px;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ln);background:var(--card);font-size:16px;cursor:pointer;padding:0;flex:0 0 auto}</style>
 </head>
 <body>
 <div class="top">
 <button class="backbtn" id="backBtn" onclick="showThreads()">‹</button>
 <div class="logo"><img class="nl" src="images/logo.png" alt="ClassiFlip logo">CLASSIFLIP</div>
 <span class="ttl">Messages</span>
-<nav class="snav"><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="advertise.html">Advertise</a></nav>
+<nav class="snav"><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="advertise.html">Advertise</a><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme">🌙</button></nav>
 </div>
 <div class="safe">&#128274; Keep chats on ClassiFlip — never share payment info or meet without telling someone where you're going.</div>
 <div class="main">
@@ -227,5 +227,5 @@ renderThreads();
 // otherwise auto-open the first thread so the chat box always works
 (function(){try{var q=new URLSearchParams(location.search).get('thread');if(q&&THREADS.some(t=>t.id===q)){openThread(q);}else if(THREADS.length){openThread(THREADS[0].id);}}catch(e){}})();
 </script>
-</body>
+<script>var CF_DARK_DEFAULT=false;function cfTheme(){var h=document.documentElement,cur=h.dataset.theme||(CF_DARK_DEFAULT?'dark':'light'),nxt=cur==='dark'?'light':'dark';h.dataset.theme=nxt;try{localStorage.setItem('cf-theme',nxt)}catch(e){}cfThemeBtn()}function cfThemeBtn(){var b=document.getElementById('themeBtn');if(!b)return;var cur=document.documentElement.dataset.theme||(CF_DARK_DEFAULT?'dark':'light');b.textContent=cur==='dark'?'\u2600\uFE0F':'\U0001F319'}document.addEventListener('DOMContentLoaded',cfThemeBtn);</script></body>
 </html>

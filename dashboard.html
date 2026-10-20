@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script>try{var __t=localStorage.getItem('cf-theme');if(__t)document.documentElement.dataset.theme=__t;}catch(e){}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClassiFlip — Dashboard (Prototype)</title>
@@ -149,12 +149,12 @@ h4.st{margin:18px 0 4px;font-size:14px;color:var(--navy)}
 .pvad{min-width:0}
 .pvad .t{overflow-wrap:anywhere}
 @media(max-width:480px){.pvads{grid-template-columns:1fr}.mcard{padding:22px 18px}.sellcard{flex-wrap:wrap}.sellcard button{margin-left:0;width:100%}}
-</style>
+html[data-theme="dark"]{--bg:#0D1524;--card:#16233C;--ink:#EDF2F9;--mu:#9DB0C9;--ln:#2A3B5C;--tint:#40261A;--sh:0 10px 30px rgba(0,0,0,.45);color-scheme:dark}html[data-theme="dark"] .mcard{background:#16233C;color:var(--ink)}html[data-theme="dark"] .seg{background:#16233C}.tbtn{margin-left:6px;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ln);background:var(--card);font-size:16px;cursor:pointer;padding:0;flex:0 0 auto}</style>
 </head>
 <body>
 <div class="top">
 <div class="logo"><img class="nl" src="images/logo.png" alt="ClassiFlip logo">CLASSIFLIP</div>
-<nav class="snav"><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="messaging.html">Messages</a><a href="advertise.html">Advertise</a></nav>
+<nav class="snav"><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="messaging.html">Messages</a><a href="advertise.html">Advertise</a><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme">🌙</button></nav>
 <div class="who" style="margin-left:0"><span class="av">M</span><span class="nm" id="whoName">Martin · Seller</span></div>
 </div>
 <div class="wrap">
@@ -528,5 +528,5 @@ $('adpvBody').innerHTML=(cover?'<img class="hero" src="'+cover+'">':'')
 openM('mAdPrev');
 }
 </script>
-</body>
+<script>var CF_DARK_DEFAULT=false;function cfTheme(){var h=document.documentElement,cur=h.dataset.theme||(CF_DARK_DEFAULT?'dark':'light'),nxt=cur==='dark'?'light':'dark';h.dataset.theme=nxt;try{localStorage.setItem('cf-theme',nxt)}catch(e){}cfThemeBtn()}function cfThemeBtn(){var b=document.getElementById('themeBtn');if(!b)return;var cur=document.documentElement.dataset.theme||(CF_DARK_DEFAULT?'dark':'light');b.textContent=cur==='dark'?'\u2600\uFE0F':'\U0001F319'}document.addEventListener('DOMContentLoaded',cfThemeBtn);</script></body>
 </html>

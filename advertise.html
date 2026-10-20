@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script>try{var __t=localStorage.getItem('cf-theme');if(__t)document.documentElement.dataset.theme=__t;}catch(e){}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClassiFlip — Advertise (Prototype)</title>
@@ -78,12 +78,12 @@ footer{padding:28px 20px;text-align:center;color:var(--mu);font-size:13px}
 .mgrid .mcard .t{font-size:13.5px;color:var(--navy);font-weight:700;margin-bottom:4px}
 .mgrid .mcard .d{font-size:12px;color:var(--mu)}
 @media(max-width:640px){.mgrid{grid-template-columns:repeat(2,1fr)}}
-</style>
+html[data-theme="dark"]{--bg:#0D1524;--card:#16233C;--ink:#EDF2F9;--mu:#9DB0C9;--ln:#2A3B5C;--tint:#40261A;--sh:0 10px 30px rgba(0,0,0,.45);color-scheme:dark}html[data-theme="dark"] .mcard{background:#16233C;color:var(--ink)}html[data-theme="dark"] .boost{background:#16233C}html[data-theme="dark"] .metrics{background:#101C31}.tbtn{margin-left:14px;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);background:transparent;font-size:17px;cursor:pointer;padding:0;flex:0 0 auto}</style>
 </head>
 <body>
 <div class="top">
 <a class="logo" href="index.html"><img class="nl" src="images/logo.png" alt="ClassiFlip logo">CLASSIFLIP</a>
-<nav><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="messaging.html">Messages</a><a href="advertise.html" style="color:#fff;font-weight:700">Advertise</a></nav>
+<nav><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="messaging.html">Messages</a><a href="advertise.html" style="color:#fff;font-weight:700">Advertise</a></nav><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme">🌙</button>
 </div>
 
 <div class="hero">
@@ -222,5 +222,5 @@ function submitClaim(){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClaim();});
 </script>
-</body>
+<script>var CF_DARK_DEFAULT=false;function cfTheme(){var h=document.documentElement,cur=h.dataset.theme||(CF_DARK_DEFAULT?'dark':'light'),nxt=cur==='dark'?'light':'dark';h.dataset.theme=nxt;try{localStorage.setItem('cf-theme',nxt)}catch(e){}cfThemeBtn()}function cfThemeBtn(){var b=document.getElementById('themeBtn');if(!b)return;var cur=document.documentElement.dataset.theme||(CF_DARK_DEFAULT?'dark':'light');b.textContent=cur==='dark'?'\u2600\uFE0F':'\U0001F319'}document.addEventListener('DOMContentLoaded',cfThemeBtn);</script></body>
 </html>

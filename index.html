@@ -567,6 +567,27 @@ function openMessageThread(x){
       syncMapView(rows);
     }
 
+    let _ac=null;
+    function playFanfare(){
+      try{
+        _ac=_ac||new (window.AudioContext||window.webkitAudioContext)();
+        if(_ac.state==='suspended')_ac.resume();
+        const t0=_ac.currentTime+0.02;
+        const note=(f,start,dur,vol)=>{
+          const o=_ac.createOscillator(),o2=_ac.createOscillator(),g=_ac.createGain();
+          o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;
+          const g2=_ac.createGain();g2.gain.value=0.4;
+          o.connect(g);o2.connect(g2);g2.connect(g);g.connect(_ac.destination);
+          g.gain.setValueAtTime(0.0001,t0+start);
+          g.gain.exponentialRampToValueAtTime(vol,t0+start+0.015);
+          g.gain.exponentialRampToValueAtTime(0.0001,t0+start+dur);
+          o.start(t0+start);o2.start(t0+start);o.stop(t0+start+dur+0.05);o2.stop(t0+start+dur+0.05);
+        };
+        note(523.25,0,0.35,0.22);note(659.25,0.11,0.35,0.22);note(783.99,0.22,0.35,0.22);
+        [523.25,659.25,783.99,1046.50].forEach(f=>note(f,0.36,1.1,0.13));
+        note(1567.98,0.40,0.5,0.06);note(2093.00,0.48,0.5,0.05);
+      }catch(e){}
+    }
     let currentView='grid',mapSelId=null;
     const HOOD_POS={'Churchill Meadows':[22,29],'Meadowvale':[27,15],'Streetsville':[36,24],'Erin Mills':[33,42],'City Centre':[50,39],'Cooksville':[56,58],'Port Credit':[47,79],'Mississauga':[45,32]};
     function shortPrice(x){if(x.category==='Rentals')return money(x.price)+'/mo';if(x.price>=10000)return '$'+Math.round(x.price/1000)+'K';return money(x.price);}
@@ -679,7 +700,7 @@ function renderFeatured(){
       const prm=e.target.closest('[data-prm]');if(prm){pendingPhotos.splice(Number(prm.dataset.prm),1);renderPhotoStrip();}
       const pvPhoto=e.target.closest('[data-preview-photo]');if(pvPhoto){const ad=window._pendingAd;if(ad&&ad.photos&&ad.photos.length){const pidx=Number(pvPhoto.dataset.previewPhoto);const main=document.getElementById('galleryMain');if(main){main.innerHTML='<img src="'+ad.photos[pidx]+'" alt="" style="width:100%;height:300px;object-fit:cover;display:block;border-radius:14px">';main.setAttribute('aria-label','Photo '+(pidx+1)+' of '+ad.photos.length);}document.querySelectorAll('[data-preview-photo]').forEach(b=>b.classList.toggle('active',b===pvPhoto));}}
       if(e.target.closest('[data-preview-edit]')){closeModals();openModal('postModal');}
-      const pvPost=e.target.closest('[data-preview-post]');if(pvPost){const ad=window._pendingAd;window._pendingAd=null;if(ad){listings.unshift(ad);closeModals();currentCategory='All';savedOnly=false;document.getElementById('listingTitle').textContent='Fresh near you';document.getElementById('postForm').reset();pendingPhotos=[];renderPhotoStrip();render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'});}}
+      const pvPost=e.target.closest('[data-preview-post]');if(pvPost){const ad=window._pendingAd;window._pendingAd=null;if(ad){listings.unshift(ad);playFanfare();closeModals();currentCategory='All';savedOnly=false;document.getElementById('listingTitle').textContent='Fresh near you';document.getElementById('postForm').reset();pendingPhotos=[];renderPhotoStrip();render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'});}}
       const messageSeller=e.target.closest('[data-message-seller]');if(messageSeller){const x=listings.find(y=>y.id===activeListingId);loggedIn?openMessageThread(x):openAccountForMessage('login')}
       const messageCreate=e.target.closest('[data-message-create]');if(messageCreate)openAccountForMessage('create');
       const backListing=e.target.closest('[data-back-listing]');if(backListing){const x=listings.find(y=>y.id===activeListingId);openListingDetail(x)}

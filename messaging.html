@@ -160,25 +160,49 @@ return '<div class="bub '+m[0]+'">'+m[1]+'<span class="tm">'+m[2]+'</span></div>
 function showThreads(){$('threads').classList.remove('hide');$('chat').classList.remove('show');}
 function nowT(){const d=new Date();let h=d.getHours(),m=('0'+d.getMinutes()).slice(-2),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap;}
 function ding(){try{
+// ClassiFlip bloop: soft pop + ding when a message lands (ours, not a register)
 var C=window.__ac||(window.__ac=new (window.AudioContext||window.webkitAudioContext)());
 if(C.state==='suspended')C.resume();
-function strike(t,freqs,dur,vol){
-freqs.forEach(function(f){
-var o=C.createOscillator(),g=C.createGain();
-o.type='triangle';o.frequency.value=f;
-g.gain.setValueAtTime(0.0001,t);
-g.gain.exponentialRampToValueAtTime(vol,t+0.015);
-g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-o.connect(g);g.connect(C.destination);
-o.start(t);o.stop(t+dur+0.05);});}
 var t0=C.currentTime;
-strike(t0,[1568,2093,2637],0.22,0.18);
-strike(t0+0.09,[2093,2637,3136],0.4,0.22);
+var o=C.createOscillator(),g=C.createGain();
+o.type='sine';
+o.frequency.setValueAtTime(620,t0);
+o.frequency.exponentialRampToValueAtTime(1000,t0+0.12);
+g.gain.setValueAtTime(0.0001,t0);
+g.gain.exponentialRampToValueAtTime(0.25,t0+0.03);
+g.gain.exponentialRampToValueAtTime(0.0001,t0+0.17);
+o.connect(g);g.connect(C.destination);
+o.start(t0);o.stop(t0+0.2);
+[1318.5,2637].forEach(function(f){
+var o2=C.createOscillator(),g2=C.createGain();
+o2.type='triangle';o2.frequency.value=f;
+g2.gain.setValueAtTime(0.0001,t0+0.10);
+g2.gain.exponentialRampToValueAtTime(f>2000?0.05:0.11,t0+0.115);
+g2.gain.exponentialRampToValueAtTime(0.0001,t0+0.55);
+o2.connect(g2);g2.connect(C.destination);
+o2.start(t0+0.10);o2.stop(t0+0.6);});
+}catch(e){}}
+function coinFlip(){try{
+// ClassiFlip coin flip: spinning pings + landing ting when an offer is made
+var C=window.__ac||(window.__ac=new (window.AudioContext||window.webkitAudioContext)());
+if(C.state==='suspended')C.resume();
+var t0=C.currentTime;
+function ping(t,f,vol,dur){
+var o=C.createOscillator(),o2=C.createOscillator(),g=C.createGain();
+o.type='sine';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2.76;
+var g2=C.createGain();g2.gain.value=0.5;
+o.connect(g);o2.connect(g2);g2.connect(g);g.connect(C.destination);
+g.gain.setValueAtTime(0.0001,t);
+g.gain.exponentialRampToValueAtTime(vol,t+0.008);
+g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+o.start(t);o2.start(t);o.stop(t+dur+0.03);o2.stop(t+dur+0.03);}
+for(var i=0;i<7;i++){ping(t0+i*0.05+i*i*0.002,i%2?2513:2093,0.16,0.09);}
+ping(t0+0.44,2637,0.17,0.5);ping(t0+0.44,3520,0.08,0.4);ping(t0+0.44,1046.5,0.07,0.5);
 }catch(e){}}
 function pushMine(text,offer){
 const t=THREADS.find(x=>x.id===cur);
 t.msgs.push(offer?['offer',text,nowT(),'You offered '+text]:['me',text,nowT()]);
-t.time='now';renderMsgs();renderThreads();
+t.time='now';renderMsgs();renderThreads();if(offer)coinFlip();
 const m=$('msgs');m.scrollTop=m.scrollHeight;
 setTimeout(()=>{t.msgs.push(['them',REPLIES[Math.floor(Math.random()*REPLIES.length)],nowT()]);renderMsgs();renderThreads();$('msgs').scrollTop=$('msgs').scrollHeight;ding();},1600);
 }

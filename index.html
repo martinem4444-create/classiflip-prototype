@@ -589,6 +589,20 @@ function openMessageThread(x){
       }catch(e){}
     }
     document.addEventListener('pointerdown',()=>{try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();}catch(e){}},{passive:true});
+function playCoinFlip(){try{
+if(!_ac)_ac=new (window.AudioContext||window.webkitAudioContext)();
+if(_ac.state==='suspended')_ac.resume();
+var C=_ac,t0=C.currentTime;
+function ping(at,fq,peak,dur){var o=C.createOscillator(),o2=C.createOscillator(),g=C.createGain();o.type='square';o.frequency.value=fq;o2.type='square';o2.frequency.value=fq*1.007;g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(peak,at+0.008);g.gain.exponentialRampToValueAtTime(0.0001,at+dur);o.connect(g);o2.connect(g);g.connect(C.destination);o.start(at);o.stop(at+dur+0.02);o2.start(at);o2.stop(at+dur+0.02);}
+var gaps=[0.055,0.065,0.075,0.085,0.1,0.115,0.13],tt=t0;
+gaps.forEach(function(gp,i){tt+=gp;ping(tt,i%2?2093:1568,0.05,0.05);});
+ping(t0+0.80,2637,0.16,0.5);ping(t0+0.80,3520,0.07,0.4);ping(t0+0.80,1046.5,0.06,0.5);
+}catch(e){}}
+function showBoostOffer(ad){
+document.getElementById('detailTitle').textContent='Your ad is live!';
+document.getElementById('detailBody').innerHTML='<div style="text-align:center;padding:10px 4px 2px"><div style="font-size:44px;line-height:1">🚀</div><h3 style="margin:10px 0 6px;font-size:22px">Want more eyes on it?</h3><p style="margin:0 auto 6px;max-width:440px;color:#44506b">Boost this ad for <strong>$2.99</strong> and it jumps to the top of search and category pages for <strong>7 days</strong>, wearing a BOOSTED badge buyers cannot miss.</p><p style="margin:0 0 4px;color:#7a8499;font-size:13px">Prototype only — no payment is taken. At launch this is one tap to pay.</p></div><div class="preview-actions"><button class="ghost" data-boost-no>Not now</button><button class="primary" data-boost-yes="'+ad.id+'">Boost my ad — $2.99</button></div>';
+openModal('detailModal');
+}
     let currentView='grid',mapSelId=null;
     const HOOD_POS={'Churchill Meadows':[22,29],'Meadowvale':[27,15],'Streetsville':[36,24],'Erin Mills':[33,42],'City Centre':[50,39],'Cooksville':[56,58],'Port Credit':[47,79],'Mississauga':[45,32]};
     function shortPrice(x){if(x.category==='Rentals')return money(x.price)+'/mo';if(x.price>=10000)return '$'+Math.round(x.price/1000)+'K';return money(x.price);}
@@ -701,7 +715,9 @@ function renderFeatured(){
       const prm=e.target.closest('[data-prm]');if(prm){pendingPhotos.splice(Number(prm.dataset.prm),1);renderPhotoStrip();}
       const pvPhoto=e.target.closest('[data-preview-photo]');if(pvPhoto){const ad=window._pendingAd;if(ad&&ad.photos&&ad.photos.length){const pidx=Number(pvPhoto.dataset.previewPhoto);const main=document.getElementById('galleryMain');if(main){main.innerHTML='<img src="'+ad.photos[pidx]+'" alt="" style="width:100%;height:300px;object-fit:cover;display:block;border-radius:14px">';main.setAttribute('aria-label','Photo '+(pidx+1)+' of '+ad.photos.length);}document.querySelectorAll('[data-preview-photo]').forEach(b=>b.classList.toggle('active',b===pvPhoto));}}
       if(e.target.closest('[data-preview-edit]')){closeModals();openModal('postModal');}
-      const pvPost=e.target.closest('[data-preview-post]');if(pvPost){const ad=window._pendingAd;window._pendingAd=null;if(ad){listings.unshift(ad);playFanfare();closeModals();currentCategory='All';savedOnly=false;document.getElementById('listingTitle').textContent='Fresh near you';document.getElementById('postForm').reset();pendingPhotos=[];renderPhotoStrip();render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'});}}
+      const byes=e.target.closest('[data-boost-yes]');if(byes){const ad2=listings.find(y=>y.id===Number(byes.dataset.boostYes));if(ad2){ad2.boosted=true;ad2.promotion='🚀 BOOSTED';}playCoinFlip();render();closeModals();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'});return}
+      const bno=e.target.closest('[data-boost-no]');if(bno){closeModals();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'});return}
+      const pvPost=e.target.closest('[data-preview-post]');if(pvPost){const ad=window._pendingAd;window._pendingAd=null;if(ad){listings.unshift(ad);playFanfare();closeModals();currentCategory='All';savedOnly=false;document.getElementById('listingTitle').textContent='Fresh near you';document.getElementById('postForm').reset();pendingPhotos=[];renderPhotoStrip();render();showBoostOffer(ad);}}
       const messageSeller=e.target.closest('[data-message-seller]');if(messageSeller){const x=listings.find(y=>y.id===activeListingId);loggedIn?openMessageThread(x):openAccountForMessage('login')}
       const messageCreate=e.target.closest('[data-message-create]');if(messageCreate)openAccountForMessage('create');
       const backListing=e.target.closest('[data-back-listing]');if(backListing){const x=listings.find(y=>y.id===activeListingId);openListingDetail(x)}

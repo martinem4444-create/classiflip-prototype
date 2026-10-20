@@ -598,6 +598,18 @@ var gaps=[0.055,0.065,0.075,0.085,0.1,0.115,0.13],tt=t0;
 gaps.forEach(function(gp,i){tt+=gp;ping(tt,i%2?2093:1568,0.05,0.05);});
 ping(t0+0.80,2637,0.16,0.5);ping(t0+0.80,3520,0.07,0.4);ping(t0+0.80,1046.5,0.06,0.5);
 }catch(e){}}
+function playBloop(){try{
+if(!_ac)_ac=new (window.AudioContext||window.webkitAudioContext)();
+if(_ac.state==='suspended')_ac.resume();
+var C=_ac,t0=C.currentTime;
+var o=C.createOscillator(),g=C.createGain();o.type='sine';
+o.frequency.setValueAtTime(520,t0);o.frequency.exponentialRampToValueAtTime(880,t0+0.09);
+g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.14,t0+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.22);
+o.connect(g);g.connect(C.destination);o.start(t0);o.stop(t0+0.24);
+var o2=C.createOscillator(),g2=C.createGain();o2.type='sine';o2.frequency.value=1318.5;
+g2.gain.setValueAtTime(0.0001,t0+0.10);g2.gain.exponentialRampToValueAtTime(0.07,t0+0.115);g2.gain.exponentialRampToValueAtTime(0.0001,t0+0.6);
+o2.connect(g2);g2.connect(C.destination);o2.start(t0+0.10);o2.stop(t0+0.6);
+}catch(e){}}
 function showBoostOffer(ad){
 document.getElementById('detailTitle').textContent='Your ad is live!';
 document.getElementById('detailBody').innerHTML='<div style="text-align:center;padding:10px 4px 2px"><div style="font-size:44px;line-height:1">🚀</div><h3 style="margin:10px 0 6px;font-size:22px">Want more eyes on it?</h3><p style="margin:0 auto 6px;max-width:440px;color:#44506b">Boost this ad for <strong>$2.99</strong> and it jumps to the top of search and category pages for <strong>7 days</strong>, wearing a BOOSTED badge buyers cannot miss.</p><p style="margin:0 0 4px;color:#7a8499;font-size:13px">Prototype only — no payment is taken. At launch this is one tap to pay.</p></div><div class="preview-actions"><button class="ghost" data-boost-no>Not now</button><button class="primary" data-boost-yes="'+ad.id+'">Boost my ad — $2.99</button></div>';
@@ -798,7 +810,7 @@ function renderFeatured(){
     document.getElementById('jobPostForm').addEventListener('submit',e=>{e.preventDefault();const category=document.getElementById('jobCategoryInput').value;jobs.unshift({id:Date.now(),title:document.getElementById('jobTitleInput').value.trim(),company:document.getElementById('companyInput').value.trim(),category,type:document.getElementById('jobTypeInput').value,location:document.getElementById('jobLocationInput').value.trim()||'Mississauga',pay:document.getElementById('jobPayInput').value.trim()||'Pay not listed',desc:document.getElementById('jobDescriptionInput').value.trim()||'Your job post preview.'});closeModals();e.target.reset();activeJobCategory=category;renderJobs();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})});
     document.addEventListener('submit',e=>{
       if(e.target.id==='jobApplyForm'){e.preventDefault();const fid=e.target.dataset.jobId;const rf=e.target.querySelector('#jaResume');openJobReview(fid,{name:document.getElementById('jaName').value.trim(),email:document.getElementById('jaEmail').value.trim(),phone:document.getElementById('jaPhone').value.trim(),resume:rf&&rf.files&&rf.files[0]?rf.files[0].name:'',note:document.getElementById('jaNote').value.trim()});return;}
-      if(e.target.id!=='messageForm')return;e.preventDefault();const input=document.getElementById('messageInput'),text=input.value.trim();if(!text)return;const messages=document.getElementById('threadMessages');messages.insertAdjacentHTML('beforeend',`<div class="message-bubble you"><small>You</small><p>${safe(text)}</p></div><div class="message-bubble seller"><small>Seller</small><p>Thanks! I’ll get back to you shortly.</p></div>`);input.value='';messages.scrollTop=messages.scrollHeight;input.focus()});
+      if(e.target.id!=='messageForm')return;e.preventDefault();const input=document.getElementById('messageInput'),text=input.value.trim();if(!text)return;const messages=document.getElementById('threadMessages');messages.insertAdjacentHTML('beforeend',`<div class="message-bubble you"><small>You</small><p>${safe(text)}</p></div><div class="message-bubble seller"><small>Seller</small><p>Thanks! I’ll get back to you shortly.</p></div>`);playBloop();input.value='';messages.scrollTop=messages.scrollHeight;input.focus()});
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals()});
     updateAccountUI();render();renderFeatured();renderHeroCarousel();renderJobs();
   </script>

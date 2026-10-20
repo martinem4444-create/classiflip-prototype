@@ -182,6 +182,8 @@ g2.gain.exponentialRampToValueAtTime(0.0001,t0+0.55);
 o2.connect(g2);g2.connect(C.destination);
 o2.start(t0+0.10);o2.stop(t0+0.6);});
 }catch(e){}}
+// iOS unlock: warm up the shared audio context on any tap so later sounds can play
+['pointerdown','touchend','click'].forEach(function(ev){document.addEventListener(ev,function(){try{var C=window.__ac||(window.__ac=new (window.AudioContext||window.webkitAudioContext)());if(C.state==='suspended')C.resume();}catch(e){}},{passive:true});});
 function coinFlip(){try{
 // ClassiFlip coin flip: spinning pings + landing ting when an offer is made
 var C=window.__ac||(window.__ac=new (window.AudioContext||window.webkitAudioContext)());

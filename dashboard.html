@@ -474,10 +474,32 @@ $('boostForm').classList.remove('hidden');
 $('boostDone').classList.add('hidden');
 openM('mBoost');
 }
+let _ac=null;
+function playFanfare(){
+try{
+_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();
+if(_ac.state==='suspended')_ac.resume();
+const t0=_ac.currentTime+0.02;
+const note=(f,start,dur,vol)=>{
+const o=_ac.createOscillator(),o2=_ac.createOscillator(),g=_ac.createGain();
+o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;
+const g2=_ac.createGain();g2.gain.value=0.4;
+o.connect(g);o2.connect(g2);g2.connect(g);g.connect(_ac.destination);
+g.gain.setValueAtTime(0.0001,t0+start);
+g.gain.exponentialRampToValueAtTime(vol,t0+start+0.015);
+g.gain.exponentialRampToValueAtTime(0.0001,t0+start+dur);
+o.start(t0+start);o2.start(t0+start);o.stop(t0+start+dur+0.05);o2.stop(t0+start+dur+0.05);
+};
+note(523.25,0,0.35,0.22);note(659.25,0.11,0.35,0.22);note(783.99,0.22,0.35,0.22);
+[523.25,659.25,783.99,1046.50].forEach(f=>note(f,0.36,1.1,0.13));
+note(1567.98,0.40,0.5,0.06);note(2093.00,0.48,0.5,0.05);
+}catch(e){}
+}
+document.addEventListener('pointerdown',()=>{try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();}catch(e){}},{passive:true});
 function boostPay(){
 const b=document.querySelector('#mBoost .btn.pri');b.disabled=true;b.textContent='Processing…';
 setTimeout(()=>{b.disabled=false;b.textContent='Pay $2.99 & boost';
-$('boostForm').classList.add('hidden');$('boostDone').classList.remove('hidden');},1200);
+playFanfare();$('boostForm').classList.add('hidden');$('boostDone').classList.remove('hidden');},1200);
 }
 function openBilling(){openM('mBilling');}
 const PLANS=[{n:'Featured placement',p:29,d:'Your logo in the homepage featured strip'},{n:'Homepage Spotlight',p:79,d:'Hero placement on the homepage'},{n:'Messages sponsor rail',p:79,d:'Desktop-only rail beside every chat'},{n:'Category Takeover',p:149,d:'Own an entire category page'}];

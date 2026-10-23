@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>try{var __t=localStorage.getItem('cf-theme');if(__t)document.documentElement.dataset.theme=__t;}catch(e){}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClassiFlip — Advertise &amp; Pay (Prototype)</title><link rel="icon" type="image/png" href="images/logo.png">
+<style>
+:root{--navy:#18365F;--navy2:#0F2547;--navy3:#1B2150;--orange:#F4511E;--orange2:#D63E0F;--bg:#F4F6FA;--card:#fff;--ink:#1B2A41;--mu:#68788F;--ln:#E4E9F2;--sh:0 10px 30px rgba(24,54,95,.10)}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+.top{background:var(--navy);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50}
+.top .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;color:#fff;text-decoration:none}.logo{display:flex;align-items:center;gap:10px}.logo img.nl{width:34px;height:34px;object-fit:contain}
+.top .logo .dot{width:30px;height:30px;border-radius:50%;background:var(--orange);display:grid;place-items:center;font-size:15px}
+.top nav{margin-left:auto;display:flex;gap:16px}
+.top nav a{color:#BCD;text-decoration:none;font-size:13.5px}
+.top nav a:hover{color:#fff}
+.hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:56px 20px 48px;text-align:center}
+.hero h1{margin:0 0 12px;font-size:clamp(28px,5vw,44px);letter-spacing:-.5px}
+.hero p{margin:0 auto 22px;max-width:620px;color:#BCD;font-size:16.5px;line-height:1.6}
+.found{background:var(--orange);border-radius:18px;padding:20px 24px;max-width:760px;margin:0 auto;box-shadow:var(--sh);text-align:left}
+.found b.t{display:block;font-size:17px;margin-bottom:8px;letter-spacing:.5px}
+.found ul{margin:0;padding-left:20px;font-size:14.5px;line-height:1.7}
+.found a.fpay{display:inline-block;margin-top:14px;background:var(--navy);color:#fff;text-decoration:none;border-radius:999px;padding:11px 26px;font-weight:800;font-size:14.5px}
+.found a.fpay:hover{background:var(--navy2)}
+.wrap{max-width:1100px;margin:0 auto;padding:36px 20px 60px}
+.sect{margin-bottom:44px}
+.sect>h2{font-size:22px;margin:0 0 4px;color:var(--navy)}
+.sect>p{margin:0 0 18px;color:var(--mu);font-size:14.5px}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+.plan{background:linear-gradient(160deg,#1E3A6E,#16294E);border:1px solid #2C4A80;border-radius:18px;padding:22px;color:#fff;position:relative;display:flex;flex-direction:column;gap:6px}
+.plan.hl{border:2px solid var(--orange)}
+.plan .chip{position:absolute;top:-12px;left:18px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:999px}
+.plan .price{font-size:34px;font-weight:800}
+.plan .price small{font-size:15px;font-weight:600;color:#BCD}
+.plan .nm{font-weight:700;font-size:16.5px}
+.plan .ds{font-size:13.5px;color:#BCD;line-height:1.55;flex:1}
+.plan a.pay{display:block;text-align:center;text-decoration:none;margin-top:12px;background:var(--orange);color:#fff;border:0;border-radius:999px;padding:12px;font-weight:800;font-size:14.5px;cursor:pointer}
+.plan a.pay:hover{background:var(--orange2)}
+.boost{background:#fff;border:1px solid var(--ln);border-radius:18px;padding:22px;box-shadow:var(--sh)}
+.boost .row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.boost .row:last-child{border-bottom:0}
+.boost .row .n{font-weight:700;flex:1;min-width:180px}
+.boost .row .n small{display:block;font-weight:400;color:var(--mu);font-size:12.5px;margin-top:2px}
+.boost .row .p{font-weight:800;color:var(--navy);font-size:17px}
+.boost a.pay{display:inline-block;text-decoration:none;background:var(--orange);color:#fff;border-radius:999px;padding:10px 22px;font-weight:800;font-size:14px;cursor:pointer}
+.boost a.pay:hover{background:var(--orange2)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.step{background:#fff;border:1px solid var(--ln);border-radius:16px;padding:20px;box-shadow:var(--sh)}
+.step .n{font-size:26px;font-weight:800;color:var(--orange);margin-bottom:6px}
+.step .t{font-size:15.5px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.step .d{font-size:13.5px;color:var(--mu);line-height:1.55}
+.interac{background:#fff;border:1px solid var(--ln);border-radius:18px;padding:22px;box-shadow:var(--sh)}
+.interac h3{margin:0 0 6px;color:var(--navy);font-size:18px}
+.interac p{margin:0;color:var(--mu);font-size:14.5px;line-height:1.6}
+.interac a{color:var(--orange2);font-weight:700;text-decoration:none}
+.interac a:hover{text-decoration:underline}
+.trust{text-align:center;color:var(--mu);font-size:14px;line-height:1.6;max-width:720px;margin:0 auto 14px}
+.fineprint{text-align:center;color:var(--mu);font-size:12.5px;line-height:1.6;max-width:720px;margin:0 auto}
+footer{padding:28px 20px;text-align:center;color:var(--mu);font-size:13px}
+@media(max-width:640px){.top nav{display:none}.hero{padding:40px 16px 36px}}
+html[data-theme="dark"]{--bg:#07090D;--card:#12161F;--ink:#EDF2F9;--mu:#B9C6DA;--ln:#232B3A;--tint:#2B1A12;--sh:0 10px 30px rgba(0,0,0,.6);color-scheme:dark}html[data-theme="dark"] .boost{background:#12161F}html[data-theme="dark"] .step{background:#12161F}html[data-theme="dark"] .interac{background:#12161F}html[data-theme="dark"] .interac h3{color:var(--ink)}html[data-theme="dark"] .step .t{color:var(--ink)}.tbtn{display:flex;align-items:center;justify-content:center;color:#fff;margin-left:14px;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);background:transparent;font-size:17px;cursor:pointer;padding:0;flex:0 0 auto}</style>
+</head>
+<body>
+<div class="top">
+<a class="logo" href="index.html"><img class="nl" src="images/logo.png" alt="ClassiFlip logo">CLASSIFLIP</a>
+<nav><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="messaging.html">Messages</a><a href="advertise.html" style="color:#fff;font-weight:700">Advertise</a><a href="advertise-pay.html">Pay</a></nav><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+</div>
+
+<div class="hero">
+<h1>Advertise on ClassiFlip</h1>
+<p>Local reach across the GTA, Mississauga-first — pick a package, pay securely, and your ad is in front of nearby buyers.</p>
+<div class="found">
+<b class="t">FOUNDING ADVERTISERS — only 10 spots</b>
+<ul>
+<li><b>50% off</b> launch rates, locked in for 12 months</li>
+<li>Founding tiers: <b>Single $29</b> · <b>Featured $79</b> · <b>Unlimited $149</b></li>
+<li>When the 10 spots are gone, standard rates below apply</li>
+</ul>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="fpay" data-package="founding-advertiser" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely — claim founding rate</a>
+</div>
+</div>
+
+<div class="wrap">
+
+<div class="sect">
+<h2>Car dealers</h2>
+<p>Your lot, in front of local buyers — for less than half of AutoTrader's cheapest tier.</p>
+<div class="plans">
+<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single Ad</div><div class="ds">One vehicle, live for 30 days with a full photo gallery and your contact details on every view. Manage it any time from your advertiser dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="dealer-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<div class="plan"><div class="price">$149 <small>/ 30 days</small></div><div class="nm">Lot Pack</div><div class="ds">Twenty-five vehicle listings for the price of three, live for 30 days. Built for a full lot, managed from one dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="dealer-lot-pack" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$249 <small>/ mo</small></div><div class="nm">Dealer Unlimited</div><div class="ds">Your entire inventory, all month. Add and swap vehicles any time — AutoTrader charges $450–$2,000+ for this.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="dealer-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Real estate agents</h2>
+<p>Homes, condos and townhomes for sale. Every eyeball local.</p>
+<div class="plans">
+<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single Listing</div><div class="ds">One property, live for 30 days with a full photo gallery. Manage it any time from your advertiser dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="agent-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<div class="plan"><div class="price">$129 <small>/ 30 days</small></div><div class="nm">5-Pack</div><div class="ds">Five listings for the price of three, live for 30 days. Great for active agents with a steady book.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="agent-5-pack" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$199 <small>/ mo</small></div><div class="nm">Agent Unlimited</div><div class="ds">Unlimited listings, all month. Post every new listing the day you sign it, all from one dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="agent-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Local services</h2>
+<p>Plumbers, electricians, cleaners, barbers, salons — get found by neighbours.</p>
+<div class="plans">
+<div class="plan"><div class="price">$29 <small>/ 30 days</small></div><div class="nm">Single Service Ad</div><div class="ds">One service, live for 30 days in front of customers near you. Manage it any time from your advertiser dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="services-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$99 <small>/ mo</small></div><div class="nm">Pro Unlimited</div><div class="ds">Every service you offer, all month. One simple price, managed from one dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="services-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Jobs — for employers</h2>
+<p>Reach local talent without the big job-board markup.</p>
+<div class="plans">
+<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single Job Post</div><div class="ds">One opening, live for 30 days. Half the single-post price of the big boards, managed from your dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="jobs-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<div class="plan hl"><span class="chip">BEST FOR FREQUENT HIRING</span><div class="price">$179 <small>/ mo</small></div><div class="nm">Employer Unlimited</div><div class="ds">Post as many openings as you need, all month. One simple price for your whole hiring pipeline.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="jobs-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Boost any ad</h2>
+<p>Extra visibility for any listing, whenever you need it.</p>
+<div class="boost">
+<div class="row"><div class="n">Listing Boost — 7 days<small>Pushes any ad to the top of its category, with a spot in the homepage featured strip</small></div><span class="p">$2.99</span>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="boost-listing" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+</div>
+</div>
+
+<div class="sect">
+<div class="interac">
+<h3>Prefer Interac?</h3>
+<p>Founding advertisers can pay by Interac e-Transfer instead — zero fees, no middlemen. Claim your founding spot on the <a href="advertise.html">Advertise page</a> and we'll send you the e-Transfer details to complete your payment.</p>
+</div>
+</div>
+
+<div class="sect">
+<h2>How it works</h2>
+<p>Three steps, no account with Stripe needed.</p>
+<div class="steps">
+<div class="step"><div class="n">1</div><div class="t">Pick your package</div><div class="d">Choose the plan that fits your business above and hit Pay securely.</div></div>
+<div class="step"><div class="n">2</div><div class="t">Pay on Stripe's secure checkout</div><div class="d">Pay by card, Apple Pay or Google Pay on Stripe's own checkout page. Your receipt is emailed to you automatically.</div></div>
+<div class="step"><div class="n">3</div><div class="t">Your ad goes live</div><div class="d">We confirm your payment and activate your ad — typically the same day.</div></div>
+</div>
+</div>
+
+<p class="trust">Payments are processed securely by Stripe. ClassiFlip never sees or stores your card numbers.</p>
+<p class="fineprint">All prices in CAD. Packages pay for listing time on ClassiFlip; they do not guarantee sales, calls, or results. Questions about a charge or a refund? Contact us and we'll sort it out.</p>
+
+</div>
+
+<footer>
+<b>ClassiFlip</b> · Toronto, Ontario · Launching in the GTA<br>
+<span style="font-size:12px">Concept pricing for the prototype. Final rates confirmed before launch.</span>
+</footer>
+
+<script>var CF_DARK_DEFAULT=false;var CF_MOON='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';var CF_SUN='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';function cfTheme(){var h=document.documentElement,cur=h.dataset.theme||(CF_DARK_DEFAULT?'dark':'light'),nxt=cur==='dark'?'light':'dark';h.dataset.theme=nxt;try{localStorage.setItem('cf-theme',nxt)}catch(e){}cfThemeBtn()}function cfThemeBtn(){var b=document.getElementById('themeBtn');if(!b)return;var cur=document.documentElement.dataset.theme||(CF_DARK_DEFAULT?'dark':'light');b.innerHTML=cur==='dark'?CF_SUN:CF_MOON;b.setAttribute('aria-label',cur==='dark'?'Switch to light mode':'Switch to dark mode')}document.addEventListener('DOMContentLoaded',cfThemeBtn);</script></body>
+</html>

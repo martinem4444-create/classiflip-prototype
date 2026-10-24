@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1 — Supabase (marketplace-dev).
+/* ClassiFlip real listings v1.1 — Supabase (marketplace-dev). Photo upload (cover photo).
  *
  * WHAT IT DOES:
  * - On page load, fetches listings with status 'active' (newest first)
@@ -11,6 +11,14 @@
  *   error message is shown in the post modal's notice — errors are
  *   never swallowed (a missing profile row, for example, surfaces as
  *   the database's foreign-key error, verbatim).
+ * - Photo upload (v1.1): when a logged-in user posts with a picked
+ *   cover photo, the photo is uploaded to the listing-photos bucket
+ *   and its public URL is stored as the listing's photo_url, so the
+ *   card shows the real photo instead of the category icon. If the
+ *   upload fails, the post stops and the real error is shown — the
+ *   ad is never posted photo-less by accident. No photo picked means
+ *   the post works exactly as before. Requires the cf-photo-migration
+ *   SQL (photo_url column) to have been run first.
  *
  * SAFETY / FALLBACK RULES:
  * - This file contains NO API key or secret. It only reuses
@@ -62,6 +70,31 @@
     }
   }
 
+  /* Data URL (canvas JPEG from the picker's pendingPhotos) -> Blob.
+     Manual decode: no fetch dependency, works in every webview. */
+  function dataUrlToBlob(dataUrl) {
+    try {
+      var parts = String(dataUrl).split(',');
+      if (parts.length < 2) return null;
+      var header = parts[0];
+      var mime = 'image/jpeg';
+      var mimeMatch = header.match(/data:([^;]+)/);
+      if (mimeMatch) mime = mimeMatch[1];
+      var binary;
+      if (header.indexOf('base64') !== -1) {
+        binary = atob(parts[1]);
+      } else {
+        binary = decodeURIComponent(parts[1]);
+      }
+      var len = binary.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    } catch (e) {
+      return null;
+    }
+  }
+
   /* Same category -> icon mapping the page's own collectAdForm uses,
      so a real row renders through the card template without a photo. */
   var ICON_MAP = {
@@ -71,7 +104,11 @@
     Tools: 'drill', Sports: 'bike'
   };
 
-  /* Database row -> the page's listing-item shape. */
+  /* Database row -> the page's listing-item shape. A row's photo_url
+     becomes the item's photo, so the page's own card markup (which
+     shows x.photo when set, else the category icon) shows the real
+     photo. Rows without photo_url keep photo '' and render exactly
+     as before. */
   function mapRow(r) {
     var price = Number(r.price);
     if (isNaN(price)) price = 0;
@@ -84,7 +121,7 @@
       location: r.location || 'Mississauga, ON',
       desc: r.description || '',
       icon: ICON_MAP[r.category] || 'laptop',
-      photo: '',
+      photo: r.photo_url || '',
       verified: false
     };
   }
@@ -98,7 +135,7 @@
     try {
       var res = await client
         .from('listings')
-        .select('id,title,description,price,category,condition,location,status,boosted,created_at')
+        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       if (res.error || !res.data || !res.data.length) return false;
@@ -142,7 +179,26 @@
         return;
       }
       if (isNaN(price)) price = 0;
-      var ins = await client.from('listings').insert([{
+      /* Cover photo (v1.1): pendingPhotos[0] is the cover photo — the
+         picker moves a starred photo to index 0. Upload it FIRST so a
+         failed upload stops the post (real error shown, modal stays
+         open, form kept) instead of posting photo-less by accident. */
+      var photoUrl = null;
+      var coverPhoto = null;
+      try {
+        if (typeof pendingPhotos !== 'undefined' && pendingPhotos.length) coverPhoto = pendingPhotos[0];
+      } catch (e) {}
+      if (coverPhoto) {
+        var blob = dataUrlToBlob(coverPhoto);
+        if (!blob) throw new Error('Could not read the picked photo. Please pick it again.');
+        var photoPath = user.id + '/' + Date.now() + '.jpg';
+        var up = await client.storage.from('listing-photos').upload(photoPath, blob, { contentType: 'image/jpeg', upsert: false });
+        if (up.error) throw up.error;
+        var pub = client.storage.from('listing-photos').getPublicUrl(photoPath);
+        photoUrl = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
+        if (!photoUrl) throw new Error('Could not get a public link for the uploaded photo.');
+      }
+      var newRow = {
         seller_id: user.id,
         title: title,
         description: document.getElementById('adDescription').value.trim(),
@@ -151,7 +207,9 @@
         condition: document.getElementById('adCondition').value,
         location: document.getElementById('adLocation').value.trim() || 'Mississauga, ON',
         status: 'active'
-      }]).select().single();
+      };
+      if (photoUrl) newRow.photo_url = photoUrl;
+      var ins = await client.from('listings').insert([newRow]).select().single();
       if (ins.error) throw ins.error;
 
       var form = document.getElementById('postForm');

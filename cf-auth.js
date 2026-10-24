@@ -1,4 +1,4 @@
-/* ClassiFlip real auth v1 — Supabase (marketplace-dev).
+/* ClassiFlip real auth v1.1 — Supabase (marketplace-dev). Auto-closes the account box on success.
  *
  * HOW TO SWITCH IT ON:
  * 1. Replace PASTE_YOUR_PUBLISHABLE_KEY_HERE below with the project's
@@ -19,6 +19,9 @@
  * - On every sign-in it upserts the profiles row from the account data.
  * - Restores the session on page load, so Post an ad and messaging stay
  *   available across visits. Header Log in becomes Log out when signed in.
+ * - On success the account box closes on its own: at once after log in,
+ *   and a few seconds after sign-up so the "check your email" note can
+ *   be read first. Errors leave the box open so the user can retry.
  */
 (function () {
   var CF_SUPABASE_URL = 'https://dbgmyvjaavpmernaxnav.supabase.co';
@@ -32,6 +35,10 @@
   function notice(msg) {
     var n = document.getElementById('accountNotice');
     if (n) n.textContent = msg;
+  }
+
+  function closeBox() {
+    if (typeof closeModals === 'function') closeModals();
   }
 
   function setHeaderAuthed() {
@@ -115,6 +122,7 @@
             await afterSignIn(res.data.session.user);
           } else {
             notice('Account created. Check your email to confirm it, then log in.');
+            setTimeout(closeBox, 4000);
             return;
           }
         } else {
@@ -131,7 +139,7 @@
         }
         pendingMessageListingId = null;
         if (pending) { closeModals(); openMessageThread(pending); }
-        else { notice('Welcome. Saved listings and messaging are now available.'); }
+        else { closeBox(); }
       } catch (err) {
         notice(err && err.message ? err.message : 'Something went wrong. Please try again.');
       }

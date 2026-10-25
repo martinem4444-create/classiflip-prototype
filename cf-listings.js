@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.3 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo) + post lands on View All.
+/* ClassiFlip real listings v1.4 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo) + post lands on View All + real rows marked LIVE LISTING.
  *
  * WHAT IT DOES:
  * - On page load, fetches listings with status 'active' (newest first)
@@ -127,7 +127,8 @@
       desc: r.description || '',
       icon: ICON_MAP[r.category] || 'laptop',
       photo: r.photo_url || '',
-      verified: false
+      verified: false,
+      live: true
     };
   }
 

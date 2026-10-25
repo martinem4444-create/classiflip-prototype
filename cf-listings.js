@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.2 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo).
+/* ClassiFlip real listings v1.3 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo) + post lands on View All.
  *
  * WHAT IT DOES:
  * - On page load, fetches listings with status 'active' (newest first)
@@ -265,6 +265,14 @@
           if (typeof renderHeroCarousel === 'function') renderHeroCarousel();
         } catch (e) {}
       }
+      /* Land on View All (v1.3): the real post never reset the filter
+         (the page's demo post did), so a stale category could leave
+         the grid empty after posting. Clicking the page's own All chip
+         resets category, search and Saved through its own handler. */
+      try {
+        var allChip = document.querySelector('[data-category="All"]');
+        if (allChip) allChip.click();
+      } catch (e) {}
       var mp = document.getElementById('marketplace');
       if (mp) mp.scrollIntoView({ behavior: 'smooth' });
       var rn = document.getElementById('resultsNote');

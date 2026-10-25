@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.4 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo) + post lands on View All + real rows marked LIVE LISTING.
+/* ClassiFlip real listings v1.5 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo) + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads.
  *
  * WHAT IT DOES:
  * - On page load, fetches listings with status 'active' (newest first)
@@ -146,13 +146,22 @@
         .order('created_at', { ascending: false });
       if (res.error || !res.data || !res.data.length) return false;
       var rows = res.data.map(mapRow);
+      // v1.5 merge: keep the page's demo filler BELOW the real ads.
+      // Snapshot the demo rows once, before the first replace, so later
+      // refreshes never duplicate them.
+      if (!window.__cfDemoRows) {
+        var looksDemo = listings.length && listings.every(function (x) { return !x.live; });
+        if (looksDemo) window.__cfDemoRows = listings.slice();
+      }
+      var demo = window.__cfDemoRows || [];
       listings.length = 0;
       rows.forEach(function (r) { listings.push(r); });
+      demo.forEach(function (r) { listings.push(r); });
       if (typeof render === 'function') render();
       if (typeof renderFeatured === 'function') renderFeatured();
       if (typeof renderHeroCarousel === 'function') renderHeroCarousel();
       var rn = document.getElementById('resultsNote');
-      if (rn) rn.textContent = rows.length + (rows.length === 1 ? ' live listing' : ' live listings');
+      if (rn) rn.textContent = rows.length + (rows.length === 1 ? ' live listing' : ' live listings') + (demo.length ? ' + ' + demo.length + ' samples' : '');
       return true;
     } catch (e) {
       return false;

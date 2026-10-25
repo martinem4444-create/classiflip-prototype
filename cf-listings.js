@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.1 — Supabase (marketplace-dev). Photo upload (cover photo).
+/* ClassiFlip real listings v1.2 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo).
  *
  * WHAT IT DOES:
  * - On page load, fetches listings with status 'active' (newest first)
@@ -6,11 +6,14 @@
  *   markup: the page's own listings array is replaced in place and its
  *   own render() / renderFeatured() / renderHeroCarousel() run, so the
  *   grid, featured row and hero carousel all show the same rows.
- * - When a logged-in user submits the post-an-ad form, inserts one row
- *   into public.listings and refreshes the list. On failure the real
- *   error message is shown in the post modal's notice — errors are
- *   never swallowed (a missing profile row, for example, surfaces as
- *   the database's foreign-key error, verbatim).
+ * - Preview restored (v1.2): the post form's submit is no longer
+ *   intercepted, so every user gets the page's own preview modal
+ *   first. For a logged-in user, clicking Post in the preview inserts
+ *   one row into public.listings and refreshes the list. On failure
+ *   the real error message is shown in the post modal's notice and
+ *   the form is reopened with its values intact for retry — errors
+ *   are never swallowed (a missing profile row, for example,
+ *   surfaces as the database's foreign-key error, verbatim).
  * - Photo upload (v1.1): when a logged-in user posts with a picked
  *   cover photo, the photo is uploaded to the listing-photos bucket
  *   and its public URL is stored as the listing's photo_url, so the
@@ -27,10 +30,12 @@
  *   module does nothing at all and the page keeps its demo behaviour.
  * - If the listings fetch fails, or the table is empty, the existing
  *   demo listings are left exactly as they are (silent fallback).
- * - Logged-out users are untouched: their post-an-ad submit keeps the
- *   page's original preview flow. Only logged-in submits are
- *   intercepted, and the business-posting redirect (advertise.html)
- *   is preserved.
+ * - Logged-out users are untouched: their preview Post click keeps
+ *   the page's original demo flow (local unshift). Only the preview
+ *   Post click of a logged-in user is intercepted. The
+ *   business-posting redirect (advertise.html) still happens in the
+ *   page's own submit handler before any preview opens, with a
+ *   defensive copy of the check in the interceptor.
  *
  * KNOWN LIMITS (forced by the page's existing code, not this module):
  * - The page's card template hardcodes a SAMPLE tag and render()
@@ -153,12 +158,38 @@
     }
   }
 
-  /* Real post: insert one row, then refresh. Errors stay visible in
-     the post modal's notice and the form is left untouched for retry. */
+  /* Real post: insert one row, then refresh. On failure the real
+     error is shown and the user is returned to the post form with
+     their values intact for retry: the preview modal closes, the
+     post modal reopens, and the message lands in the post modal's
+     notice. Nothing is reset and no row is inserted on failure. */
   async function postAd() {
     var noticeEl = document.getElementById('postNotice');
     function fail(msg) {
       if (noticeEl) noticeEl.textContent = msg;
+      /* Return the user to the form they just previewed, values
+         intact (this function never resets on failure). If the modal
+         helpers are missing, pin the message to the top of the
+         preview instead so it is still visible. */
+      var reopened = false;
+      try {
+        if (typeof closeModals === 'function' && typeof openModal === 'function') {
+          closeModals();
+          openModal('postModal');
+          reopened = true;
+        }
+      } catch (e) {}
+      if (!reopened) {
+        try {
+          var db = document.getElementById('detailBody');
+          if (db) {
+            var warn = document.createElement('div');
+            warn.className = 'notice';
+            warn.textContent = msg;
+            db.insertBefore(warn, db.firstChild);
+          }
+        } catch (e2) {}
+      }
     }
     try {
       var client = getClient();
@@ -211,6 +242,9 @@
       if (photoUrl) newRow.photo_url = photoUrl;
       var ins = await client.from('listings').insert([newRow]).select().single();
       if (ins.error) throw ins.error;
+      /* Consume the preview ad, mirroring the page's own preview-post
+         handler (which nulls window._pendingAd before unshifting). */
+      try { window._pendingAd = null; } catch (e) {}
 
       var form = document.getElementById('postForm');
       if (form) form.reset();
@@ -241,20 +275,35 @@
     }
   }
 
-  /* Intercept the post-an-ad submit, but only for logged-in users
-     with a live client. Capture phase on document runs before the
-     page's own submit listener on the form, so stopping the event
-     here keeps the demo preview flow from running for real posts.
-     Logged-out submits and the business redirect pass through
-     untouched. */
+  /* Real post on the preview's Post click (v1.2), but only for
+     logged-in users with a live client. The form's submit is no
+     longer intercepted, so the page's own submit handler always runs
+     first: business users are redirected to advertise.html there,
+     and everyone else gets the preview modal. This capture-phase
+     document click listener runs before the page's own bubble-phase
+     click handler, so stopping the event here keeps the page's demo
+     preview-post (local unshift) from running for real posts.
+     Logged-out Post clicks pass through untouched: preview -> demo
+     unshift, exactly as today. */
   var posting = false;
-  document.addEventListener('submit', function (e) {
-    if (!e.target || e.target.id !== 'postForm') return;
+  document.addEventListener('click', function (e) {
+    var pp = e.target && e.target.closest ? e.target.closest('[data-preview-post]') : null;
+    if (!pp) return;
     if (!getClient() || !isLoggedIn()) return;
+    /* Defensive business check: the page's submit handler normally
+       redirects business users before any preview opens, so this
+       should never trigger — but if one ever reaches this button,
+       redirect instead of inserting (the page's demo handler would
+       otherwise post a demo ad for them). */
     var bizField = document.getElementById('bizTypeField');
     var bizType = document.getElementById('bizType');
     if (bizField && bizField.classList.contains('show') &&
-        bizType && bizType.value === 'business') return;
+        bizType && bizType.value === 'business') {
+      e.preventDefault();
+      e.stopPropagation();
+      location.href = 'advertise.html';
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     if (posting) return;

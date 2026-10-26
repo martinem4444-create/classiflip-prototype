@@ -1,4 +1,5 @@
-/* ClassiFlip real listings v1.5 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo) + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads.
+/* ClassiFlip real listings v1.6 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo) + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads.
+ * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
  * - On page load, fetches listings with status 'active' (newest first)
@@ -73,6 +74,29 @@
     } catch (e) {
       return false;
     }
+  }
+
+  /* Step 4 admin email (fire-and-forget): after a successful pending
+     insert, ping the notify-admin-pending-ad Edge Function, which
+     verifies the caller's Supabase JWT server-side and emails ONLY the
+     fixed admin address (mm905media@gmail.com) via Resend. No key lives
+     in this file, and the browser never calls api.resend.com directly
+     (Resend blocks browser calls; the repo is public). Email failure
+     is silent by design — the ad is pending regardless. */
+  function notifyAdminPendingAd(listing) {
+    try {
+      var client = getClient();
+      if (!client) return;
+      client.auth.getSession().then(function (s) {
+        var token = s && s.data && s.data.session && s.data.session.access_token;
+        if (!token) return;
+        fetch('https://dbgmyvjaavpmernaxnav.functions.supabase.co/notify-admin-pending-ad', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ listing_id: listing.id, title: listing.title, category: listing.category, price: listing.price })
+        }).catch(function () {});
+      }).catch(function () {});
+    } catch (e) {}
   }
 
   /* Data URL (canvas JPEG from the picker's pendingPhotos) -> Blob.
@@ -247,11 +271,20 @@
         category: document.getElementById('adCategory').value,
         condition: document.getElementById('adCondition').value,
         location: document.getElementById('adLocation').value.trim() || 'Mississauga, ON',
-        status: 'active'
+        /* Step 4 approval gate: pending, NOT active. The public fetch
+           reads only status='active' rows (and the seller's own rows),
+           so a pending ad stays hidden until an admin approves it. */
+        status: 'pending'
       };
       if (photoUrl) newRow.photo_url = photoUrl;
       var ins = await client.from('listings').insert([newRow]).select().single();
       if (ins.error) throw ins.error;
+      /* Admin email: fire-and-forget, never blocks the post flow. */
+      try {
+        if (ins.data && ins.data.id) {
+          notifyAdminPendingAd({ id: ins.data.id, title: title, category: newRow.category, price: price });
+        }
+      } catch (e) {}
       /* Consume the preview ad, mirroring the page's own preview-post
          handler (which nulls window._pendingAd before unshifting). */
       try { window._pendingAd = null; } catch (e) {}
@@ -265,20 +298,16 @@
       if (typeof closeModals === 'function') closeModals();
 
       var refreshed = await refreshListings();
-      if (!refreshed && ins.data) {
-        /* Insert worked but the re-fetch did not: show the new row
-           locally rather than pretending nothing happened. */
-        try {
-          listings.unshift(mapRow(ins.data));
-          if (typeof render === 'function') render();
-          if (typeof renderFeatured === 'function') renderFeatured();
-          if (typeof renderHeroCarousel === 'function') renderHeroCarousel();
-        } catch (e) {}
-      }
+      /* No local fallback unshift for pending ads: a pending ad is not
+         public, so it must not appear in the grid even locally. If the
+         re-fetch failed, the ad is still safely pending in the database
+         and the dashboard shows it under the seller's own listings. */
       /* Land on View All (v1.3): the real post never reset the filter
          (the page's demo post did), so a stale category could leave
          the grid empty after posting. Clicking the page's own All chip
-         resets category, search and Saved through its own handler. */
+         resets category, search and Saved through its own handler.
+         Note: the new ad itself will NOT appear here until an admin
+         approves it — that is the approval gate working as intended. */
       try {
         var allChip = document.querySelector('[data-category="All"]');
         if (allChip) allChip.click();
@@ -286,8 +315,8 @@
       var mp = document.getElementById('marketplace');
       if (mp) mp.scrollIntoView({ behavior: 'smooth' });
       var rn = document.getElementById('resultsNote');
-      if (rn) rn.textContent = 'Your ad is live — it appears at the top of the list.';
-      if (noticeEl) noticeEl.textContent = 'Your ad was posted.';
+      if (rn) rn.textContent = 'Your ad is pending approval — it will appear once Martin approves it.';
+      if (noticeEl) noticeEl.textContent = 'Your ad was posted and is awaiting approval.';
     } catch (err) {
       fail('Could not post your ad: ' + (err && err.message ? err.message : 'Something went wrong. Please try again.'));
     }

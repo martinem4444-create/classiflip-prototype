@@ -255,7 +255,7 @@
     var pending = [];
     try {
       var pr = await client.from('listings')
-        .select('id,title,price,category,location,status,created_at,seller_id')
+        .select('id,title,description,price,category,location,status,photo_url,created_at,seller_id')
         .eq('status', 'pending').order('created_at', { ascending: true }).limit(100);
       if (pr && pr.data) pending = pr.data;
     } catch (e) {}
@@ -268,9 +268,14 @@
       } catch (e) {}
       adsList.innerHTML = pending.map(function (x) {
         var s = sellersById[x.seller_id] || {};
-        return '<div class="lcard"><div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor('pending') + '</div>' +
+        var desc = (x.description || '').trim();
+        return '<div class="lcard">' +
+          (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
+          '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor('pending') + '</div>' +
           '<div class="p">' + money(x.price) + '</div>' +
-          '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · seller ' + esc(s.display_name || s.email || x.seller_id || '') + ' · ' + shortDate(x.created_at) + '</div></div>' +
+          '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · seller ' + esc(s.display_name || s.email || x.seller_id || '') + ' · ' + shortDate(x.created_at) + '</div>' +
+          (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
+                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + '</div>' +
           '<div class="acts"><button class="btn pri" data-cf-approve="' + esc(x.id) + '">Approve</button>' +
           '<button class="btn gho danger" data-cf-reject="' + esc(x.id) + '">Reject</button></div></div>';
       }).join('');

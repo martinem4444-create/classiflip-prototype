@@ -51,6 +51,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .cta button{background:var(--orange);color:#fff;border:0;border-radius:999px;padding:15px 42px;font-weight:800;font-size:16px;cursor:pointer}
 .cta button:hover{background:var(--orange2)}
 .cta small{display:block;margin-top:14px;color:#BCD;font-size:12.5px}
+/* CF checkout gateway: Pay lives behind Advertise */
+.plan .buy{display:block;margin-top:10px;text-align:center;font-weight:800;color:#fff;border:1.5px solid var(--orange);border-radius:999px;padding:11px;text-decoration:none;font-size:14px}
+.boost .row .buy{margin-left:auto;font-weight:800;color:var(--orange);text-decoration:none;font-size:14px;white-space:nowrap}
+.cta a.checkout{display:block;width:fit-content;margin:16px auto 0;border:1.5px solid rgba(255,255,255,.75);color:#fff;border-radius:999px;padding:13px 30px;font-weight:800;font-size:15px;text-decoration:none}
 footer{padding:28px 20px;text-align:center;color:var(--mu);font-size:13px}
 /* claim modal */
 .mback{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(13,21,38,.62);backdrop-filter:blur(4px);display:none;z-index:60;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -104,7 +108,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <body>
 <div class="top">
 <a class="logo" href="index.html"><img class="nl" src="images/logo.png" alt="ClassiFlip logo">CLASSIFLIP</a>
-<nav><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="messaging.html">Messages</a><a href="advertise.html" class="act" style="font-weight:700">Advertise</a><a href="advertise-pay.html">Pay</a></nav><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+<nav><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="messaging.html">Messages</a><a href="advertise.html" class="act" style="font-weight:700">Advertise</a></nav><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
 </div>
 
 <div class="hero">
@@ -139,8 +143,8 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Jobs — for employers</h2>
 <p>Reach local talent without the $20-a-post job-board markup.</p>
 <div class="plans">
-<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single job post</div><div class="ds">One opening, live for 30 days. Half the single-post price of the big boards.</div><div class="frow"><span class="fnd">Founding: <b>$24.50</b></span></div><button onclick="claim('Jobs — Single post')">Claim founding rate</button></div>
-<div class="plan hl"><span class="chip">BEST FOR FREQUENT HIRING</span><div class="price">$179 <small>/ mo</small></div><div class="nm">Employer Unlimited</div><div class="ds">Post as many openings as you need, all month. One simple subscription.</div><div class="frow"><span class="fnd">Founding: <b>$89.50/mo</b></span></div><button onclick="claim('Jobs — Unlimited')">Claim founding rate</button></div>
+<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single job post</div><div class="ds">One opening, live for 30 days. Half the single-post price of the big boards.</div><div class="frow"><span class="fnd">Founding: <b>$24.50</b></span></div><button onclick="claim('Jobs — Single post')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
+<div class="plan hl"><span class="chip">BEST FOR FREQUENT HIRING</span><div class="price">$179 <small>/ mo</small></div><div class="nm">Employer Unlimited</div><div class="ds">Post as many openings as you need, all month. One simple subscription.</div><div class="frow"><span class="fnd">Founding: <b>$89.50/mo</b></span></div><button onclick="claim('Jobs — Unlimited')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
 </div>
 </div>
 
@@ -148,9 +152,9 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Real estate — for agents &amp; brokers</h2>
 <p>Homes, condos and townhomes for sale. Every eyeball local.</p>
 <div class="plans">
-<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single listing</div><div class="ds">One property, live for 30 days with full photo gallery.</div><div class="frow"><span class="fnd">Founding: <b>$19.50</b></span></div><button onclick="claim('Real estate — Single')">Claim founding rate</button></div>
-<div class="plan"><div class="price">$129 <small>/ 30 days</small></div><div class="nm">5-pack</div><div class="ds">Five listings for the price of three. Great for active agents.</div><div class="frow"><span class="fnd">Founding: <b>$64.50</b></span></div><button onclick="claim('Real estate — 5-pack')">Claim founding rate</button></div>
-<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$199 <small>/ mo</small></div><div class="nm">Agent Unlimited</div><div class="ds">Unlimited listings, all month. Less than half of AutoTrader's cheapest dealer tier.</div><div class="frow"><span class="fnd">Founding: <b>$99.50/mo</b></span></div><button onclick="claim('Real estate — Unlimited')">Claim founding rate</button></div>
+<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single listing</div><div class="ds">One property, live for 30 days with full photo gallery.</div><div class="frow"><span class="fnd">Founding: <b>$19.50</b></span></div><button onclick="claim('Real estate — Single')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
+<div class="plan"><div class="price">$129 <small>/ 30 days</small></div><div class="nm">5-pack</div><div class="ds">Five listings for the price of three. Great for active agents.</div><div class="frow"><span class="fnd">Founding: <b>$64.50</b></span></div><button onclick="claim('Real estate — 5-pack')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$199 <small>/ mo</small></div><div class="nm">Agent Unlimited</div><div class="ds">Unlimited listings, all month. Less than half of AutoTrader's cheapest dealer tier.</div><div class="frow"><span class="fnd">Founding: <b>$99.50/mo</b></span></div><button onclick="claim('Real estate — Unlimited')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
 </div>
 </div>
 
@@ -158,8 +162,8 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Rentals — for landlords &amp; managers</h2>
 <p>One filled vacancy pays for years of listings.</p>
 <div class="plans">
-<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single rental listing</div><div class="ds">One property, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$19.50</b></span></div><button onclick="claim('Rentals — Single')">Claim founding rate</button></div>
-<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$129 <small>/ mo</small></div><div class="nm">Landlord Unlimited</div><div class="ds">Every unit you manage, all month long.</div><div class="frow"><span class="fnd">Founding: <b>$64.50/mo</b></span></div><button onclick="claim('Rentals — Unlimited')">Claim founding rate</button></div>
+<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single rental listing</div><div class="ds">One property, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$19.50</b></span></div><button onclick="claim('Rentals — Single')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$129 <small>/ mo</small></div><div class="nm">Landlord Unlimited</div><div class="ds">Every unit you manage, all month long.</div><div class="frow"><span class="fnd">Founding: <b>$64.50/mo</b></span></div><button onclick="claim('Rentals — Unlimited')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
 </div>
 </div>
 
@@ -167,8 +171,8 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Services — for pros &amp; local shops</h2>
 <p>Plumbers, electricians, cleaners, barbers, salons — get found by neighbours.</p>
 <div class="plans">
-<div class="plan"><div class="price">$29 <small>/ 30 days</small></div><div class="nm">Single service ad</div><div class="ds">One service, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$14.50</b></span></div><button onclick="claim('Services — Single')">Claim founding rate</button></div>
-<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$99 <small>/ mo</small></div><div class="nm">Pro Unlimited</div><div class="ds">Every service you offer, all month. One invoice.</div><div class="frow"><span class="fnd">Founding: <b>$49.50/mo</b></span></div><button onclick="claim('Services — Unlimited')">Claim founding rate</button></div>
+<div class="plan"><div class="price">$29 <small>/ 30 days</small></div><div class="nm">Single service ad</div><div class="ds">One service, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$14.50</b></span></div><button onclick="claim('Services — Single')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$99 <small>/ mo</small></div><div class="nm">Pro Unlimited</div><div class="ds">Every service you offer, all month. One invoice.</div><div class="frow"><span class="fnd">Founding: <b>$49.50/mo</b></span></div><button onclick="claim('Services — Unlimited')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
 </div>
 </div>
 
@@ -176,9 +180,9 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Auto — for dealers</h2>
 <p>Your whole lot, in front of local buyers, for less than half of AutoTrader's cheapest tier.</p>
 <div class="plans">
-<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single vehicle</div><div class="ds">One vehicle, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$24.50</b></span></div><button onclick="claim('Dealer — Single')">Claim founding rate</button></div>
-<div class="plan"><div class="price">$149 <small>/ 30 days</small></div><div class="nm">Lot pack — 25 vehicles</div><div class="ds">Twenty-five listings for the price of three.</div><div class="frow"><span class="fnd">Founding: <b>$74.50</b></span></div><button onclick="claim('Dealer — Lot pack')">Claim founding rate</button></div>
-<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$249 <small>/ mo</small></div><div class="nm">Dealer Unlimited</div><div class="ds">Your entire inventory, all month. AutoTrader charges $450–$2,000+ for this.</div><div class="frow"><span class="fnd">Founding: <b>$124.50/mo</b></span></div><button onclick="claim('Dealer — Unlimited')">Claim founding rate</button></div>
+<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single vehicle</div><div class="ds">One vehicle, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$24.50</b></span></div><button onclick="claim('Dealer — Single')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
+<div class="plan"><div class="price">$149 <small>/ 30 days</small></div><div class="nm">Lot pack — 25 vehicles</div><div class="ds">Twenty-five listings for the price of three.</div><div class="frow"><span class="fnd">Founding: <b>$74.50</b></span></div><button onclick="claim('Dealer — Lot pack')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$249 <small>/ mo</small></div><div class="nm">Dealer Unlimited</div><div class="ds">Your entire inventory, all month. AutoTrader charges $450–$2,000+ for this.</div><div class="frow"><span class="fnd">Founding: <b>$124.50/mo</b></span></div><button onclick="claim('Dealer — Unlimited')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
 </div>
 </div>
 
@@ -186,11 +190,11 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Boosts &amp; display ads</h2>
 <p>Extra visibility for any listing — or your brand across the site.</p>
 <div class="boost">
-<div class="row"><div class="n">Listing Boost — 7 days<small>Pinned to the top of its category + homepage featured strip</small></div><span class="p">$2.99</span></div>
-<div class="row"><div class="n">Featured placement<small>Your logo in the homepage featured strip</small></div><span class="p">$29/mo</span><span class="f">Founding $14.50</span></div>
-<div class="row"><div class="n">Messages sponsor rail<small>Desktop-only rail beside every chat — prime screen time</small></div><span class="p">$79/mo</span><span class="f">Founding $39.50</span></div>
-<div class="row"><div class="n">Homepage spotlight<small>Hero placement on the homepage</small></div><span class="p">$79/mo</span><span class="f">Founding $39.50</span></div>
-<div class="row"><div class="n">Category takeover<small>Own an entire category page</small></div><span class="p">$149/mo</span><span class="f">Founding $74.50</span></div>
+<div class="row"><div class="n">Listing Boost — 7 days<small>Pinned to the top of its category + homepage featured strip</small></div><span class="p">$2.99</span><a class="buy" href="advertise-pay.html">Buy →</a></div>
+<div class="row"><div class="n">Featured placement<small>Your logo in the homepage featured strip</small></div><span class="p">$29/mo</span><span class="f">Founding $14.50</span><a class="buy" href="advertise-pay.html">Buy →</a></div>
+<div class="row"><div class="n">Messages sponsor rail<small>Desktop-only rail beside every chat — prime screen time</small></div><span class="p">$79/mo</span><span class="f">Founding $39.50</span><a class="buy" href="advertise-pay.html">Buy →</a></div>
+<div class="row"><div class="n">Homepage spotlight<small>Hero placement on the homepage</small></div><span class="p">$79/mo</span><span class="f">Founding $39.50</span><a class="buy" href="advertise-pay.html">Buy →</a></div>
+<div class="row"><div class="n">Category takeover<small>Own an entire category page</small></div><span class="p">$149/mo</span><span class="f">Founding $74.50</span><a class="buy" href="advertise-pay.html">Buy →</a></div>
 </div>
 </div>
 
@@ -198,6 +202,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Claim your founding spot.</h2>
 <p>10 spots per category. When they're gone, they're gone — and rates go up.</p>
 <button onclick="claim('')">Claim a founding spot</button>
+<a class="checkout" href="advertise-pay.html">Proceed to Advertiser Checkout →</a>
 <small>Pay by Interac e-Transfer — no fees, no middlemen. First month free with any 3-month commitment.</small>
 </div>
 
@@ -244,6 +249,6 @@ function submitClaim(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClaim();});
 </script>
 <script>var CF_DARK_DEFAULT=false;var CF_MOON='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';var CF_SUN='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';function cfTheme(){var h=document.documentElement,cur=h.dataset.theme||(CF_DARK_DEFAULT?'dark':'light'),nxt=cur==='dark'?'light':'dark';h.dataset.theme=nxt;try{localStorage.setItem('cf-theme',nxt)}catch(e){}cfThemeBtn()}function cfThemeBtn(){var b=document.getElementById('themeBtn');if(!b)return;var cur=document.documentElement.dataset.theme||(CF_DARK_DEFAULT?'dark':'light');b.innerHTML=cur==='dark'?CF_SUN:CF_MOON;b.setAttribute('aria-label',cur==='dark'?'Switch to light mode':'Switch to dark mode')}document.addEventListener('DOMContentLoaded',cfThemeBtn);</script>
-<nav class="cftabs" aria-label="ClassiFlip mobile navigation"><a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5L5.2 4h13.6l1.7 5.5"/><path d="M3.5 9.5h17"/><path d="M5.2 9.5V20h13.6V9.5"/><path d="M9.6 20v-5.2h4.8V20"/></svg><span>Marketplace</span></a><a href="dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg><span>Dashboard</span></a><a href="messaging.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.5-4.9a8.5 8.5 0 1 1 16-4.1z"/></svg><span>Messages</span></a><a href="advertise.html" class="on" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.2v3.6h2.8L19 19V5L6.8 10.2H4z"/><path d="M8.2 15.2L9.7 20h2.1l-1.4-4.6"/><path d="M18.8 9.8a3.6 3.6 0 0 1 0 4.9"/></svg><span>Advertise</span></a><a href="advertise-pay.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5.8" width="18" height="13" rx="2"/><path d="M3 10.2h18"/><path d="M6.8 15h4"/></svg><span>Pay</span></a></nav>
+<nav class="cftabs" aria-label="ClassiFlip mobile navigation"><a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5L5.2 4h13.6l1.7 5.5"/><path d="M3.5 9.5h17"/><path d="M5.2 9.5V20h13.6V9.5"/><path d="M9.6 20v-5.2h4.8V20"/></svg><span>Marketplace</span></a><a href="dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg><span>Dashboard</span></a><a href="messaging.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.5-4.9a8.5 8.5 0 1 1 16-4.1z"/></svg><span>Messages</span></a><a href="advertise.html" class="on" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.2v3.6h2.8L19 19V5L6.8 10.2H4z"/><path d="M8.2 15.2L9.7 20h2.1l-1.4-4.6"/><path d="M18.8 9.8a3.6 3.6 0 0 1 0 4.9"/></svg><span>Advertise</span></a></nav>
 </body>
 </html>

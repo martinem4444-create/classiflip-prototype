@@ -159,13 +159,14 @@ $('threads').innerHTML=THREADS.map(t=>
 +(t.img?'<img src="'+t.img+'" alt="">':'<div class="av">'+t.name[0]+'</div>')
 +'<div class="b"><div class="u">'+t.name+'<span class="t">'+t.time+'</span></div>'
 +'<div class="ad">'+t.ad+' · '+t.price+'</div>'
-+'<div class="x">'+t.msgs[t.msgs.length-1][1]+'</div></div>'
++'<div class="x">'+(t.msgs&&t.msgs.length?t.msgs[t.msgs.length-1][1]:(t.lastBody||''))+'</div></div>'
 +(t.unread?'<div class="dot"></div>':'')
 +'</div>').join('');
 }
 function openThread(id){
+const t=THREADS.find(x=>x.id===id);if(!t){renderThreads();return;}
 var ch=$('chat');if(ch)ch.classList.remove('noopen');
-cur=id;const t=THREADS.find(x=>x.id===id);t.unread=false;
+cur=id;t.unread=false;
 $('adbar').innerHTML=(t.img?'<img src="'+t.img+'" alt="">':'')
 +'<div><div class="t">'+t.ad+'</div><div class="p">'+t.price+(t.biz?' · '+t.biz:'')+'</div>'
 +'<div class="st">● '+t.name+' is online</div></div>'

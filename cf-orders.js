@@ -10,6 +10,12 @@
  *   Interac instructions (e-Transfer to mm905media@gmail.com with the
  *   order number in the message). Martin activates the order from the
  *   dashboard admin queue; activation sets 30-day expiry.
+ * - Boost Interac reserve (Oct 26, option 1): the boost card's
+ *   "Reserve with Interac e-Transfer →" link opens an inline panel
+ *   with a picker of the buyer's own ACTIVE ads (signed-in only) and
+ *   inserts a Pending row in public.boosts (BST code from the
+ *   database), mirroring the dashboard real boost flow. NOT a
+ *   package: it never touches public.orders or the PACKAGES map.
  *
  * SECURITY NOTES:
  * - No keys in this file. It reuses window.CFAuth.client (the live
@@ -26,7 +32,9 @@
 
   /* key -> [display label, amount CAD]. Matches the prices printed on
      advertise-pay.html. Boost ($2.99) is deliberately NOT here: it is
-     the step-5 Stripe Payment Link product, not an Interac package. */
+     not an Interac package and must never create an orders row. The
+     boost Interac reserve lives in its own section below and writes
+     to public.boosts, not public.orders. */
   var PACKAGES = {
     'founding-single': ['Founding Single', 29],
     'founding-featured': ['Founding Featured', 79],
@@ -152,5 +160,156 @@
     }
     submit.disabled = false;
     submit.textContent = orig;
+  });
+
+  /* ---------- Advertise-pay boost Interac reserve (Oct 26, 2026) ----
+   * Option 1, approved Oct 26: the boost card on advertise-pay.html
+   * has only a placeholder Stripe button, so this adds the working
+   * Interac path WITHOUT touching that button (a known launch gate).
+   * A boost requires a listing, so the flow is:
+   *   1. Buyer clicks "Reserve with Interac e-Transfer →" on the
+   *      boost card -> the #boostReserve panel opens.
+   *   2. Signed-out buyers see a sign-in notice (this page and the
+   *      Dashboard have no sign-in form; index.html does) and are
+   *      sent to sign in / Dashboard. No picker, no insert.
+   *   3. Signed-in buyers get a picker of their own ACTIVE ads
+   *      (seller_id = auth.uid(), status = 'active' — the same
+   *      rule the boosts_create policy enforces, so the insert
+   *      cannot target someone else's ad).
+   *   4. Reserve inserts a Pending row in public.boosts
+   *      (payment_method 'etransfer', amount 2.99; payment_ref is
+   *      the DB-generated BST code) and shows the BST code plus the
+   *      Interac instructions, mirroring the dashboard real boost
+   *      flow's honest copy ("Payment sent — Martin activates your
+   *      boost"). NO fake "Ad boosted!" state: the boost only goes
+   *      live when Martin activates it.
+   *   5. If the BST code cannot be read back, the row is rolled
+   *      back and the step-5 SQL error is shown — a code-less
+   *      Pending boost is never left behind (same rule as the
+   *      dashboard flow).
+   * This section never touches PACKAGES, the order form, or the
+   * placeholder Stripe button. */
+  var BOOST_PRICE = 2.99;
+  var BOOST_ADMIN_EMAIL = 'mm905media@gmail.com';
+  var boostAdsById = {};
+
+  function boostNotice(t) {
+    var n = el('boostReserveNotice');
+    if (n) n.textContent = t;
+  }
+
+  function boostShow(id) {
+    ['boostReserveSignedOut', 'boostReserveForm', 'boostReserveDone'].forEach(function (x) {
+      var d = el(x);
+      if (d) d.style.display = (x === id) ? 'block' : 'none';
+    });
+  }
+
+  async function loadBoostPicker() {
+    boostShow(null);
+    boostNotice('');
+    var client = getClient();
+    if (!client) {
+      boostNotice('Checkout needs the live site connection — please open the live site to reserve.');
+      return;
+    }
+    var user = null;
+    try {
+      var u = await client.auth.getUser();
+      if (u && u.data && u.data.user) user = u.data.user;
+    } catch (e) {}
+    if (!user) {
+      boostShow('boostReserveSignedOut');
+      return;
+    }
+    var sel = el('boostListing');
+    if (sel) sel.innerHTML = '';
+    boostAdsById = {};
+    var res;
+    try {
+      res = await client.from('listings')
+        .select('id,title,price')
+        .eq('seller_id', user.id).eq('status', 'active')
+        .order('created_at', { ascending: false }).limit(100);
+    } catch (e) { res = { error: e }; }
+    if (!res || res.error) {
+      boostNotice('Could not load your ads: ' + (res && res.error && res.error.message ? res.error.message : 'Something went wrong.'));
+      return;
+    }
+    var ads = res.data || [];
+    if (!ads.length) {
+      boostNotice('You have no active ads yet — post an ad from your Dashboard first.');
+      return;
+    }
+    ads.forEach(function (a) {
+      boostAdsById[a.id] = a.title || 'This ad';
+      if (sel) {
+        var opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = (a.title || 'Untitled ad') + ' — ' + money(a.price || 0);
+        sel.appendChild(opt);
+      }
+    });
+    boostShow('boostReserveForm');
+  }
+
+  var boostLink = document.querySelector('[data-boost-interac]');
+  if (boostLink) boostLink.addEventListener('click', async function (e) {
+    e.preventDefault();
+    var panel = el('boostReserve');
+    if (!panel) return;
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth' });
+    await loadBoostPicker();
+  });
+
+  var boostSubmit = el('boostReserveSubmit');
+  if (boostSubmit) boostSubmit.addEventListener('click', async function () {
+    var sel = el('boostListing');
+    var listingId = sel ? sel.value : '';
+    if (!listingId) {
+      boostNotice('Pick an ad to boost.');
+      return;
+    }
+    var client = getClient();
+    if (!client) {
+      boostNotice('Checkout needs the live site connection — please open the live site to reserve.');
+      return;
+    }
+    var user = null;
+    try {
+      var u = await client.auth.getUser();
+      if (u && u.data && u.data.user) user = u.data.user;
+    } catch (e) {}
+    if (!user) {
+      boostShow('boostReserveSignedOut');
+      return;
+    }
+    boostSubmit.disabled = true;
+    var orig = boostSubmit.textContent;
+    boostSubmit.textContent = 'Reserving…';
+    try {
+      var ins = await client.from('boosts').insert([{
+        listing_id: listingId, buyer_id: user.id,
+        amount: BOOST_PRICE, payment_method: 'etransfer', status: 'Pending'
+      }]).select('id').single();
+      if (ins.error || !ins.data || !ins.data.id) throw ins.error || new Error('Could not reserve the boost.');
+      var codeRes = await client.from('boosts').select('payment_ref').eq('id', ins.data.id).maybeSingle();
+      var bst = codeRes && codeRes.data && codeRes.data.payment_ref;
+      if (codeRes.error || !bst) {
+        try { await client.from('boosts').delete().eq('id', ins.data.id); } catch (e2) {}
+        throw new Error('The step-5 SQL has not been run yet — boosts need it first (BST codes). Run supabase/cf-boost-migration.sql, then try again.');
+      }
+      el('boostBstBig').textContent = bst;
+      el('boostBstBig2').textContent = bst;
+      el('boostAdTitle').textContent = boostAdsById[listingId] || 'This ad';
+      boostShow('boostReserveDone');
+      boostNotice('');
+      el('boostReserveDone').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {
+      boostNotice('Could not reserve the boost: ' + (err && err.message ? err.message : 'Something went wrong.'));
+    }
+    boostSubmit.disabled = false;
+    boostSubmit.textContent = orig;
   });
 })();

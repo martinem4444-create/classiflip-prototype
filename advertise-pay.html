@@ -150,10 +150,12 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="plans">
 <div class="plan"><div class="price">$29 <small>/ 30 days</small></div><div class="nm">Single Service Ad</div><div class="ds">One service, live for 30 days in front of customers near you. Manage it any time from your advertiser dashboard.</div>
 <!-- TODO: replace with the real Stripe Payment Link for this package -->
-<a class="pay" data-package="services-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<a class="pay" data-package="services-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a>
+<a class="orderlink" data-order-package="services-single" href="#orderForm" style="display:block;margin-top:10px;text-align:center;font-weight:700;color:#203B62">Reserve with Interac e-Transfer →</a></div>
 <div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$99 <small>/ mo</small></div><div class="nm">Pro Unlimited</div><div class="ds">Every service you offer, all month. One simple price, managed from one dashboard.</div>
 <!-- TODO: replace with the real Stripe Payment Link for this package -->
-<a class="pay" data-package="services-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<a class="pay" data-package="services-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a>
+<a class="orderlink" data-order-package="services-unlimited" href="#orderForm" style="display:block;margin-top:10px;text-align:center;font-weight:700;color:#203B62">Reserve with Interac e-Transfer →</a></div>
 </div>
 </div>
 
@@ -163,10 +165,12 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="plans">
 <div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single Job Post</div><div class="ds">One opening, live for 30 days. Half the single-post price of the big boards, managed from your dashboard.</div>
 <!-- TODO: replace with the real Stripe Payment Link for this package -->
-<a class="pay" data-package="jobs-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<a class="pay" data-package="jobs-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a>
+<a class="orderlink" data-order-package="jobs-single" href="#orderForm" style="display:block;margin-top:10px;text-align:center;font-weight:700;color:#203B62">Reserve with Interac e-Transfer →</a></div>
 <div class="plan hl"><span class="chip">BEST FOR FREQUENT HIRING</span><div class="price">$179 <small>/ mo</small></div><div class="nm">Employer Unlimited</div><div class="ds">Post as many openings as you need, all month. One simple price for your whole hiring pipeline.</div>
 <!-- TODO: replace with the real Stripe Payment Link for this package -->
-<a class="pay" data-package="jobs-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<a class="pay" data-package="jobs-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a>
+<a class="orderlink" data-order-package="jobs-unlimited" href="#orderForm" style="display:block;margin-top:10px;text-align:center;font-weight:700;color:#203B62">Reserve with Interac e-Transfer →</a></div>
 </div>
 </div>
 
@@ -177,6 +181,29 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="row"><div class="n">Listing Boost — 7 days<small>Pushes any ad to the top of its category, with a spot in the homepage featured strip</small></div><span class="p">$2.99</span>
 <!-- TODO: replace with the real Stripe Payment Link for this package -->
 <a class="pay" data-package="boost-listing" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a></div>
+<div class="row"><div class="n">Prefer Interac e-Transfer?<small>Reserve with your BST code — Martin activates your boost, usually the same day</small></div><a class="pay" data-boost-interac href="#boostReserve" style="background:#203B62">Reserve with Interac e-Transfer →</a></div>
+</div>
+
+<div class="interac" id="boostReserve" style="display:none;margin-top:16px">
+<h3>Boost an ad with Interac e-Transfer</h3>
+<p>Pick one of your active ads. We create your boost reservation, you e-Transfer <b>$2.99</b> to <b>mm905media@gmail.com</b> with your BST code in the message, and Martin activates your boost, usually the same day.</p>
+<div id="boostReserveNotice" style="color:#7a8499;font-size:13px"></div>
+<div id="boostReserveSignedOut" style="display:none;margin-top:12px">
+<p style="margin:0 0 8px;color:#44506b">Please sign in first — boosts apply to your own active ads.</p>
+<p style="margin:0"><a href="index.html">Sign in on the Marketplace</a> · <a href="dashboard.html">Go to Dashboard</a></p>
+</div>
+<div id="boostReserveForm" style="display:none;max-width:520px;margin-top:12px">
+<label style="font-weight:700">Your active ad <select id="boostListing" style="width:100%;padding:11px;border:1.5px solid #ccd3e2;border-radius:10px;margin-top:4px"></select></label>
+<div style="margin-top:10px">Price: <b>$2.99</b> CAD · 7 days from activation, pinned first in its category.</div>
+<button id="boostReserveSubmit" style="background:#203B62;color:#fff;border:0;border-radius:10px;padding:13px;font-size:16px;font-weight:700;cursor:pointer;margin-top:12px">Reserve this boost</button>
+</div>
+<div id="boostReserveDone" style="display:none;margin-top:14px;border:1.5px solid #1e7d32;border-radius:12px;padding:16px">
+<div style="font-size:32px">🚀</div>
+<div style="font-weight:800;font-size:20px">Payment sent — Martin activates your boost</div>
+<p style="color:#44506b">Send <b>$2.99</b> by Interac e-Transfer to <b>mm905media@gmail.com</b> with <b id="boostBstBig"></b> in the message. Martin activates your boost, usually the same day — it then runs 7 days, pinned first in its category.</p>
+<p style="color:#44506b">Boost ref: <b id="boostBstBig2"></b> · Ad: <span id="boostAdTitle"></span></p>
+<p><a href="dashboard.html">View my boosts on the Dashboard</a> · <a href="advertise.html">Back to Advertise</a></p>
+</div>
 </div>
 </div>
 

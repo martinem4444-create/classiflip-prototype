@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.8 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning.
+/* ClassiFlip real listings v1.9 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -160,8 +160,17 @@
      migration) render exactly as before. */
   /* boostedEffective travels on the mapped row for the page's
      render() / renderFeatured() / detail view (step 5, v1.8).
-     boostedIds maps listing_id -> latest future expires_at ms. */
-  function mapRow(r, photosById, boostedIds) {
+     boostedIds maps listing_id -> latest future expires_at ms.
+     FCFS (v1.9): boostSort maps listing_id -> the listing's
+     EARLIEST live boost { ms: activated_at ms, bst: BST number },
+     which the page's render() / renderFeatured() sort the boosted
+     block by (activation ASC, BST ASC). */
+  function parseBstNum(ref) {
+    if (!ref) return Number.MAX_SAFE_INTEGER;
+    var m = String(ref).match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
+  }
+  function mapRow(r, photosById, boostedIds, boostSort) {
     var price = Number(r.price);
     if (isNaN(price)) price = 0;
     var photos = (photosById && photosById[r.id]) || (r.photo_url ? [r.photo_url] : []);
@@ -178,8 +187,11 @@
       photos: photos,
       verified: false,
       live: true,
+      seller_id: r.seller_id || null,
       boostedEffective: !!(boostedIds && boostedIds[r.id]),
-      boostExpires: (boostedIds && boostedIds[r.id]) || null
+      boostExpires: (boostedIds && boostedIds[r.id]) || null,
+      boostActivatedMs: (boostSort && boostSort[r.id]) ? boostSort[r.id].ms : null,
+      bstNum: (boostSort && boostSort[r.id]) ? boostSort[r.id].bst : null
     };
   }
 
@@ -189,10 +201,18 @@
   async function refreshListings() {
     var client = getClient();
     if (!client) return false;
+    /* Marketplace real boost button (v1.9): the signed-in owner id,
+       so the page's render() can gate the real Boost button on own
+       listings. getUser() resolves the stored session even when the
+       page's loggedIn flag has not flipped yet. */
+    try {
+      var uRes = await client.auth.getUser();
+      window.__cfMyId = (uRes && uRes.data && uRes.data.user) ? uRes.data.user.id : null;
+    } catch (e) { window.__cfMyId = null; }
     try {
       var res = await client
         .from('listings')
-        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at')
+        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       if (res.error || !res.data || !res.data.length) return false;
@@ -222,6 +242,7 @@
          SQL not run yet), boostedIds stays empty and nothing pins
          — the page works exactly as before. */
       var boostedIds = {};
+      var boostSort = {};
       try {
         var br = await client.rpc('cf_effective_boosts');
         if (br && !br.error && br.data) {
@@ -229,11 +250,27 @@
           br.data.forEach(function (b) {
             if (!b.listing_id || !b.expires_at) return;
             var ms = new Date(b.expires_at).getTime();
-            if (ms > nowMs && (!boostedIds[b.listing_id] || ms > boostedIds[b.listing_id])) boostedIds[b.listing_id] = ms;
+            if (!(ms > nowMs)) return;
+            if (!boostedIds[b.listing_id] || ms > boostedIds[b.listing_id]) boostedIds[b.listing_id] = ms;
+            /* FCFS (v1.9): this listing's queue position is its
+               EARLIEST live boost — activation ASC, BST number
+               breaking same-timestamp ties. A listing with several
+               live boosts keeps its first place (re-boost extends,
+               it never jumps the queue). Pre-FCFS-SQL rows carry no
+               activated_at/payment_ref and tie at (0, MAX): stable
+               order, pins and badges still work until the FCFS
+               migration runs. */
+            var actMs = b.activated_at ? new Date(b.activated_at).getTime() : 0;
+            if (isNaN(actMs)) actMs = 0;
+            var bstNum = parseBstNum(b.payment_ref);
+            var prev = boostSort[b.listing_id];
+            if (!prev || actMs < prev.ms || (actMs === prev.ms && bstNum < prev.bst)) {
+              boostSort[b.listing_id] = { ms: actMs, bst: bstNum };
+            }
           });
         }
-      } catch (e) { boostedIds = {}; }
-      var rows = res.data.map(function (r) { return mapRow(r, photosById, boostedIds); });
+      } catch (e) { boostedIds = {}; boostSort = {}; }
+      var rows = res.data.map(function (r) { return mapRow(r, photosById, boostedIds, boostSort); });
       // v1.5 merge: keep the page's demo filler BELOW the real ads.
       // Snapshot the demo rows once, before the first replace, so later
       // refreshes never duplicate them.
@@ -520,6 +557,7 @@
         '<div class="notice">This is a live listing posted on ClassiFlip.</div>' +
         ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
         listingContactMarkup() +
+        (canRealBoost(x) ? '<div style="margin-top:12px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
@@ -527,6 +565,141 @@
       /* Never crash the page from this guard. */
     }
   }, true);
+
+  /* Marketplace real boost button (v1.9): signed-in owners see a
+     REAL "Boost · $2.99" on their own marketplace cards / detail
+     view (rendered by the page's render() and the detail guard
+     below). It opens the REAL Interac reserve flow — a Pending
+     boosts row with a DB-generated BST code — mirroring the
+     dashboard real flow's copy and behaviour. Logged-out viewers
+     never see this button: they keep the page's EXISTING demo
+     boost modal (fake Apple Pay/card, fanfare, fake boosted
+     state), untouched. Gate, enforced at render AND at click
+     time: signed-in + own listing + active listing. The boosts
+     table's own-listing-only insert policy is the server-side
+     backstop. cf-dashboard.js is never touched from here. */
+  function canRealBoost(x) {
+    try {
+      if (!x || !x.live) return false;
+      if (!window.__cfMyId) return false;
+      if (typeof loggedIn !== 'undefined' && !loggedIn) return false;
+      return String(x.seller_id || '') !== '' && String(x.seller_id) === String(window.__cfMyId);
+    } catch (e) {
+      return false;
+    }
+  }
+  function openRealBoostModal(x) {
+    try {
+      document.getElementById('detailTitle').textContent = 'Boost your ad';
+      document.getElementById('detailBody').innerHTML =
+        '<div style="max-width:440px;margin:0 auto">' +
+        '<p>Boost <b>' + safe(x.title) + '</b> for <b>$2.99</b> — it jumps to the top of search and category pages for <b>7 days</b>, wearing a BOOSTED badge buyers cannot miss.</p>' +
+        '<div class="notice" id="cfRealBoostErr" style="display:none"></div>' +
+        '<button class="primary" id="cfRealBoostPay" style="width:100%">Reserve with Interac e-Transfer · $2.99</button>' +
+        '<p style="color:#7a8499;font-size:13px;margin:12px 0 2px">Interac e-Transfer only in this build · card checkout comes at launch</p>' +
+        '</div>';
+      if (typeof closeModals === 'function') closeModals();
+      if (typeof openModal === 'function') openModal('detailModal');
+      var payBtn = document.getElementById('cfRealBoostPay');
+      if (payBtn) payBtn.addEventListener('click', function () { reserveRealBoost(x, payBtn); });
+    } catch (err) {}
+  }
+  async function reserveRealBoost(x, btn) {
+    var orig = btn.textContent;
+    var errEl = document.getElementById('cfRealBoostErr');
+    function showErr(msg) {
+      if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
+    }
+    try {
+      /* Re-check the gate at click time: the button only renders
+         for own active ads, but never trust render-time state for
+         a money-adjacent insert. */
+      if (!canRealBoost(x)) {
+        showErr('This boost option is only available for your own active ads. Please reload the page and try again.');
+        return;
+      }
+      var client = getClient();
+      if (!client) {
+        showErr('Could not reserve the boost: not connected. Please reload the page and try again.');
+        return;
+      }
+      var userRes = await client.auth.getUser();
+      var user = userRes && userRes.data && userRes.data.user;
+      if (!user) {
+        showErr('Please log in again to reserve a boost.');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Reserving…';
+      /* Mirror of the dashboard real reserve: the database
+         generates the BST code (step-5 SQL default); the row is
+         read back, and a code-less row is rolled back — Martin
+         could never match its payment. No Stripe path exists here
+         by design (Interac only in this build). */
+      var ins = await client.from('boosts').insert([{
+        listing_id: x.id, buyer_id: user.id,
+        amount: 2.99, payment_method: 'etransfer', status: 'Pending'
+      }]).select('id').single();
+      if (ins.error || !ins.data || !ins.data.id) throw ins.error || new Error('Could not reserve the boost.');
+      var codeRes = await client.from('boosts').select('payment_ref').eq('id', ins.data.id).maybeSingle();
+      var bst = codeRes && codeRes.data && codeRes.data.payment_ref;
+      if (codeRes.error || !bst) {
+        try { await client.from('boosts').delete().eq('id', ins.data.id); } catch (e2) {}
+        throw new Error('The step-5 SQL has not been run yet — boosts need it first (BST codes). Run supabase/cf-boost-migration.sql, then try again.');
+      }
+      document.getElementById('detailBody').innerHTML =
+        '<div style="max-width:440px;margin:0 auto;text-align:center">' +
+        '<div style="font-size:44px;line-height:1">🚀</div>' +
+        '<h3 style="margin:10px 0 6px">Payment sent — Martin activates your boost</h3>' +
+        '<p>Send <b>$2.99</b> by Interac e-Transfer to <b>mm905media@gmail.com</b> with <b>' + safe(bst) + '</b> in the message.<br>' +
+        'Martin activates your boost, usually the same day — it then runs 7 days, pinned first in its category.</p>' +
+        '<p>Boost ref: <b>' + safe(bst) + '</b> · Ad: ' + safe(x.title) + '</p>' +
+        '<button class="primary" id="cfRealBoostDone">Done</button>' +
+        '</div>';
+      var doneBtn = document.getElementById('cfRealBoostDone');
+      if (doneBtn && typeof closeModals === 'function') doneBtn.addEventListener('click', function () { closeModals(); });
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = orig;
+      showErr('Could not reserve the boost: ' + (err && err.message ? err.message : 'Something went wrong.'));
+    }
+  }
+  document.addEventListener('click', function (e) {
+    var rb = e.target && e.target.closest ? e.target.closest('[data-cf-real-boost]') : null;
+    if (!rb) return;
+    var raw = rb.dataset.cfRealBoost;
+    if (!raw) return;
+    var x = null;
+    try {
+      x = listings.find(function (y) { return String(y.id) === raw; });
+    } catch (err) {
+      x = null;
+    }
+    if (!x) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openRealBoostModal(x);
+  }, true);
+
+  /* Keep the owner id fresh across sign-in/sign-out without a
+     reload, so the real Boost button appears/disappears exactly
+     with the session. Demo-preview sign-in (page flag only, no
+     Supabase session) yields no id, so no real button — correctly,
+     since no insert could succeed. Re-renders only when the id
+     actually changes (INITIAL_SESSION fires once here). */
+  try {
+    var _authSubClient = getClient();
+    if (_authSubClient && _authSubClient.auth && typeof _authSubClient.auth.onAuthStateChange === 'function') {
+      _authSubClient.auth.onAuthStateChange(function (event, session) {
+        var newId = (session && session.user) ? session.user.id : null;
+        if (newId !== window.__cfMyId) {
+          window.__cfMyId = newId;
+          try { if (typeof render === 'function') render(); } catch (e) {}
+          try { if (typeof renderFeatured === 'function') renderFeatured(); } catch (e) {}
+        }
+      });
+    }
+  } catch (e) {}
 
   /* Page load: switch to database rows when possible, demo otherwise. */
   refreshListings();

@@ -279,7 +279,7 @@
       } else {
         rows = threads.map(function (t) {
           var initial = (t.name || 'S').charAt(0).toUpperCase();
-          return '<div class="msgrow" onclick="location.href=\'messaging.html\'" style="cursor:pointer"><div class="av">' + esc(initial) + '</div>' +
+          return '<div class="msgrow" onclick="location.href=\'messaging.html?thread=\'+encodeURIComponent(\'' + esc(t.id) + '\')" style="cursor:pointer"><div class="av">' + esc(initial) + '</div>' +
             '<div class="b"><div class="u">' + esc(t.name || 'Seller') + '</div>' +
             '<div class="x">' + esc(t.ad || '') + (t.lastBody ? ' — ' + esc(t.lastBody) : '') + '</div></div>' +
             '<div class="t">' + esc(t.time || '') + '</div>' + (t.unread ? '<div class="unread"></div>' : '') + '</div>';

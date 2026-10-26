@@ -242,13 +242,13 @@ const m=$('msgs');m.scrollTop=m.scrollHeight;
 if(t.live)return;
 setTimeout(()=>{t.msgs.push(['them',REPLIES[Math.floor(Math.random()*REPLIES.length)],nowT()]);renderMsgs();renderThreads();$('msgs').scrollTop=$('msgs').scrollHeight;ding();},1600);
 }
-function sendMsg(){const v=$('box').value.trim();if(!v||!cur)return;const t=THREADS.find(x=>x.id===cur);if(t&&t.live&&window.CFMessages){$('box').value='';window.CFMessages.send(t.listingId,t.otherId,v).then(function(r){if(r&&r.ok){pushMine(v);}else{$('box').value=v;alert('Message could not be sent: '+((r&&r.error)||'unknown error'));}});return;}$('box').value='';pushMine(v);}
-function quickRe(q){if(!cur)return;const t=THREADS.find(x=>x.id===cur);if(t&&t.live&&window.CFMessages){window.CFMessages.send(t.listingId,t.otherId,q).then(function(r){if(r&&r.ok){pushMine(q);}else{alert('Message could not be sent: '+((r&&r.error)||'unknown error'));}});return;}pushMine(q);}
+function sendMsg(){const v=$('box').value.trim();if(!v)return;const t=THREADS.find(x=>x.id===cur);if(!t){alert('Open a conversation first, then send.');return;}if(t.live&&window.CFMessages){$('box').value='';window.CFMessages.send(t.listingId,t.otherId,v).then(function(r){if(r&&r.ok){try{pushMine(v);}catch(e){$('box').value=v;alert('Message could not be shown. Please reopen the conversation and try again.');}}else{$('box').value=v;alert('Message could not be sent: '+((r&&r.error)||'unknown error'));}});return;}try{pushMine(v);$('box').value='';}catch(e){alert('Message could not be sent. Please reopen the conversation and try again.');}}
+function quickRe(q){if(!cur)return;const t=THREADS.find(x=>x.id===cur);if(!t)return;if(t.live&&window.CFMessages){window.CFMessages.send(t.listingId,t.otherId,q).then(function(r){if(r&&r.ok){try{pushMine(q);}catch(e){alert('Message could not be shown. Please reopen the conversation and try again.');}}else{alert('Message could not be sent: '+((r&&r.error)||'unknown error'));}});return;}try{pushMine(q);}catch(e){alert('Message could not be sent. Please reopen the conversation and try again.');}}
 function makeOffer(){
 if(!cur)return;const v=prompt('Your offer (CAD):');if(!v)return;
-const t=THREADS.find(x=>x.id===cur);const txt='$'+v.replace('$','');
-if(t&&t.live&&window.CFMessages){window.CFMessages.send(t.listingId,t.otherId,txt).then(function(r){if(r&&r.ok){pushMine(txt,true);}else{alert('Offer could not be sent: '+((r&&r.error)||'unknown error'));}});return;}
-pushMine(txt,true);
+const t=THREADS.find(x=>x.id===cur);if(!t)return;const txt='$'+v.replace('$','');
+if(t.live&&window.CFMessages){window.CFMessages.send(t.listingId,t.otherId,txt).then(function(r){if(r&&r.ok){try{pushMine(txt,true);}catch(e){alert('Offer could not be shown. Please reopen the conversation and try again.');}}else{alert('Offer could not be sent: '+((r&&r.error)||'unknown error'));}});return;}
+try{pushMine(txt,true);}catch(e){alert('Offer could not be sent. Please reopen the conversation and try again.');}
 }
 $('box').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
 renderThreads();

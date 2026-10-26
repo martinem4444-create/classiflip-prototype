@@ -83,7 +83,7 @@
         (lr.data || []).forEach(function (r) { listingsById[r.id] = r; });
       } catch (e) {}
       try {
-        var pr = await client.from('profiles').select('id,display_name').in('id', otherIds);
+        var pr = await client.rpc('get_display_names', { ids: otherIds });
         (pr.data || []).forEach(function (r) { profilesById[r.id] = r; });
       } catch (e) {}
       return order.map(function (k) {

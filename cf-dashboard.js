@@ -1,4 +1,4 @@
-/* ClassiFlip dashboard wiring v1.1 (step 4 + multi-photo) — Supabase (marketplace-dev).
+/* ClassiFlip dashboard wiring v1.2 (step 4 + multi-photo + step 5 Boost) — Supabase (marketplace-dev).
  *
  * WHAT IT DOES (signed-in users only; logged-out visitors keep the demo):
  * - Replaces the demo listing cards with the signed-in user's REAL listings
@@ -8,6 +8,17 @@
  *   window.CFMessages.listThreads, the same module index.html uses).
  * - Replaces the demo stats with REAL counts (active, pending, unread, orders).
  * - Adds a "My orders" section: the user's own orders with status + expiry.
+ * - Step 5 Boost (v1.2, Interac-first): a "Boost · $2.99" button on each
+ *   ACTIVE own listing (never on pending / rejected / sold / expired);
+ *   the mBoost modal reserves a Pending boosts row with a DB-generated
+ *   BST code and shows honest "Payment sent — Martin activates your
+ *   boost" copy + Interac instructions (no fake "Ad boosted!" state
+ *   for real rows). A "My boosts" section shows the seller's own
+ *   boosts; the Admin section gains pending-boosts (Activate · 7
+ *   days), active-boosts (Expire) and expiring-within-3-days lists,
+ *   mirroring the orders queue. Re-boost extends: activating a boost
+ *   while another live boost exists for the same ad adds 7 days onto
+ *   the latest expiry instead of restarting the clock.
  * - Adds an "Admin" section, visible ONLY when the user's profiles row has
  *   is_admin = true: the pending-ads queue (Approve -> active, Reject ->
  *   rejected) and the orders queue (Activate -> Active + 30-day expiry,
@@ -90,6 +101,42 @@
   var renderedReal = false;
   var inFlight = false;
 
+  /* ---- Step 5 Boost (v1.2) ---- */
+  var BOOST_PRICE = 2.99;
+  var BOOST_DAYS = 7;
+  var BOOST_ADMIN_EMAIL = 'mm905media@gmail.com';
+  /* Stripe Payment Link placeholder. STAYS a placeholder in this
+     build: the Stripe option is GATED — no button, link, or code
+     path in this file ever opens BOOST_PAYMENT_LINK while it
+     contains 'REPLACE_WITH', so no buyer can ever click through to
+     Stripe's "link doesn't exist" error page. Interac is the only
+     live payment path in this build. When the real $2.99 Payment
+     Link exists, paste it here (one line) and add the card button
+     behind a stripeLinkReady() check — never before. */
+  var BOOST_PAYMENT_LINK = 'https://buy.stripe.com/REPLACE_WITH_BOOST_LINK';
+  function stripeLinkReady() {
+    return BOOST_PAYMENT_LINK.indexOf('REPLACE_WITH') === -1;
+  }
+  /* The listing a real Boost-button click is currently targeting
+     (set by the data-cf-boost handler, cleared after a successful
+     reserve). The page's demo openBoost(name) flow never sets this,
+     so demo boosts always take the page's original fake path. */
+  var boostListing = null;
+
+  /* Restore the mBoost modal to its demo state (fake Pay button
+     visible, real Interac button hidden). Used only for the stale
+     edge where the modal is reopened without a real target — the
+     demo flow then works exactly as the page defines it. */
+  function restoreBoostModalDemo() {
+    boostListing = null;
+    var fakePay = el('boostFakePay'); if (fakePay) fakePay.style.display = '';
+    var rp = el('boostRealPay'); if (rp) rp.style.display = 'none';
+    var rd = el('boostRealDone'); if (rd) rd.classList.add('hidden');
+    var note = el('boostPayNote'); if (note) note.textContent = 'Secure checkout · Interac, Visa, Mastercard';
+    var form = el('boostForm'); if (form) form.classList.remove('hidden');
+    var bd = el('boostDone'); if (bd) bd.classList.add('hidden');
+  }
+
   async function getUser(client) {
     try {
       var res = await client.auth.getUser();
@@ -125,8 +172,9 @@
     var role = (profile && profile.role === 'advertiser') ? 'advertiser' : 'private';
     var isAdmin = !!(profile && profile.is_admin);
 
-    /* Own listings, own orders, real threads — three independent reads. */
-    var listings = [], orders = [], threads = [];
+    /* Own listings, own orders, own boosts, real threads — four
+       independent reads. */
+    var listings = [], orders = [], threads = [], myBoosts = [];
     try {
       var lr = await client.from('listings')
         .select('id,title,price,category,condition,location,status,created_at,photo_url')
@@ -138,6 +186,15 @@
         .select('id,order_number,business_name,package,amount,buyer_name,buyer_email,status,expires_at,created_at')
         .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(50);
       if (orr && orr.data) orders = orr.data;
+    } catch (e) {}
+    /* Step 5 Boost: own boosts (RLS: buyer_id = auth.uid()). If the
+       step-5 SQL has not run yet this returns [] and the boosts
+       section says so — same fail-soft pattern as the other reads. */
+    try {
+      var br = await client.from('boosts')
+        .select('id,listing_id,amount,payment_method,status,payment_ref,expires_at,activated_at,created_at')
+        .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(50);
+      if (br && br.data) myBoosts = br.data;
     } catch (e) {}
     try {
       if (window.CFMessages && window.CFMessages.listThreads) {
@@ -174,7 +231,20 @@
     }
 
     /* Real listing cards. Edit stays demo-only (real ad editing is a
-       later pass); Delete is real; View links to the marketplace. */
+       later pass); Delete is real; View links to the marketplace.
+       Step 5 Boost: a Boost button on ACTIVE rows only, plus a
+       "Boosted until" pill when the ad has a live boost (an Active
+       boosts row with expires_at in the future — the latest expiry
+       wins, because re-boost extends). */
+    var liveBoostByListing = {};
+    (function () {
+      var nowMs = Date.now();
+      myBoosts.forEach(function (b) {
+        if (b.status !== 'Active' || !b.expires_at) return;
+        var ms = new Date(b.expires_at).getTime();
+        if (ms > nowMs && (!liveBoostByListing[b.listing_id] || ms > liveBoostByListing[b.listing_id])) liveBoostByListing[b.listing_id] = ms;
+      });
+    })();
     var listSeller = el('listSeller');
     if (listSeller) {
       listSeller.classList.remove('hidden');
@@ -185,12 +255,16 @@
           var viewBtn = x.status === 'active'
             ? '<a class="btn gho" href="index.html">View</a>'
             : '<span class="btn gho" style="opacity:.55">' + (x.status === 'pending' ? 'Awaiting approval' : esc(x.status)) + '</span>';
+          var boostPill = liveBoostByListing[x.id]
+            ? ' <span class="pill boost">🚀 Boosted until ' + fullDate(new Date(liveBoostByListing[x.id]).toISOString()) + '</span>' : '';
+          var boostBtn = x.status === 'active'
+            ? '<button class="btn pri" data-cf-boost="' + esc(x.id) + '" data-cf-boost-title="' + esc(x.title) + '">Boost · $2.99</button>' : '';
           return '<div class="lcard">' +
             (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
-            '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + '</div>' +
+            '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
             '<div class="p">' + money(x.price) + '</div>' +
             '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div></div>' +
-            '<div class="acts">' + viewBtn + '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button></div>' +
+            '<div class="acts">' + viewBtn + boostBtn + '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button></div>' +
             '</div>';
         }).join('');
       }
@@ -229,6 +303,30 @@
               '<div class="p">' + money(o.amount) + '</div>' +
               '<div class="s">' + esc(o.business_name || '') + ' · ordered ' + fullDate(o.created_at) +
               (o.expires_at ? ' · expires ' + fullDate(o.expires_at) : '') + '</div></div></div>';
+          }).join('');
+        }
+      }
+    }
+
+    /* My boosts (own rows only — RLS guarantees this). Boost amounts
+       are NOT run through money(): it rounds to whole dollars and a
+       boost is $2.99, so the exact $2.99 is formatted directly. */
+    var boostsSect = el('boostsSect');
+    if (boostsSect) {
+      boostsSect.classList.remove('hidden');
+      var bl = el('boostsList');
+      if (bl) {
+        if (!myBoosts.length) {
+          bl.innerHTML = '<div class="notice">No boosts yet — boost a live ad from My listings and it shows up here.</div>';
+        } else {
+          var titlesById = {};
+          listings.forEach(function (x) { titlesById[x.id] = x.title; });
+          bl.innerHTML = myBoosts.map(function (b) {
+            return '<div class="lcard"><div class="inf"><div class="t">' + esc(b.payment_ref || 'Boost') + ' · ' + esc(titlesById[b.listing_id] || 'Ad') + ' ' + pillForOrder(b.status) + '</div>' +
+              '<div class="p">$' + Number(b.amount).toFixed(2) + ' · ' + (b.payment_method === 'etransfer' ? 'Interac e-Transfer' : 'Card') + '</div>' +
+              '<div class="s">reserved ' + fullDate(b.created_at) +
+              (b.activated_at ? ' · activated ' + fullDate(b.activated_at) : '') +
+              (b.expires_at ? ' · expires ' + fullDate(b.expires_at) : '') + '</div></div></div>';
           }).join('');
         }
       }
@@ -351,6 +449,75 @@
           }).join('')
         : '<div class="notice">Nothing expiring within 3 days.</div>';
     }
+
+    /* Step 5 Boost admin lists — mirrors the orders queue exactly.
+       Pending boosts (Activate · 7 days), active boosts (Expire),
+       and boosts expiring within 3 days. Titles + buyer names are
+       resolved the same way as the pending-ads queue. Without the
+       step-5 SQL these read [] and the lists say so. */
+    var bList = el('adminBoostsList'), bActiveList = el('adminBoostsActiveList'), bExpList = el('adminBoostsExpiringList');
+    if (bList) bList.innerHTML = '<div class="notice">Loading boosts…</div>';
+    var allBoosts = [];
+    try {
+      var br2 = await client.from('boosts')
+        .select('id,listing_id,buyer_id,amount,payment_method,status,payment_ref,expires_at,activated_at,created_at')
+        .order('created_at', { ascending: false }).limit(100);
+      if (br2 && br2.data) allBoosts = br2.data;
+    } catch (e) {}
+    var boostTitles = {}, boostBuyers = {};
+    try {
+      var blids = allBoosts.map(function (b) { return b.listing_id; }).filter(Boolean);
+      if (blids.length) {
+        var tr = await client.from('listings').select('id,title').in('id', blids);
+        (tr.data || []).forEach(function (r) { boostTitles[r.id] = r.title; });
+      }
+      var bbids = allBoosts.map(function (b) { return b.buyer_id; }).filter(Boolean);
+      if (bbids.length) {
+        var bur = await client.from('profiles').select('id,display_name,email').in('id', bbids);
+        (bur.data || []).forEach(function (r) { boostBuyers[r.id] = r; });
+      }
+    } catch (e) {}
+    function boostCard(b, acts) {
+      var buyer = boostBuyers[b.buyer_id] || {};
+      return '<div class="lcard"><div class="inf"><div class="t">' + esc(b.payment_ref || 'Boost') + ' · ' + esc(boostTitles[b.listing_id] || 'Ad') + ' ' + pillForOrder(b.status) + '</div>' +
+        '<div class="p">$' + Number(b.amount).toFixed(2) + ' · ' + (b.payment_method === 'etransfer' ? 'Interac e-Transfer' : 'Card') + '</div>' +
+        '<div class="s">' + esc(buyer.display_name || buyer.email || '') +
+        ' · reserved ' + fullDate(b.created_at) +
+        (b.activated_at ? ' · activated ' + fullDate(b.activated_at) : '') +
+        (b.expires_at ? ' · expires ' + fullDate(b.expires_at) : '') + '</div></div>' +
+        (acts || '') + '</div>';
+    }
+    var pendBoosts = allBoosts.filter(function (b) { return b.status === 'Pending'; });
+    if (bList) {
+      bList.innerHTML = pendBoosts.length
+        ? pendBoosts.map(function (b) {
+            return boostCard(b, '<div class="acts"><button class="btn pri" data-cf-boost-activate="' + esc(b.id) + '" data-cf-boost-listing="' + esc(b.listing_id) + '">Activate · 7 days</button></div>');
+          }).join('')
+        : '<div class="notice">No boosts awaiting activation.</div>';
+    }
+    var actBoosts = allBoosts.filter(function (b) { return b.status === 'Active'; });
+    if (bActiveList) {
+      bActiveList.innerHTML = actBoosts.length
+        ? actBoosts.map(function (b) {
+            var expMs = b.expires_at ? new Date(b.expires_at).getTime() - Date.now() : 0;
+            var flag = (b.expires_at && expMs > 0 && expMs <= 3 * 24 * 3600 * 1000) ? ' <span class="pill pend">Expiring soon</span>' : '';
+            return boostCard(b, '<div class="acts">' + flag + '<button class="btn gho danger" data-cf-boost-expire="' + esc(b.id) + '" data-cf-boost-listing="' + esc(b.listing_id) + '">Expire</button></div>');
+          }).join('')
+        : '<div class="notice">No active boosts.</div>';
+    }
+    if (bExpList) {
+      var soonBoosts = actBoosts.filter(function (b) {
+        if (!b.expires_at) return false;
+        var ms = new Date(b.expires_at).getTime() - Date.now();
+        return ms > 0 && ms <= 3 * 24 * 3600 * 1000;
+      });
+      bExpList.innerHTML = soonBoosts.length
+        ? soonBoosts.map(function (b) {
+            return '<div class="lcard"><div class="inf"><div class="t">' + esc(b.payment_ref || 'Boost') + ' · ' + esc(boostTitles[b.listing_id] || 'Ad') + ' ' + pillForOrder(b.status) + '</div>' +
+              '<div class="s">Expires ' + fullDate(b.expires_at) + ' · $' + Number(b.amount).toFixed(2) + '</div></div></div>';
+          }).join('')
+        : '<div class="notice">Nothing expiring within 3 days.</div>';
+    }
   }
 
   /* Delegated actions: own-listing delete + all admin actions. */
@@ -400,12 +567,91 @@
       });
       return;
     }
+    /* Step 5 Boost: open the mBoost modal for a REAL listing. The
+       page's demo openBoost(name) path is untouched: this handler
+       only runs for real cards (data-cf-boost), and it swaps the
+       modal into its real state — fake Pay button hidden, Interac
+       reserve button shown, honest note text. */
+    var bb = e.target.closest ? e.target.closest('[data-cf-boost]') : null;
+    if (bb) {
+      boostListing = { id: bb.dataset.cfBoost, title: bb.dataset.cfBoostTitle || 'This ad' };
+      var bf = el('boostFor'); if (bf) bf.textContent = boostListing.title;
+      var bform = el('boostForm'); if (bform) bform.classList.remove('hidden');
+      var bd2 = el('boostDone'); if (bd2) bd2.classList.add('hidden');
+      var rd2 = el('boostRealDone'); if (rd2) rd2.classList.add('hidden');
+      var fe2 = el('boostRealError'); if (fe2) { fe2.classList.add('hidden'); fe2.textContent = ''; }
+      var fakePay2 = el('boostFakePay'); if (fakePay2) fakePay2.style.display = 'none';
+      var note2 = el('boostPayNote'); if (note2) note2.textContent = 'Interac e-Transfer only in this build · card checkout comes at launch';
+      var rp2 = el('boostRealPay');
+      if (rp2) { rp2.style.display = ''; rp2.disabled = false; rp2.textContent = 'Reserve with Interac e-Transfer · $2.99'; }
+      try { if (typeof openM === 'function') openM('mBoost'); } catch (e2) {}
+      return;
+    }
+    /* Step 5 Boost: Interac reserve. Inserts the Pending boosts row
+       (the database generates the BST code via the step-5 SQL
+       default) and shows the honest confirmation + Interac
+       instructions. If the BST code cannot be read back, the row is
+       rolled back and the real error is shown — a code-less Pending
+       boost is never left behind, because Martin could never match
+       its payment. No Stripe path exists here by design: while
+       BOOST_PAYMENT_LINK is a placeholder, no button may open it. */
+    var realPay = e.target.closest ? e.target.closest('#boostRealPay') : null;
+    if (realPay) {
+      if (!boostListing) {
+        /* Stale modal state (reopened without a real target): hand
+           the modal back to the page's demo flow, untouched. */
+        restoreBoostModalDemo();
+        try { if (typeof boostPay === 'function') boostPay(); } catch (e2) {}
+        return;
+      }
+      var user = await getUser(client);
+      if (!user) { say('Please log in again to reserve a boost.'); return; }
+      realPay.disabled = true;
+      var rpOrig = realPay.textContent; realPay.textContent = 'Reserving…';
+      var errEl = el('boostRealError');
+      if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+      try {
+        var ins = await client.from('boosts').insert([{
+          listing_id: boostListing.id, buyer_id: user.id,
+          amount: BOOST_PRICE, payment_method: 'etransfer', status: 'Pending'
+        }]).select('id').single();
+        if (ins.error || !ins.data || !ins.data.id) throw ins.error || new Error('Could not reserve the boost.');
+        var codeRes = await client.from('boosts').select('payment_ref').eq('id', ins.data.id).maybeSingle();
+        var bst = codeRes && codeRes.data && codeRes.data.payment_ref;
+        if (codeRes.error || !bst) {
+          try { await client.from('boosts').delete().eq('id', ins.data.id); } catch (e2) {}
+          throw new Error('The step-5 SQL has not been run yet — boosts need it first (BST codes). Run supabase/cf-boost-migration.sql, then try again.');
+        }
+        var bform2 = el('boostForm'); if (bform2) bform2.classList.add('hidden');
+        var rdone = el('boostRealDone');
+        if (rdone) {
+          rdone.innerHTML = '<div class="big">🚀</div><h2>Payment sent — Martin activates your boost</h2>' +
+            '<p>Send <b>$2.99</b> by Interac e-Transfer to <b>' + esc(BOOST_ADMIN_EMAIL) + '</b> with <b>' + esc(bst) + '</b> in the message.<br>' +
+            'Martin activates your boost, usually the same day — it then runs 7 days, pinned first in its category.</p>' +
+            '<p class="sub">Boost ref: <b>' + esc(bst) + '</b> · Ad: ' + esc(boostListing.title) + '</p>' +
+            '<button class="btn dark" onclick="closeM(\'mBoost\')">Back to my listings</button>';
+          rdone.classList.remove('hidden');
+        }
+        boostListing = null;
+        realPay.disabled = false; realPay.textContent = rpOrig;
+        say('Boost reserved — ' + bst);
+        refresh();
+      } catch (err) {
+        realPay.disabled = false; realPay.textContent = rpOrig;
+        var rmsg = 'Could not reserve the boost: ' + (err && err.message ? err.message : 'Something went wrong.');
+        if (errEl) { errEl.textContent = rmsg; errEl.classList.remove('hidden'); }
+        else say(rmsg);
+      }
+      return;
+    }
     var approve = e.target.closest ? e.target.closest('[data-cf-approve]') : null;
     var reject = e.target.closest ? e.target.closest('[data-cf-reject]') : null;
     var act = e.target.closest ? e.target.closest('[data-cf-order-activate]') : null;
     var soon = e.target.closest ? e.target.closest('[data-cf-order-soon]') : null;
     var exp = e.target.closest ? e.target.closest('[data-cf-order-expire]') : null;
-    var btn = approve || reject || act || soon || exp;
+    var bAct = e.target.closest ? e.target.closest('[data-cf-boost-activate]') : null;
+    var bExp = e.target.closest ? e.target.closest('[data-cf-boost-expire]') : null;
+    var btn = approve || reject || act || soon || exp || bAct || bExp;
     if (!btn) return;
     btn.disabled = true;
     var orig = btn.textContent; btn.textContent = 'Working…';
@@ -435,6 +681,52 @@
       client.from('orders').update({ status: 'Expired' }).eq('id', exp.dataset.cfOrderExpire).then(function (res) {
         done(!res.error, res.error ? 'Update failed: ' + res.error.message : 'Order marked expired');
       });
+    } else if (bAct) {
+      (async function () {
+        try {
+          var listingId = bAct.dataset.cfBoostListing;
+          /* D2 re-boost extends: if another live boost exists for
+             this ad, the new 7 days run from the LATEST expiry, not
+             from now — no days lost. */
+          var base = Date.now();
+          try {
+            var ob = await client.from('boosts').select('expires_at').eq('listing_id', listingId).eq('status', 'Active');
+            (ob.data || []).forEach(function (r) {
+              var ms = new Date(r.expires_at).getTime();
+              if (ms > base) base = ms;
+            });
+          } catch (e2) {}
+          var nowIso = new Date().toISOString();
+          var newExp = new Date(base + BOOST_DAYS * 24 * 3600 * 1000).toISOString();
+          var up = await client.from('boosts').update({ status: 'Active', activated_at: nowIso, expires_at: newExp }).eq('id', bAct.dataset.cfBoostActivate);
+          if (up.error) { done(false, 'Activate failed: ' + up.error.message); return; }
+          /* listings.boosted is a cache flag only (the marketplace
+             pins from cf_effective_boosts, not the flag), so a flag
+             failure here is cosmetic and never blocks activation. */
+          try { await client.from('listings').update({ boosted: true }).eq('id', listingId); } catch (e2) {}
+          done(true, 'Boost activated — live for 7 days');
+        } catch (err) {
+          done(false, 'Activate failed: ' + (err && err.message ? err.message : 'Something went wrong.'));
+        }
+      })();
+    } else if (bExp) {
+      (async function () {
+        try {
+          var listingId2 = bExp.dataset.cfBoostListing;
+          var up2 = await client.from('boosts').update({ status: 'Expired' }).eq('id', bExp.dataset.cfBoostExpire);
+          if (up2.error) { done(false, 'Update failed: ' + up2.error.message); return; }
+          /* Clear the cache flag only when no other live boost
+             remains for this ad. */
+          try {
+            var ob2 = await client.from('boosts').select('expires_at').eq('listing_id', listingId2).eq('status', 'Active');
+            var stillLive = (ob2.data || []).some(function (r) { return new Date(r.expires_at).getTime() > Date.now(); });
+            if (!stillLive) await client.from('listings').update({ boosted: false }).eq('id', listingId2);
+          } catch (e2) {}
+          done(true, 'Boost expired');
+        } catch (err) {
+          done(false, 'Update failed: ' + (err && err.message ? err.message : 'Something went wrong.'));
+        }
+      })();
     }
   });
 

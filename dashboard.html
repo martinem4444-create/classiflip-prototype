@@ -300,6 +300,13 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div id="ordersList"></div>
 </div>
 
+<!-- boosts: signed-in users (filled by cf-dashboard.js; hidden when logged out) -->
+<div class="sect hidden" id="boostsSect">
+<h2>My boosts</h2>
+<p class="hint">Boosts you reserved. Send $2.99 by Interac e-Transfer to mm905media@gmail.com with your BST code in the message — Martin activates your boost, usually the same day. A boost runs 7 days from activation, pinned first in its category.</p>
+<div id="boostsList"></div>
+</div>
+
 <!-- admin: is_admin users only (filled by cf-dashboard.js) -->
 <div class="sect hidden" id="adminSect">
 <h2>Admin — approval queue</h2>
@@ -311,6 +318,13 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div id="adminOrdersList"></div>
 <h3 style="margin:16px 0 8px">Expiring within 3 days</h3>
 <div id="adminExpiringList"></div>
+<h3 style="margin:16px 0 8px">Boosts awaiting activation</h3>
+<div class="notice">Boost actions need the step-5 SQL run in Supabase first (file: supabase/cf-boost-migration.sql). If Activate / Expire errors, that SQL is the missing step.</div>
+<div id="adminBoostsList"></div>
+<h3 style="margin:16px 0 8px">Active boosts</h3>
+<div id="adminBoostsActiveList"></div>
+<h3 style="margin:16px 0 8px">Boosts expiring within 3 days</h3>
+<div id="adminBoostsExpiringList"></div>
 </div>
 </div>
 
@@ -345,11 +359,14 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="boostbox"><b>What a boost does</b>
 <ul><li>Pinned to the top of its category for 7 days</li><li>Rotates through the homepage featured strip</li><li>Boosted ads get ~3&times; more views on average</li></ul></div>
 <div class="pricerow"><div><div class="pr">$2.99</div><div class="per">one-time · 7 days</div></div><div class="pill boost">No subscription</div></div>
-<button class="btn pri" style="width:100%" onclick="boostPay()">Pay $2.99 &amp; boost</button>
-<p class="sub" style="text-align:center;margin:12px 0 0">Secure checkout · Interac, Visa, Mastercard</p>
+<button class="btn pri" style="width:100%" id="boostFakePay" onclick="boostPay()">Pay $2.99 &amp; boost</button>
+<button class="btn pri" style="width:100%;display:none" id="boostRealPay">Reserve with Interac e-Transfer · $2.99</button>
+<p class="sub" style="text-align:center;margin:12px 0 0" id="boostPayNote">Secure checkout · Interac, Visa, Mastercard</p>
+<div id="boostRealError" class="notice hidden"></div>
 </div>
 <div id="boostDone" class="ok hidden"><div class="big">&#128640;</div><h2>Ad boosted!</h2><p>Your ad jumps to the top for the next 7 days.<br>Watch the views roll in.</p>
 <button class="btn dark" onclick="closeM('mBoost')">Back to my listings</button></div>
+<div id="boostRealDone" class="ok hidden"></div>
 </div></div>
 
 <!-- ============ BILLING MODAL ============ -->

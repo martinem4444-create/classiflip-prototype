@@ -577,11 +577,13 @@ function openMessageThread(x){
       const condition=document.getElementById('conditionFilter').value;
       let rows=listings.filter(x=>(currentCategory==='All'||x.category===currentCategory)&&(condition==='All'||x.condition===condition)&&(!q||`${x.title} ${x.category} ${x.location}`.toLowerCase().includes(q))&&(!savedOnly||saved.has(String(x.id))));
       const sort=document.getElementById('sortFilter').value;if(sort==='low')rows.sort((a,b)=>a.price-b.price);if(sort==='high')rows.sort((a,b)=>b.price-a.price);
+      /* Step 5 Boost: boosted-effective real rows pin first within the viewed set, BEFORE pagination slicing. The sort above is stable, so price order still applies WITHIN each group. Demo rows are never boosted-effective. */
+      rows.sort((a,b)=>((b.boostedEffective?1:0)-(a.boostedEffective?1:0)));
       const filterKey=currentCategory+'|'+condition+'|'+q+'|'+sort+'|'+savedOnly;if(filterKey!==lastFilterKey){lastFilterKey=filterKey;currentPage=1;}
       const totalPages=Math.max(1,Math.ceil(rows.length/PER_PAGE));if(currentPage>totalPages)currentPage=totalPages;
       const pageRows=rows.slice((currentPage-1)*PER_PAGE,currentPage*PER_PAGE);
       resultsNote.textContent=`${rows.length} prototype listing${rows.length===1?'':'s'}`;
-      grid.innerHTML=pageRows.length?pageRows.map((x,i)=>`<article class="listing"><div class="listing-media"><span class="badge">${safe(x.promotion||x.postingLabel||(i<2?'Fresh':'Local'))}</span><button class="save ${saved.has(String(x.id))?'saved':''}" data-save="${x.id}" aria-label="${saved.has(String(x.id))?'Remove from':'Save to'} favourites"><span aria-hidden="true">${saved.has(String(x.id))?'♥':'♡'}</span></button>${x.photo?'<img src="'+x.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">':icons[x.icon]}</div><div class="listing-body"><div class="price">${displayPrice(x)}</div><h3>${x.title}</h3><div class="meta"><span>${x.condition}</span><span>•</span><span>${x.location}</span></div>${x.live&&x.verified?verifiedMark:''}<div class="listing-footer"><span class="prototype-tag">${x.live?'LIVE LISTING':'SAMPLE'}</span><button class="view" data-view="${x.id}">View details →</button></div></div></article>`).join(''):'<div class="empty">No sample listings match those filters. Try another category or search.</div>';
+      grid.innerHTML=pageRows.length?pageRows.map((x,i)=>`<article class="listing"><div class="listing-media"><span class="badge">${safe(x.boostedEffective?'🚀 BOOSTED':(x.promotion||x.postingLabel||(i<2?'Fresh':'Local')))}</span><button class="save ${saved.has(String(x.id))?'saved':''}" data-save="${x.id}" aria-label="${saved.has(String(x.id))?'Remove from':'Save to'} favourites"><span aria-hidden="true">${saved.has(String(x.id))?'♥':'♡'}</span></button>${x.photo?'<img src="'+x.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">':icons[x.icon]}</div><div class="listing-body"><div class="price">${displayPrice(x)}</div><h3>${x.title}</h3><div class="meta"><span>${x.condition}</span><span>•</span><span>${x.location}</span></div>${x.live&&x.verified?verifiedMark:''}<div class="listing-footer"><span class="prototype-tag">${x.live?'LIVE LISTING':'SAMPLE'}</span><button class="view" data-view="${x.id}">View details →</button></div></div></article>`).join(''):'<div class="empty">No sample listings match those filters. Try another category or search.</div>';
       renderPagination(totalPages);
       document.getElementById('savedCount').textContent=saved.size;
       updateMarketplaceView();
@@ -719,8 +721,11 @@ openModal('detailModal');
   auto();
 }
 function renderFeatured(){
-      const rows=listings.filter(x=>x.featured).slice(0,3);
-      document.getElementById('featuredRow').innerHTML=rows.map(x=>`<article class="featured-card"><div class="featured-visual"><span class="featured-label">Featured</span>${x.photo?'<img src="'+x.photo+'" alt="" loading="lazy">':icons[x.icon]}</div><div class="featured-copy"><div class="prototype-tag">PREMIUM SAMPLE</div><h3>${safe(x.title)}</h3><div class="price">${money(x.price)}</div>${x.live&&x.verified?verifiedMark:''}<button class="view" data-view="${x.id}">View listing →</button></div></article>`).join('');
+      /* Step 5 Boost: boosted-effective real rows fill the featured slots first (max 3); demo featured samples fill the remainder. Boosted real rows are labelled LIVE LISTING (never PREMIUM SAMPLE) and carry the BOOSTED badge. Without boosted rows this behaves exactly as before. */
+      const boosted=listings.filter(x=>x.boostedEffective);
+      const samples=listings.filter(x=>x.featured&&!x.boostedEffective);
+      const rows=boosted.concat(samples).slice(0,3);
+      document.getElementById('featuredRow').innerHTML=rows.map(x=>`<article class="featured-card"><div class="featured-visual"><span class="featured-label">Featured</span>${x.photo?'<img src="'+x.photo+'" alt="" loading="lazy">':icons[x.icon]}</div><div class="featured-copy"><div class="prototype-tag">${x.live?'LIVE LISTING':'PREMIUM SAMPLE'}</div>${x.boostedEffective?'<div class="prototype-tag">🚀 BOOSTED</div>':''}<h3>${safe(x.title)}</h3><div class="price">${money(x.price)}</div>${x.live&&x.verified?verifiedMark:''}<button class="view" data-view="${x.id}">View listing →</button></div></article>`).join('');
     }
     function renderJobs(){
       const briefcase='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>';

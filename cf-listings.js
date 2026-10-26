@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.7 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads.
+/* ClassiFlip real listings v1.8 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning.
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -28,6 +28,18 @@
  *   Requires the cf-multiphoto-migration.sql to have been run first;
  *   until then, photo fetches fail silently and ads render via
  *   photo_url exactly as before.
+ *
+ * - Step 5 Boost (v1.8): alongside the listings fetch, the public
+ *   cf_effective_boosts() RPC returns listing_id + expires_at for
+ *   Active boosts (no buyer, no payment data — privacy-safe for
+ *   logged-out visitors). A row counts as boosted-effective ONLY
+ *   when its boost is Active AND expires_at is in the future, so a
+ *   stale listings.boosted flag alone can never pin an ad. The flag
+ *   travels on each mapped row (boostedEffective) for the page's
+ *   render() (pin-first sort) and renderFeatured() (boosted rows
+ *   fill featured slots first), and for the detail view badge.
+ *   If the RPC fails (step-5 SQL not run yet), the set is empty
+ *   and the page renders exactly as before — no pins, no badges.
  *
  * SAFETY / FALLBACK RULES:
  * - This file contains NO API key or secret. It only reuses
@@ -146,7 +158,10 @@
      listing_photos when available, else [photo_url] as a fallback —
      so single-photo ads (and ads posted before the multi-photo
      migration) render exactly as before. */
-  function mapRow(r, photosById) {
+  /* boostedEffective travels on the mapped row for the page's
+     render() / renderFeatured() / detail view (step 5, v1.8).
+     boostedIds maps listing_id -> latest future expires_at ms. */
+  function mapRow(r, photosById, boostedIds) {
     var price = Number(r.price);
     if (isNaN(price)) price = 0;
     var photos = (photosById && photosById[r.id]) || (r.photo_url ? [r.photo_url] : []);
@@ -162,7 +177,9 @@
       photo: r.photo_url || '',
       photos: photos,
       verified: false,
-      live: true
+      live: true,
+      boostedEffective: !!(boostedIds && boostedIds[r.id]),
+      boostExpires: (boostedIds && boostedIds[r.id]) || null
     };
   }
 
@@ -198,7 +215,25 @@
           });
         }
       } catch (e) { photosById = null; }
-      var rows = res.data.map(function (r) { return mapRow(r, photosById); });
+      /* Step 5 Boost (v1.8): effective-boost set from the public RPC.
+         Render-time enforcement lives here: only Active rows with
+         expires_at in the future count, and the latest expiry wins
+         per listing (re-boost extends). If the RPC fails (step-5
+         SQL not run yet), boostedIds stays empty and nothing pins
+         — the page works exactly as before. */
+      var boostedIds = {};
+      try {
+        var br = await client.rpc('cf_effective_boosts');
+        if (br && !br.error && br.data) {
+          var nowMs = Date.now();
+          br.data.forEach(function (b) {
+            if (!b.listing_id || !b.expires_at) return;
+            var ms = new Date(b.expires_at).getTime();
+            if (ms > nowMs && (!boostedIds[b.listing_id] || ms > boostedIds[b.listing_id])) boostedIds[b.listing_id] = ms;
+          });
+        }
+      } catch (e) { boostedIds = {}; }
+      var rows = res.data.map(function (r) { return mapRow(r, photosById, boostedIds); });
       // v1.5 merge: keep the page's demo filler BELOW the real ads.
       // Snapshot the demo rows once, before the first replace, so later
       // refreshes never duplicate them.
@@ -477,6 +512,7 @@
       document.getElementById('detailBody').innerHTML =
         '<div class="detail">' + detailGalleryMarkup(x) + '<div>' +
         '<div class="prototype-tag">LIVE LISTING · ' + safe(x.category).toUpperCase() + '</div>' +
+        (x.boostedEffective ? '<div class="prototype-tag">🚀 BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +

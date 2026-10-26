@@ -884,7 +884,14 @@ const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCat
 function setDots(show){var h=document.getElementById('msgsDotHdr'),t=document.getElementById('msgsDotTab');if(h)h.hidden=!show;if(t)t.hidden=!show;}
 function updateMsgsDot(){try{if(!window.CFMessages||!window.CFMessages.listThreads){setDots(false);return;}window.CFMessages.listThreads().then(function(ts){setDots(!!(ts&&ts.some(function(x){return x.unread;})));}).catch(function(){setDots(false);});}catch(e){setDots(false);}}
 updateMsgsDot();
+var dotChan=null,dotUid=null;
+function dotClient(){try{return (window.CFAuth&&window.CFAuth.client)?window.CFAuth.client:null;}catch(e){return null;}}
+function unsubDot(){try{var c=dotClient();if(c&&dotChan){var p=c.removeChannel(dotChan);if(p&&p.catch)p.catch(function(){});}dotChan=null;dotUid=null;}catch(e){dotChan=null;dotUid=null;}}
+function subDot(uid){try{var c=dotClient();if(!c||!c.channel||!uid)return;if(dotChan&&dotUid===uid)return;unsubDot();dotUid=uid;dotChan=c.channel('cf-msgs-dot').on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'receiver_id=eq.'+uid},function(){updateMsgsDot();}).on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'receiver_id=eq.'+uid},function(){updateMsgsDot();}).subscribe();}catch(e){}}
+try{var dc=dotClient();if(dc&&dc.auth&&dc.auth.onAuthStateChange){dc.auth.onAuthStateChange(function(ev,session){if(ev==='SIGNED_IN')updateMsgsDot();if(ev==='SIGNED_IN'&&session&&session.user)subDot(session.user.id);if(ev==='SIGNED_OUT'){setDots(false);unsubDot();}});}if(dc&&dc.auth&&dc.auth.getSession){dc.auth.getSession().then(function(r){if(r&&r.data&&r.data.session&&r.data.session.user)subDot(r.data.session.user.id);}).catch(function(){});}}catch(e){}
 document.addEventListener('visibilitychange',function(){if(!document.hidden)updateMsgsDot();});
+window.addEventListener('pageshow',updateMsgsDot);
+window.addEventListener('focus',updateMsgsDot);
 })();
 </script>
 </body>

@@ -138,6 +138,7 @@ html[data-theme="dark"]{--bg:#07090D;--surface:#12161F;--surface-2:#1A212E;--ink
 <style>
 /* ClassiFlip mobile bottom tab bar */
 .cftabs{display:none}
+@media(max-width:760px){#dashLink,#msgsLink{display:none!important}}
 @media(max-width:760px){
 .cftabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:900;background:#FFFFFF;border-top:1px solid #E4E9F2;box-shadow:0 -4px 18px rgba(24,54,95,.10);padding-bottom:env(safe-area-inset-bottom);font-family:inherit}
 .cftabs a{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;padding:6px 2px 4px;color:#68788F;text-decoration:none;font-size:11px;line-height:1.15;font-weight:600;font-family:inherit}
@@ -167,7 +168,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
         <input id="searchInput" type="search" autocomplete="off" readonly placeholder="Search listings in Mississauga" aria-label="Search listings">
         <button id="searchBtn">Search</button>
       </div>
-      <div class="nav-actions"><a class="ghostlink" href="advertise.html">Advertise</a><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button class="ghost" data-account-mode="login">Log in</button><button class="account-create" data-account-mode="create" aria-label="Create account"><span class="full-label">Create account</span><span class="compact-label" aria-hidden="true">Account</span></button><button class="ghost" id="savedBtn">Saved <span id="savedCount">0</span></button><button class="primary" id="postAdBtn" data-open="postModal" hidden>Post an ad</button></div>
+      <div class="nav-actions"><a class="ghostlink" href="advertise.html">Advertise</a><a class="ghostlink" id="dashLink" href="dashboard.html" hidden>Dashboard</a><a class="ghostlink" id="msgsLink" href="messaging.html" hidden>Messages</a><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button class="ghost" data-account-mode="login">Log in</button><button class="account-create" data-account-mode="create" aria-label="Create account"><span class="full-label">Create account</span><span class="compact-label" aria-hidden="true">Account</span></button><button class="ghost" id="savedBtn">Saved <span id="savedCount">0</span></button><button class="primary" id="postAdBtn" data-open="postModal" hidden>Post an ad</button></div>
     </div>
   </header>
 
@@ -454,7 +455,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
     let saved=new Set(), currentCategory='All', activeJobCategory='All', savedOnly=false, loggedIn=false, activeListingId=null, pendingMessageListingId=null;
     const grid=document.getElementById('listingGrid'), resultsNote=document.getElementById('resultsNote');
     const PER_PAGE=12;let currentPage=1,lastFilterKey='';
-    function updateAccountUI(){document.getElementById('savedBtn').style.display=loggedIn?'':'none';document.getElementById('postAdBtn').hidden=!loggedIn}
+    function updateAccountUI(){document.getElementById('savedBtn').style.display=loggedIn?'':'none';document.getElementById('postAdBtn').hidden=!loggedIn;document.getElementById('dashLink').hidden=!loggedIn;document.getElementById('msgsLink').hidden=!loggedIn}
     function updateMarketplaceView(){
       const showJobs=currentCategory==='Jobs'&&!savedOnly,showCars=currentCategory==='Cars'&&!savedOnly,showServices=currentCategory==='Services'&&!savedOnly,showRentals=currentCategory==='Rentals'&&!savedOnly,showHomes=currentCategory==='Homes'&&!savedOnly;
       document.getElementById('marketplace').hidden=showJobs;

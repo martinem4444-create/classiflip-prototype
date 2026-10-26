@@ -1,4 +1,4 @@
-/* ClassiFlip dashboard wiring v1 (step 4) — Supabase (marketplace-dev).
+/* ClassiFlip dashboard wiring v1.1 (step 4 + multi-photo) — Supabase (marketplace-dev).
  *
  * WHAT IT DOES (signed-in users only; logged-out visitors keep the demo):
  * - Replaces the demo listing cards with the signed-in user's REAL listings
@@ -12,6 +12,12 @@
  *   is_admin = true: the pending-ads queue (Approve -> active, Reject ->
  *   rejected) and the orders queue (Activate -> Active + 30-day expiry,
  *   Expiring soon, Expired), plus a computed "expiring within 3 days" list.
+ * - Multi-photo (v1.1): pending queue cards show ALL of an ad's photos
+ *   as thumbnails (from listing_photos), not just the cover — moderation
+ *   sees every image before approving. Single-photo ads render exactly
+ *   as before. Deleting an ad also best-effort removes its storage
+ *   objects (paths derived from the photo URLs); the row delete itself
+ *   never waits on storage, so a storage failure can't block a delete.
  *
  * SECURITY NOTES:
  * - This file contains NO keys. It reuses window.CFAuth.client (no keys of
@@ -259,6 +265,23 @@
         .eq('status', 'pending').order('created_at', { ascending: true }).limit(100);
       if (pr && pr.data) pending = pr.data;
     } catch (e) {}
+    /* Multi-photo (v1.1): every pending ad's photos, ordered by
+       position, so moderation sees ALL images, not just the cover.
+       Falls back to the cover alone for ads posted before the
+       multi-photo migration (no listing_photos rows). */
+    var photosByListing = {};
+    try {
+      var pids = pending.map(function (x) { return x.id; }).filter(Boolean);
+      if (pids.length) {
+        var phr = await client.from('listing_photos')
+          .select('listing_id,photo_url,position')
+          .in('listing_id', pids).order('position', { ascending: true });
+        (phr.data || []).forEach(function (p) {
+          if (!photosByListing[p.listing_id]) photosByListing[p.listing_id] = [];
+          if (p.photo_url) photosByListing[p.listing_id].push(p.photo_url);
+        });
+      }
+    } catch (e) {}
     if (pending.length) {
       var sellerIds = pending.map(function (x) { return x.seller_id; }).filter(Boolean);
       var sellersById = {};
@@ -269,11 +292,18 @@
       adsList.innerHTML = pending.map(function (x) {
         var s = sellersById[x.seller_id] || {};
         var desc = (x.description || '').trim();
+        var photos = photosByListing[x.id] || (x.photo_url ? [x.photo_url] : []);
+        var strip = photos.length > 1
+          ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + photos.map(function (p) {
+              return '<img src="' + esc(p) + '" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px">';
+            }).join('') + '</div>'
+          : '';
         return '<div class="lcard">' +
           (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
           '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor('pending') + '</div>' +
           '<div class="p">' + money(x.price) + '</div>' +
           '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · seller ' + esc(s.display_name || s.email || x.seller_id || '') + ' · ' + shortDate(x.created_at) + '</div>' +
+          strip +
           (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
                 : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + '</div>' +
           '<div class="acts"><button class="btn pri" data-cf-approve="' + esc(x.id) + '">Approve</button>' +
@@ -324,7 +354,7 @@
   }
 
   /* Delegated actions: own-listing delete + all admin actions. */
-  document.addEventListener('click', function (e) {
+  document.addEventListener('click', async function (e) {
     var client = getClient();
     if (!client) return;
     var del = e.target.closest ? e.target.closest('[data-cf-del]') : null;
@@ -335,8 +365,37 @@
         return;
       }
       var id = del.dataset.cfDel;
+      /* Best-effort storage cleanup: collect this ad's photo objects
+         BEFORE deleting the row (CASCADE removes the photo rows, so
+         their URLs would be gone after). Paths are derived from the
+         public URLs (everything after '/listing-photos/'). If this
+         collection fails, the row delete still proceeds — orphaned
+         objects are cosmetic, the ad itself is gone. Note: storage
+         deletes only succeed for objects the deleter owns
+         (photos_owner_delete policy), so an admin deleting someone
+         else's ad leaves its objects behind — a known gap. */
+      var cleanupPaths = [];
+      try {
+        var lr = await client.from('listings').select('photo_url').eq('id', id).maybeSingle();
+        var pr2 = await client.from('listing_photos').select('photo_url').eq('listing_id', id);
+        var urls = [];
+        if (lr && lr.data && lr.data.photo_url) urls.push(lr.data.photo_url);
+        (pr2.data || []).forEach(function (r) { if (r.photo_url) urls.push(r.photo_url); });
+        urls.forEach(function (u) {
+          var marker = '/listing-photos/';
+          var idx = String(u).indexOf(marker);
+          if (idx !== -1) {
+            var p = String(u).slice(idx + marker.length).split('?')[0];
+            try { p = decodeURIComponent(p); } catch (e2) {}
+            if (p && cleanupPaths.indexOf(p) === -1) cleanupPaths.push(p);
+          }
+        });
+      } catch (e) {}
       client.from('listings').delete().eq('id', id).then(function (res) {
         if (res.error) { say('Could not delete: ' + res.error.message); return; }
+        if (cleanupPaths.length) {
+          client.storage.from('listing-photos').remove(cleanupPaths).catch(function () {});
+        }
         say('Ad deleted'); refresh();
       });
       return;

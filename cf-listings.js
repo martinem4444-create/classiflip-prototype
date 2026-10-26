@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.6 — Supabase (marketplace-dev). Preview restored + photo upload (cover photo) + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads.
+/* ClassiFlip real listings v1.7 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads.
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -15,14 +15,19 @@
  *   the form is reopened with its values intact for retry — errors
  *   are never swallowed (a missing profile row, for example,
  *   surfaces as the database's foreign-key error, verbatim).
- * - Photo upload (v1.1): when a logged-in user posts with a picked
- *   cover photo, the photo is uploaded to the listing-photos bucket
- *   and its public URL is stored as the listing's photo_url, so the
- *   card shows the real photo instead of the category icon. If the
- *   upload fails, the post stops and the real error is shown — the
- *   ad is never posted photo-less by accident. No photo picked means
- *   the post works exactly as before. Requires the cf-photo-migration
- *   SQL (photo_url column) to have been run first.
+ * - Multi-photo upload (v1.7): when a logged-in user posts with picked
+ *   photos, EVERY photo uploads to the listing-photos bucket and gets
+ *   one row in listing_photos (position 0 = cover = the starred photo
+ *   the picker moved to index 0). listings.photo_url still gets the
+ *   cover URL, so cards and old queries keep working. Cap: 8 photos
+ *   (the picker already caps at 8; the post flow enforces it with a
+ *   clear message as a backstop). All-or-nothing: uploads happen
+ *   before the listing insert, and any failure rolls back what was
+ *   already created (uploaded objects removed, listing row deleted),
+ *   so a failed post never leaves partial photos or orphaned rows.
+ *   Requires the cf-multiphoto-migration.sql to have been run first;
+ *   until then, photo fetches fail silently and ads render via
+ *   photo_url exactly as before.
  *
  * SAFETY / FALLBACK RULES:
  * - This file contains NO API key or secret. It only reuses
@@ -137,10 +142,14 @@
      becomes the item's photo, so the page's own card markup (which
      shows x.photo when set, else the category icon) shows the real
      photo. Rows without photo_url keep photo '' and render exactly
-     as before. */
-  function mapRow(r) {
+     as before. photos is the full ordered photo list from
+     listing_photos when available, else [photo_url] as a fallback —
+     so single-photo ads (and ads posted before the multi-photo
+     migration) render exactly as before. */
+  function mapRow(r, photosById) {
     var price = Number(r.price);
     if (isNaN(price)) price = 0;
+    var photos = (photosById && photosById[r.id]) || (r.photo_url ? [r.photo_url] : []);
     return {
       id: r.id,
       title: r.title || '',
@@ -151,6 +160,7 @@
       desc: r.description || '',
       icon: ICON_MAP[r.category] || 'laptop',
       photo: r.photo_url || '',
+      photos: photos,
       verified: false,
       live: true
     };
@@ -169,7 +179,26 @@
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       if (res.error || !res.data || !res.data.length) return false;
-      var rows = res.data.map(mapRow);
+      /* Multi-photo (v1.7): one extra read for every fetched ad's
+         photos, ordered by position. If it fails (migration not run
+         yet, table missing), photosById stays null and mapRow falls
+         back to photo_url — the page keeps working exactly as
+         before, just single-photo. */
+      var photosById = null;
+      try {
+        var ids = res.data.map(function (r) { return r.id; });
+        var ph = await client.from('listing_photos')
+          .select('listing_id,photo_url,position')
+          .in('listing_id', ids).order('position', { ascending: true });
+        if (ph && !ph.error && ph.data) {
+          photosById = {};
+          ph.data.forEach(function (p) {
+            if (!photosById[p.listing_id]) photosById[p.listing_id] = [];
+            if (p.photo_url) photosById[p.listing_id].push(p.photo_url);
+          });
+        }
+      } catch (e) { photosById = null; }
+      var rows = res.data.map(function (r) { return mapRow(r, photosById); });
       // v1.5 merge: keep the page's demo filler BELOW the real ads.
       // Snapshot the demo rows once, before the first replace, so later
       // refreshes never duplicate them.
@@ -244,25 +273,47 @@
         return;
       }
       if (isNaN(price)) price = 0;
-      /* Cover photo (v1.1): pendingPhotos[0] is the cover photo — the
-         picker moves a starred photo to index 0. Upload it FIRST so a
-         failed upload stops the post (real error shown, modal stays
-         open, form kept) instead of posting photo-less by accident. */
-      var photoUrl = null;
-      var coverPhoto = null;
+      /* Multi-photo (v1.7): pendingPhotos[0] is the cover photo — the
+         picker moves a starred photo to index 0. EVERY picked photo
+         uploads to the listing-photos bucket, in picker order, BEFORE
+         the listing insert, so a failed upload stops the post (real
+         error shown, form kept) instead of posting photo-less or
+         partial by accident. Cap: 8 photos — the picker already caps
+         at 8, this is the backstop with a clear message. */
+      var MAX_PHOTOS = 8;
+      var picked = [];
       try {
-        if (typeof pendingPhotos !== 'undefined' && pendingPhotos.length) coverPhoto = pendingPhotos[0];
+        if (typeof pendingPhotos !== 'undefined' && pendingPhotos.length) picked = pendingPhotos.slice();
       } catch (e) {}
-      if (coverPhoto) {
-        var blob = dataUrlToBlob(coverPhoto);
-        if (!blob) throw new Error('Could not read the picked photo. Please pick it again.');
-        var photoPath = user.id + '/' + Date.now() + '.jpg';
-        var up = await client.storage.from('listing-photos').upload(photoPath, blob, { contentType: 'image/jpeg', upsert: false });
-        if (up.error) throw up.error;
-        var pub = client.storage.from('listing-photos').getPublicUrl(photoPath);
-        photoUrl = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
-        if (!photoUrl) throw new Error('Could not get a public link for the uploaded photo.');
+      if (picked.length > MAX_PHOTOS) {
+        fail('You can add up to ' + MAX_PHOTOS + ' photos per ad — please remove ' + (picked.length - MAX_PHOTOS) + ' and try again.');
+        return;
       }
+      var uploaded = []; /* [{ path, url }] in picker order (0 = cover) */
+      try {
+        for (var pi = 0; pi < picked.length; pi++) {
+          var blob = dataUrlToBlob(picked[pi]);
+          if (!blob) throw new Error('Could not read photo ' + (pi + 1) + '. Please pick it again.');
+          var photoPath = user.id + '/' + Date.now() + '-' + pi + '.jpg';
+          var up = await client.storage.from('listing-photos').upload(photoPath, blob, { contentType: 'image/jpeg', upsert: false });
+          if (up.error) throw up.error;
+          var pub = client.storage.from('listing-photos').getPublicUrl(photoPath);
+          var purl = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
+          if (!purl) throw new Error('Could not get a public link for photo ' + (pi + 1) + '.');
+          uploaded.push({ path: photoPath, url: purl });
+        }
+      } catch (upErr) {
+        /* Roll back any objects already uploaded, then surface the
+           real error through the outer catch (form kept for retry). */
+        try {
+          if (uploaded.length) await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }));
+        } catch (e) {}
+        throw upErr;
+      }
+      /* Cover URL for backward compat: cards and old queries read
+         photo_url, so it still gets the cover even though every
+         photo also gets a listing_photos row below. */
+      var photoUrl = uploaded.length ? uploaded[0].url : null;
       var newRow = {
         seller_id: user.id,
         title: title,
@@ -278,7 +329,30 @@
       };
       if (photoUrl) newRow.photo_url = photoUrl;
       var ins = await client.from('listings').insert([newRow]).select().single();
-      if (ins.error) throw ins.error;
+      if (ins.error || !ins.data || !ins.data.id) {
+        /* Listing insert failed after uploads: remove the objects so
+           no orphaned storage is left behind. */
+        try {
+          if (uploaded.length) await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }));
+        } catch (e) {}
+        if (ins.error) throw ins.error;
+        throw new Error('Could not create your ad. Please try again.');
+      }
+      /* Photo rows (one per picked photo, position = picker order).
+         If this fails, roll the whole post back: delete the listing
+         (CASCADE removes any photo rows already written) + remove
+         the uploaded objects — no partial post ever survives. */
+      if (uploaded.length) {
+        var photoRows = uploaded.map(function (u, idx) {
+          return { listing_id: ins.data.id, photo_url: u.url, position: idx };
+        });
+        var phIns = await client.from('listing_photos').insert(photoRows);
+        if (phIns.error) {
+          try { await client.from('listings').delete().eq('id', ins.data.id); } catch (e) {}
+          try { await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; })); } catch (e) {}
+          throw phIns.error;
+        }
+      }
       /* Admin email: fire-and-forget, never blocks the post flow. */
       try {
         if (ins.data && ins.data.id) {
@@ -358,6 +432,27 @@
     postAd().then(function () { posting = false; }, function () { posting = false; });
   }, true);
 
+  /* Detail gallery (v1.7): multi-photo ads render every real photo
+     as a thumb. The page's own gallery-thumb handler swaps the main
+     image — it reads data-gallery-image / data-gallery-photo off the
+     clicked thumb — so no new click wiring is needed; the thumbs
+     below carry exactly the attributes it expects. Single-photo (or
+     no-photo) ads use the page's galleryMarkup exactly as before:
+     byte-identical output, no behaviour change. Note: the page's
+     handler labels the main image "Image N of 5" regardless of the
+     real photo count — a cosmetic label only, the images are right. */
+  function escAttr(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function detailGalleryMarkup(x) {
+    var photos = (x.photos && x.photos.length) ? x.photos : [];
+    if (photos.length <= 1) return galleryMarkup(x);
+    var thumbs = photos.map(function (p, i) {
+      return '<button class="gallery-thumb gallery-tone-' + ((i % 5) + 1) + (i === 0 ? ' active' : '') + '" data-gallery-image="' + (i + 1) + '" data-gallery-icon="' + escAttr(x.icon) + '" data-gallery-photo="' + escAttr(p) + '" aria-label="Show image ' + (i + 1) + ' of ' + photos.length + '"><img src="' + escAttr(p) + '" alt="" loading="lazy"></button>';
+    }).join('');
+    return '<div class="detail-gallery"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of ' + photos.length + '"><img src="' + escAttr(photos[0]) + '" alt="" loading="lazy"></div><div class="gallery-thumbs" aria-label="Listing image gallery">' + thumbs + '</div></div>';
+  }
+
   /* View-details guard for real rows. The page's own handler does
      listings.find(y => y.id === Number(dataset.view)) with no
      not-found check, which throws for UUID ids. Non-numeric ids are
@@ -380,7 +475,7 @@
       activeListingId = x.id;
       document.getElementById('detailTitle').textContent = 'Listing details';
       document.getElementById('detailBody').innerHTML =
-        '<div class="detail">' + galleryMarkup(x) + '<div>' +
+        '<div class="detail">' + detailGalleryMarkup(x) + '<div>' +
         '<div class="prototype-tag">LIVE LISTING · ' + safe(x.category).toUpperCase() + '</div>' +
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' +

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>try{var __t=localStorage.getItem('cf-theme');if(__t)document.documentElement.dataset.theme=__t;}catch(e){}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClassiFlip — Dashboard (Prototype)</title><link rel="icon" type="image/png" href="images/logo.png">
+<style>
+:root{--navy:#18365F;--navy2:#0F2547;--orange:#F4511E;--orange2:#D63E0F;--bg:#F4F6FA;--card:#fff;--ink:#1B2A41;--mu:#68788F;--ln:#E4E9F2;--tint:#FFF3EC;--ok:#1E9E6A;--sh:0 10px 30px rgba(24,54,95,.10)}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+.top{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 12px rgba(0,0,0,.18)}.snav{margin-left:auto;display:flex;gap:16px}.snav a{color:#BCD;text-decoration:none;font-size:13.5px}.snav a:hover{color:#fff}@media(max-width:700px){.snav{display:none}}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.3px}.logo{display:flex;align-items:center;gap:10px}.logo img.nl{width:34px;height:34px;object-fit:contain}
+.logo .dot{width:34px;height:34px;border-radius:50%;background:var(--orange);display:grid;place-items:center;font-size:18px}
+.top .who{margin-left:auto;font-size:13px;color:#BCD;display:flex;align-items:center;gap:8px}
+.top .who .av{width:32px;height:32px;border-radius:50%;background:#2A4A7E;display:grid;place-items:center;font-weight:700}
+.wrap{max-width:1060px;margin:0 auto;padding:22px 16px 90px}
+.demobar{display:flex;align-items:center;gap:10px;background:#FFF8E7;border:1px dashed #E3B94E;border-radius:12px;padding:9px 14px;font-size:13px;color:#8A6D1B;margin-bottom:18px}
+.demobar .seg{margin-left:auto}
+.seg{display:inline-flex;background:#fff;border:1px solid var(--ln);border-radius:999px;padding:4px;gap:4px}
+.seg button{border:0;background:none;padding:8px 20px;border-radius:999px;font:inherit;font-weight:700;font-size:13px;color:var(--mu);cursor:pointer}
+.seg button.on{background:var(--navy);color:#fff}
+.viewhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 0 14px;flex-wrap:wrap}
+.viewhead h1{margin:0;font-size:24px;letter-spacing:-.4px}
+.viewhead p{margin:2px 0 0;color:var(--mu);font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:14px 16px;box-shadow:var(--sh)}
+.stat .n{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.stat .l{font-size:12.5px;color:var(--mu);margin-top:2px}
+.stat.hot .n{color:var(--orange)}
+.plan{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-radius:18px;padding:18px 20px;display:flex;align-items:center;gap:16px;margin-bottom:18px;box-shadow:var(--sh);flex-wrap:wrap}
+.plan .badge{background:var(--orange);border-radius:999px;padding:6px 14px;font-weight:800;font-size:13px}
+.plan .meta{font-size:14px;color:#BCD}
+.plan .meta b{color:#fff}
+.plan button{margin-left:auto}
+.upgrade{background:linear-gradient(135deg,#FFF6EF,#FFEBDD);border:1.5px solid #F5C9A8;border-radius:18px;padding:18px 20px;display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.upgrade .t{font-weight:800;font-size:16px}
+.upgrade .s{font-size:13.5px;color:#7A5A3A;margin-top:3px}
+.upgrade button{margin-left:auto}
+.lcard{background:var(--card);border:1px solid var(--ln);border-radius:18px;padding:14px;display:flex;gap:14px;align-items:center;margin-bottom:12px;box-shadow:var(--sh)}
+.lcard img{width:104px;height:104px;object-fit:cover;border-radius:12px;flex:none;background:#E9EDF4}
+.lcard .ph{width:104px;height:104px;border-radius:12px;flex:none;background:linear-gradient(135deg,#DCE4F0,#C4D0E4);display:grid;place-items:center;font-size:34px}
+.lcard .inf{flex:1;min-width:0}
+.lcard .t{font-weight:700;font-size:16px}
+.lcard .p{color:var(--orange);font-weight:800;font-size:17px;margin-top:2px}
+.lcard .s{color:var(--mu);font-size:13px;margin-top:4px}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;margin-left:8px;vertical-align:2px}
+.pill.live{background:#E4F6EC;color:var(--ok)}
+.pill.pause{background:#F1F3F7;color:var(--mu)}
+.pill.boost{background:var(--tint);color:var(--orange2)}
+.pill.pend{background:#FEF3C7;color:#92400E}
+.pill.rej{background:#FDE8E8;color:#9B1C1C}
+.lcard .acts{display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
+.btn{border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+.btn.pri{background:var(--orange);color:#fff}
+.btn.pri:hover{background:var(--orange2)}
+.btn.gho{background:#EFF3F9;color:var(--navy)}
+.btn.gho:hover{background:#E2E9F4}
+.btn.dark{background:var(--navy);color:#fff}
+.btn.danger{color:#B3372A;background:#FDECEA}
+.btn.danger:hover{background:#FAD9D5}
+.btn.danger.armed{background:#B3372A;color:#fff}
+.btn:disabled{opacity:.55;cursor:default}
+.sect{background:var(--card);border:1px solid var(--ln);border-radius:18px;padding:18px;box-shadow:var(--sh);margin-bottom:12px}
+.sect h2{margin:0 0 4px;font-size:17px;letter-spacing:-.2px}
+.sect .hint{font-size:13px;color:var(--mu);margin:0 0 14px}
+.msgrow{display:flex;gap:12px;padding:12px 4px;border-top:1px solid var(--ln);align-items:center}
+.msgrow:first-of-type{border-top:0}
+.msgrow .av{width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:700;flex:none}
+.msgrow .b{flex:1;min-width:0}
+.msgrow .b .u{font-weight:700;font-size:14px}
+.msgrow .b .x{color:var(--mu);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msgrow .t{font-size:12px;color:var(--mu);flex:none}
+.unread{width:9px;height:9px;border-radius:50%;background:var(--orange);flex:none}
+.logozone{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
+.lzprev{width:110px;height:110px;border-radius:20px;border:2px dashed var(--ln);background:#FAFBFD;display:grid;place-items:center;cursor:pointer;overflow:hidden;flex:none;text-align:center}
+.lzprev img{width:100%;height:100%;object-fit:cover;display:block}
+.lzprev .lz-t{font-size:13px;font-weight:700;color:var(--navy)}
+.lzprev .lz-s{font-size:11px;color:var(--mu);margin-top:3px;padding:0 6px}
+.lzmeta{font-size:13px;color:var(--mu)}
+.lzmeta b{color:var(--ink)}
+.mback{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(13,21,38,.62);backdrop-filter:blur(4px);display:none;z-index:60;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mback.on{display:block}
+.mcard{background:#fff;border-radius:22px;padding:26px;max-width:min(520px,calc(100vw - 32px));width:100%;margin:5vh auto;position:relative;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.mx{position:absolute;top:12px;right:16px;border:0;background:none;font-size:24px;cursor:pointer;color:var(--mu)}
+.mcard h3{margin:0 0 4px;font-size:20px;letter-spacing:-.3px}
+.mcard .sub{color:var(--mu);font-size:14px;margin:0 0 16px}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:13px;font-weight:700;margin-bottom:5px;color:var(--navy)}
+.fld input,.fld textarea,.fld select{width:100%;border:1px solid var(--ln);border-radius:12px;padding:12px 14px;font:inherit;font-size:15px;background:#FAFBFD;color:var(--ink)}
+.fld textarea{min-height:90px;resize:vertical}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px}
+.ptile{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#E9EDF4;border:2px solid transparent}
+.ptile img{width:100%;height:100%;object-fit:cover;display:block}
+.ptile.cover{border-color:var(--orange)}
+.ptile .star{position:absolute;top:6px;left:6px;background:rgba(255,255,255,.92);border:0;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px}
+.ptile.add{display:grid;place-items:center;border:2px dashed var(--ln);cursor:pointer;color:var(--mu);font-size:26px;background:#FAFBFD}
+.ptile .rm{position:absolute;top:6px;right:6px;background:rgba(20,25,40,.72);border:0;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px;color:#fff;line-height:1;padding:0}
+.ptile .star{color:#b26a00}
+.ptile.cover .star{background:var(--orange);color:#fff}
+.phint{font-size:12.5px;color:var(--mu);margin:6px 0 14px}
+.boostbox{background:var(--tint);border:1.5px solid #FBD9C2;border-radius:16px;padding:16px;margin-bottom:16px}
+.boostbox ul{margin:8px 0 0;padding-left:20px;font-size:14px;color:var(--ink)}
+.boostbox li{margin:4px 0}
+.pricerow{display:flex;align-items:baseline;justify-content:space-between;margin:4px 0 16px}
+.pricerow .pr{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.pricerow .per{color:var(--mu);font-size:14px}
+.ok{text-align:center;padding:10px 0}
+.ok .big{font-size:44px}
+.ok h2{margin:8px 0 6px}
+.ok p{color:var(--mu);margin:0 0 16px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:13px 22px;border-radius:999px;font-weight:700;font-size:14px;opacity:0;pointer-events:none;transition:.3s;z-index:80}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.hidden{display:none!important}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.lcard{flex-wrap:wrap}.lcard .inf{flex:1 1 55%}.lcard .acts{width:100%;justify-content:flex-start;margin-top:4px}.top .who span.nm{display:none}.f2{grid-template-columns:1fr}.demobar{flex-wrap:wrap}}
+.inv{display:flex;align-items:center;gap:10px;padding:11px 2px;border-top:1px solid var(--ln);font-size:14px}
+.inv .d{flex:1}.inv .d span{display:block;color:var(--mu);font-size:12.5px}
+.payrow{display:flex;align-items:center;gap:12px;border:1px solid var(--ln);border-radius:12px;padding:12px 14px;font-size:14px}
+.payrow .cc{width:44px;height:30px;border-radius:6px;background:linear-gradient(135deg,#2A4A7E,#18365F);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}
+.bars{display:flex;align-items:flex-end;gap:8px;height:130px;padding:10px 4px 0;margin:6px 0 4px}
+.bar{flex:1;background:linear-gradient(180deg,var(--orange),#F9A06A);border-radius:6px 6px 0 0;min-height:8px;position:relative}
+.bar span{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10.5px;color:var(--mu);white-space:nowrap}
+.bdays{display:flex;gap:8px;font-size:10.5px;color:var(--mu)}
+.bdays div{flex:1;text-align:center}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.kv .k{background:#F7F9FC;border:1px solid var(--ln);border-radius:12px;padding:10px;text-align:center}
+.kv .k .n{font-weight:800;font-size:18px}.kv .k .l{font-size:11.5px;color:var(--mu)}
+.pvhead{display:flex;gap:14px;align-items:center;margin-bottom:12px}.pvhead>div{min-width:0}.pvhead .pn,.pvhead .pt{overflow-wrap:anywhere}
+.pvhead .plogo{width:72px;height:72px;border-radius:18px;background:#E9EDF4;display:grid;place-items:center;font-size:28px;overflow:hidden;flex:none}
+.pvhead .plogo img{width:100%;height:100%;object-fit:cover}
+.pvhead .pn{font-weight:800;font-size:19px;letter-spacing:-.3px}
+.pvhead .pt{color:var(--mu);font-size:13.5px;margin-top:2px}
+.pvinfo{font-size:13.5px;color:var(--mu);margin-bottom:12px;line-height:1.7}
+.pvinfo b{color:var(--ink)}
+.pvads{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pvad{border:1px solid var(--ln);border-radius:14px;overflow:hidden}
+.pvad img{width:100%;height:110px;object-fit:cover;display:block;background:#E9EDF4}
+.pvad .t{font-weight:700;font-size:13.5px;padding:8px 10px 0}
+.pvad .pr{color:var(--orange);font-weight:800;padding:2px 10px 10px;font-size:14px}
+.adpv img.hero{width:100%;height:220px;object-fit:cover;border-radius:14px;background:#E9EDF4;display:block}
+.adpv .t{font-size:20px;font-weight:800;margin:12px 0 2px;letter-spacing:-.3px}
+.adpv .pr{color:var(--orange);font-weight:800;font-size:22px}
+.adpv .meta{color:var(--mu);font-size:13px;margin:6px 0 10px}
+.adpv .desc{font-size:14.5px;line-height:1.65;margin-bottom:14px}
+.sellcard{display:flex;gap:12px;align-items:center;border:1px solid var(--ln);border-radius:14px;padding:12px}
+.sellcard .av{width:46px;height:46px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800}
+.sellcard .n{font-weight:700;font-size:14px}.sellcard .s{font-size:12.5px;color:var(--mu)}
+.sellcard button{margin-left:auto}@media(max-width:480px){.sellcard .av{width:40px;height:40px}.sellcard button{flex:1 1 100%;margin-left:0;margin-top:2px}}
+h4.st{margin:18px 0 4px;font-size:14px;color:var(--navy)}
+.pvinfo{overflow-wrap:anywhere}
+.pvad{min-width:0}
+.pvad .t{overflow-wrap:anywhere}
+@media(max-width:480px){.pvads{grid-template-columns:1fr}.mcard{padding:22px 18px}.sellcard{flex-wrap:wrap}.sellcard button{margin-left:0;width:100%}}
+html[data-theme="dark"]{--bg:#07090D;--card:#12161F;--ink:#EDF2F9;--mu:#B9C6DA;--ln:#232B3A;--tint:#2B1A12;--sh:0 10px 30px rgba(0,0,0,.6);color-scheme:dark}html[data-theme="dark"] .mcard{background:#12161F;color:var(--ink)}html[data-theme="dark"] .seg{background:#12161F}html[data-theme="dark"] .pill.boost{color:#fff}html[data-theme="dark"] .btn.gho{background:#1D3A5F;color:#BCD9F7}html[data-theme="dark"] .btn.danger{background:#3A2019;color:#FF9D8A}html[data-theme="dark"] .upgrade{background:linear-gradient(135deg,#20140D,#2B1A12);border-color:#4A3220}html[data-theme="dark"] .upgrade .s{color:#D8BFA8}html[data-theme="dark"] .fld input,html[data-theme="dark"] .fld textarea,html[data-theme="dark"] .fld select{background:#1A212E;color:#EDF2F9;border-color:#2A3448}html[data-theme="dark"] .fld input::placeholder,html[data-theme="dark"] .fld textarea::placeholder{color:#7C8DA6}.tbtn{display:flex;align-items:center;justify-content:center;color:var(--ink);margin-left:12px;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ln);background:var(--card);font-size:16px;cursor:pointer;padding:0;flex:0 0 auto}@media(max-width:700px){.top>.tbtn{margin-left:auto}}</style>
+
+<style>
+/* ClassiFlip mobile bottom tab bar */
+.cftabs{display:none}
+@media(max-width:760px){
+.cftabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:900;background:#FFFFFF;border-top:1px solid #E4E9F2;box-shadow:0 -4px 18px rgba(24,54,95,.10);padding-bottom:env(safe-area-inset-bottom);font-family:inherit}
+.cftabs a{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;padding:6px 2px 4px;color:#68788F;text-decoration:none;font-size:11px;line-height:1.15;font-weight:600;font-family:inherit}
+.cftabs a svg{width:22px;height:22px;flex:none}
+.cftabs a.on{color:#FF6B35;font-weight:800}
+body{padding-bottom:calc(60px + env(safe-area-inset-bottom))}
+html[data-theme="dark"] .cftabs{background:#0F1B2E;border-top-color:#232B3A}
+html[data-theme="dark"] .cftabs a{color:#93A5C0}
+html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
+}
+
+</style>
+<style>.snav a.act{color:#fff}</style><style>/* CF top-nav unified */
+.top .snav a,.top nav a{color:#BCD}
+.top .snav a:hover,.top nav a:hover{color:#fff}
+.top .snav a.act,.top nav a.act{color:#fff}
+</style>
+</head>
+<body>
+<div class="top">
+<div class="logo"><img class="nl" src="images/logo.png" alt="ClassiFlip logo">CLASSIFLIP</div>
+<nav class="snav"><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html" class="act" style="font-weight:700">Dashboard</a><a href="messaging.html">Messages</a><a href="advertise.html">Advertise</a></nav><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+<button class="who" id="accountMenuBtn" style="margin-left:0" type="button" aria-haspopup="true" aria-expanded="false"><span class="av">M</span><span class="nm" id="whoName">Martin · Seller</span></button>
+</div>
+<div class="wrap">
+
+<div class="demobar">&#9881; Prototype demo — viewing dashboard as:
+<span class="seg"><button class="on" id="roleSeller">Private seller</button><button id="roleBiz">Business</button></span>
+</div>
+
+<div class="viewhead">
+<div><h1 id="dashTitle">My listings</h1><p id="dashSub">3 active · Mississauga, ON</p></div>
+<button class="btn pri" id="postBtn" onclick="openEditor('New ad')">+ Post new ad</button>
+</div>
+
+<!-- stats: seller -->
+<div class="stats" id="statsSeller">
+<div class="stat"><div class="n">3</div><div class="l">Active listings</div></div>
+<div class="stat"><div class="n">2,140</div><div class="l">Impressions · last 7 days</div></div>
+<div class="stat"><div class="n">318</div><div class="l">Ad clicks</div></div>
+<div class="stat hot"><div class="n">5</div><div class="l">Unread messages</div></div>
+</div>
+<!-- stats: business -->
+<div class="stats hidden" id="statsBiz">
+<div class="stat"><div class="n">12,480</div><div class="l">Impressions · 30 days</div></div>
+<div class="stat"><div class="n">896</div><div class="l">Ad clicks</div></div>
+<div class="stat"><div class="n">7.2%</div><div class="l">Click-through rate</div></div>
+<div class="stat hot"><div class="n">34</div><div class="l">Buyer messages</div></div>
+</div>
+
+<!-- plan banner: business only -->
+<div class="plan hidden" id="planBiz">
+<span class="badge">Homepage Spotlight</span>
+<div class="meta"><b>$79/mo</b> · renews Nov 18 · 10 vehicle slots · 3 used</div>
+<button class="btn gho" onclick="openBilling()">Manage billing</button>
+</div>
+
+<!-- upgrade nudge: seller only -->
+<div class="upgrade" id="upgradeSeller">
+<div><div class="t">Run a business?</div><div class="s">Unlock ad stats, 20 photos per ad, and your business profile page.</div></div>
+<button class="btn dark" onclick="setRole('biz')">See advertiser view</button>
+</div>
+
+<!-- listings: seller -->
+<div id="listSeller">
+<div class="lcard">
+<img src="images/listing-6.jpg" alt="City commuter bike">
+<div class="inf"><div class="t">City commuter bike <span class="pill live">Live</span> <span class="pill boost">Boosted · 4d left</span></div>
+<div class="p">$180</div><div class="s">1,020 impressions · 148 clicks · 3 messages · posted Oct 12</div></div>
+<div class="acts"><button class="btn gho" onclick="openEditor('City commuter bike')">Edit</button><button class="btn pri" onclick="openBoost('City commuter bike')">Boost · $2.99</button><button class="btn gho danger" onclick="deleteAd(this)">Delete</button></div>
+</div>
+<div class="lcard">
+<img src="images/listing-1.jpg" alt="13-inch laptop">
+<div class="inf"><div class="t">13&Prime; everyday laptop <span class="pill live">Live</span></div>
+<div class="p">$450</div><div class="s">860 impressions · 132 clicks · 2 messages · posted Oct 10</div></div>
+<div class="acts"><button class="btn gho" onclick="openEditor('13&quot; everyday laptop')">Edit</button><button class="btn pri" onclick="openBoost('13&quot; everyday laptop')">Boost · $2.99</button><button class="btn gho danger" onclick="deleteAd(this)">Delete</button></div>
+</div>
+<div class="lcard">
+<img src="images/listing-34.jpg" alt="">
+<div class="inf"><div class="t">Leather sofa, great shape <span class="pill pause">Paused</span></div>
+<div class="p">$120</div><div class="s">260 impressions · 38 clicks · 0 messages · posted Oct 4</div></div>
+<div class="acts"><button class="btn gho" onclick="openEditor('Leather sofa')">Edit</button><button class="btn dark" onclick="toast('Listing resumed — it is live again')">Resume</button><button class="btn gho danger" onclick="deleteAd(this)">Delete</button></div>
+</div>
+</div>
+
+<!-- listings: business -->
+<div id="listBiz" class="hidden">
+<div class="lcard">
+<img src="images/listing-7.jpg" alt="2019 Honda Civic">
+<div class="inf"><div class="t">2019 Honda Civic LX <span class="pill live">Live</span></div>
+<div class="p">$16,900</div><div class="s">8,204 impressions · 412 clicks · 21 messages</div></div>
+<div class="acts"><button class="btn gho" onclick="openEditor('2019 Honda Civic LX')">Edit ad</button><button class="btn gho" onclick="openStats(this)">Stats</button><button class="btn gho danger" onclick="deleteAd(this)">Delete</button></div>
+</div>
+<div class="lcard">
+<img src="images/listing-8.jpg" alt="">
+<div class="inf"><div class="t">2021 Toyota RAV4 LE <span class="pill live">Live</span></div>
+<div class="p">$24,500</div><div class="s">4,276 impressions · 484 clicks · 13 messages</div></div>
+<div class="acts"><button class="btn gho" onclick="openEditor('2021 Toyota RAV4 LE')">Edit ad</button><button class="btn gho" onclick="openStats(this)">Stats</button><button class="btn gho danger" onclick="deleteAd(this)">Delete</button></div>
+</div>
+</div>
+
+<!-- business profile: business only -->
+<div class="sect hidden" id="profileBiz">
+<h2>Business profile</h2>
+<p class="hint">This is what buyers see on your ads and your public page. Keep it sharp.</p>
+<div class="logozone">
+<div class="lzprev" id="lzprev" title="Upload logo">
+<img id="logoImg" class="hidden" alt="Business logo">
+<div id="lzEmpty"><div class="lz-t">+ Upload logo</div><div class="lz-s">PNG or JPG · square works best</div></div>
+</div>
+<input type="file" id="logoInput" accept="image/*" hidden>
+<div class="lzmeta"><b>Your logo</b> appears on every ad, in search results,<br>and at the top of your public business page.</div>
+</div>
+<div class="f2">
+<div class="fld"><label>Display name</label><input id="bpName" value="Dixie Auto Mall"></div>
+<div class="fld"><label>Tagline</label><input id="bpTag" value="Mississauga's friendliest used cars"></div>
+</div>
+<div class="f2">
+<div class="fld"><label>Website</label><input value="https://dixieautomall.example"></div>
+<div class="fld"><label>Phone</label><input value="(905) 555-0134"></div>
+</div>
+<div class="fld"><label>Address</label><input value="1250 Dixie Rd, Mississauga, ON"></div>
+<div class="fld"><label>Hours</label><input value="Mon–Sat 9am–7pm · Sun closed"></div>
+<div class="fld"><label>About the business</label><textarea>Family-run dealership for 15 years. Every vehicle safety-certified, financing available, no-pressure lot — come kick some tires.</textarea></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<button class="btn dark" onclick="toast('Business profile saved')">Save profile</button>
+<button class="btn gho" onclick="openPublic()">Preview public page</button>
+</div>
+</div>
+
+<div class="sect" id="msgSect"><h2>Messages</h2>
+<div class="msgrow" onclick="location.href='messaging.html?thread=sarah'" style="cursor:pointer"><div class="av">S</div><div class="b"><div class="u">Sarah K.</div><div class="x">Hi! Is the bike still available? Could I see it Saturday?</div></div><div class="t">2h</div><div class="unread"></div></div>
+<div class="msgrow" onclick="location.href='messaging.html?thread=dev'" style="cursor:pointer"><div class="av">D</div><div class="b"><div class="u">Dev P.</div><div class="x">Would you take $400 for the laptop?</div></div><div class="t">6h</div><div class="unread"></div></div>
+<div class="msgrow" onclick="location.href='messaging.html?thread=aisha'" style="cursor:pointer"><div class="av">A</div><div class="b"><div class="u">Aisha R.</div><div class="x">Thanks for the quick reply!</div></div><div class="t">1d</div></div>
+<button class="btn gho" style="width:100%;margin-top:8px" onclick="location.href='messaging.html'">Open all messages</button>
+</div>
+
+<!-- orders: signed-in users (filled by cf-dashboard.js; hidden when logged out) -->
+<div class="sect hidden" id="ordersSect">
+<h2>My orders</h2>
+<p class="hint">Reserved packages. Pay by Interac e-Transfer to mm905media@gmail.com with your order number in the message — Martin activates your package, usually the same day.</p>
+<div id="ordersList"></div>
+</div>
+
+<!-- boosts: signed-in users (filled by cf-dashboard.js; hidden when logged out) -->
+<div class="sect hidden" id="boostsSect">
+<h2>My boosts</h2>
+<p class="hint">Boosts you reserved. Send $2.99 by Interac e-Transfer to mm905media@gmail.com with your BST code in the message — Martin activates your boost, usually the same day. A boost runs 7 days from activation, pinned first in its category.</p>
+<div id="boostsList"></div>
+</div>
+
+<!-- admin: is_admin users only (filled by cf-dashboard.js) -->
+<div class="sect hidden" id="adminSect">
+<h2>Admin — approval queue</h2>
+<p class="hint">Only visible to admins. Approving an ad makes it public immediately; rejecting keeps it hidden.</p>
+<div class="notice">Admin actions need the step-4 SQL run in Supabase first (file: supabase/cf-step4-admin-rls.sql). If Approve / Reject / Activate errors, that SQL is the missing step.</div>
+<h3 style="margin:16px 0 8px">Ads awaiting approval</h3>
+<div id="adminAdsList"></div>
+<h3 style="margin:16px 0 8px">Orders</h3>
+<div id="adminOrdersList"></div>
+<h3 style="margin:16px 0 8px">Expiring within 3 days</h3>
+<div id="adminExpiringList"></div>
+<h3 style="margin:16px 0 8px">Boosts awaiting activation</h3>
+<div class="notice">Boost actions need the step-5 SQL run in Supabase first (file: supabase/cf-boost-migration.sql). If Activate / Expire errors, that SQL is the missing step.</div>
+<div id="adminBoostsList"></div>
+<h3 style="margin:16px 0 8px">Active boosts</h3>
+<div id="adminBoostsActiveList"></div>
+<h3 style="margin:16px 0 8px">Boosts expiring within 3 days</h3>
+<div id="adminBoostsExpiringList"></div>
+</div>
+</div>
+
+<!-- ============ AD EDITOR MODAL ============ -->
+<div class="mback" id="mEditor"><div class="mcard">
+<button class="mx" onclick="closeM('mEditor')">&times;</button>
+<h3 id="edTitle">Edit ad</h3>
+<p class="sub" id="edSub">Changes go live instantly. Drafts auto-save.</p>
+<div class="fld"><label>Photos <span style="color:var(--mu);font-weight:400">(tap &#9733; for cover)</span></label>
+<div class="pgrid" id="pgrid"></div>
+<input type="file" id="edPhotoInput" accept="image/*" multiple hidden>
+<div class="phint" id="photoHint">Free accounts: up to 8 photos · Business: up to 20</div></div>
+<div class="fld"><label>Title</label><input id="edName" value=""></div>
+<div class="f2">
+<div class="fld"><label>Price (CAD)</label><input id="edPrice" inputmode="decimal" value=""></div>
+<div class="fld"><label>Category</label><select id="edCat"><option>Cars</option><option>Electronics</option><option>Home</option><option>Sports</option><option>Clothes</option></select></div>
+</div>
+<div class="fld"><label>Location</label><input value="Mississauga, ON"></div>
+<div class="fld"><label>Description</label><textarea id="edDesc">Clean, well looked after. Message me with any questions — happy to show it evenings or weekends.</textarea></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<button class="btn pri" style="flex:1" id="edSave" onclick="saveEditor()">Save changes</button>
+<button class="btn gho" onclick="openAdPreview()">Preview</button>
+</div>
+</div></div>
+
+<!-- ============ BOOST MODAL ============ -->
+<div class="mback" id="mBoost"><div class="mcard">
+<button class="mx" onclick="closeM('mBoost')">&times;</button>
+<div id="boostForm">
+<h3>Boost this ad</h3>
+<p class="sub" id="boostFor">City commuter bike</p>
+<div class="boostbox"><b>What a boost does</b>
+<ul><li>Pinned to the top of its category for 7 days</li><li>Rotates through the homepage featured strip</li><li>Boosted ads get ~3&times; more views on average</li></ul></div>
+<div class="pricerow"><div><div class="pr">$2.99</div><div class="per">one-time · 7 days</div></div><div class="pill boost">No subscription</div></div>
+<button class="btn pri" style="width:100%" id="boostFakePay" onclick="boostPay()">Pay $2.99 &amp; boost</button>
+<button class="btn pri" style="width:100%;display:none" id="boostRealPay">Reserve with Interac e-Transfer · $2.99</button>
+<p class="sub" style="text-align:center;margin:12px 0 0" id="boostPayNote">Secure checkout · Interac, Visa, Mastercard</p>
+<div id="boostRealError" class="notice hidden"></div>
+</div>
+<div id="boostDone" class="ok hidden"><div class="big">&#128640;</div><h2>Ad boosted!</h2><p>Your ad jumps to the top for the next 7 days.<br>Watch the views roll in.</p>
+<button class="btn dark" onclick="closeM('mBoost')">Back to my listings</button></div>
+<div id="boostRealDone" class="ok hidden"></div>
+</div></div>
+
+<!-- ============ BILLING MODAL ============ -->
+<div class="mback" id="mBilling"><div class="mcard">
+<button class="mx" onclick="closeM('mBilling')">&times;</button>
+<h3>Billing</h3><p class="sub">Dixie Auto Mall · Dealer account</p>
+<div class="plan" style="margin-bottom:14px"><span class="badge">Homepage Spotlight</span>
+<div class="meta"><b>$79/mo</b> · next invoice Nov 18</div></div>
+<div class="fld"><label>Payment method</label>
+<div class="payrow"><div class="cc">VISA</div><div><b>···· 4242</b><div style="color:var(--mu);font-size:12.5px">Expires 08/28</div></div>
+<button class="btn gho" style="margin-left:auto;padding:8px 14px" onclick="toast('Card update form would open here')">Change</button></div></div>
+<h4 class="st">Invoices</h4>
+<div class="inv"><div class="d"><b>Oct 18, 2026</b><span>Homepage Spotlight · monthly</span></div><b>$79.00</b><span class="pill live">Paid</span></div>
+<div class="inv"><div class="d"><b>Sep 18, 2026</b><span>Homepage Spotlight · monthly</span></div><b>$79.00</b><span class="pill live">Paid</span></div>
+<div class="inv"><div class="d"><b>Aug 18, 2026</b><span>Featured listing · founding rate</span></div><b>$14.50</b><span class="pill live">Paid</span></div>
+<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+<button class="btn pri" style="flex:1" onclick="openPlan()">Upgrade plan</button>
+<button class="btn gho" onclick="if(confirm('Cancel your subscription at the end of the billing period?'))toast('Subscription set to cancel Nov 18')">Cancel</button>
+</div></div></div>
+
+<!-- ============ PLAN PICKER ============ -->
+<div class="mback" id="mPlan"><div class="mcard">
+<button class="mx" onclick="closeM('mPlan')">&times;</button>
+<h3>Change plan</h3><p class="sub">Display advertising &middot; takes effect on your next invoice (Nov 18).</p>
+<div id="planList"></div>
+</div></div>
+
+<!-- ============ PUBLIC PAGE PREVIEW ============ -->
+<div class="mback" id="mPublic"><div class="mcard">
+<button class="mx" onclick="closeM('mPublic')">&times;</button>
+<h3>Public business page</h3><p class="sub">Exactly what buyers see.</p>
+<div id="pvBody"></div>
+</div></div>
+
+<!-- ============ PER-AD STATS ============ -->
+<div class="mback" id="mStats"><div class="mcard">
+<button class="mx" onclick="closeM('mStats')">&times;</button>
+<h3 id="stTitle">Ad stats</h3><p class="sub">Last 7 days</p>
+<div class="bars" id="stBars"></div>
+<div class="bdays"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+<div class="kv"><div class="k"><div class="n" id="stImp">–</div><div class="l">Impressions</div></div>
+<div class="k"><div class="n" id="stClk">–</div><div class="l">Clicks</div></div>
+<div class="k"><div class="n" id="stMsg">–</div><div class="l">Messages</div></div></div>
+</div></div>
+
+<!-- ============ BUYER AD PREVIEW ============ -->
+<div class="mback" id="mAdPrev"><div class="mcard">
+<button class="mx" onclick="closeM('mAdPrev')">&times;</button>
+<h3>Buyer preview</h3><p class="sub">Exactly what buyers see.</p>
+<div class="adpv" id="adpvBody"></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._h);e._h=setTimeout(()=>e.classList.remove('on'),2400);}
+function closeM(id){$(id).classList.remove('on');document.body.style.overflow='';}
+function openM(id){$(id).classList.add('on');document.body.style.overflow='hidden';}
+document.querySelectorAll('.mback').forEach(b=>b.addEventListener('click',e=>{if(e.target===b)closeM(b.id);}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.mback.on').forEach(b=>closeM(b.id));});
+// role switching (demo)
+let ROLE='seller';
+function setRole(r){
+ROLE=r;
+const biz=r==='biz';
+$('roleSeller').classList.toggle('on',!biz);
+$('roleBiz').classList.toggle('on',biz);
+['statsBiz','planBiz','listBiz','profileBiz'].forEach(id=>$(id).classList.toggle('hidden',!biz));
+['statsSeller','upgradeSeller','listSeller'].forEach(id=>$(id).classList.toggle('hidden',biz));
+$('dashTitle').textContent=biz?'Advertiser dashboard':'My listings';
+$('dashSub').textContent=biz?'Dixie Auto Mall · Dealer account':'3 active · Mississauga, ON';
+$('postBtn').textContent=biz?'+ New ad':'+ Post new ad';
+$('whoName').textContent=biz?'Martin · Dixie Auto Mall':'Martin · Seller';
+$('photoHint').textContent=biz?'Business account: up to 20 photos':'Free account: up to 8 photos';
+window.scrollTo({top:0,behavior:'smooth'});
+}
+$('roleSeller').onclick=()=>setRole('seller');
+$('roleBiz').onclick=()=>setRole('biz');
+// logo upload
+$('lzprev').onclick=()=>$('logoInput').click();
+$('logoInput').addEventListener('change',e=>{
+const f=e.target.files[0];if(!f)return;
+const rd=new FileReader();
+rd.onload=()=>{$('logoImg').src=rd.result;$('logoImg').classList.remove('hidden');$('lzEmpty').classList.add('hidden');toast('Logo uploaded');};
+rd.readAsDataURL(f);
+});
+$('edPhotoInput').addEventListener('change',e=>{
+const max=editorPhotoLimit(),grid=$('pgrid');
+const current=grid.querySelectorAll('.ptile:not(.add)').length;
+const files=Array.from(e.target.files||[]).slice(0,Math.max(0,max-current));
+if(!files.length&&e.target.files&&e.target.files.length){toast('Photo limit reached ('+max+')');}
+files.forEach(f=>{
+if(!f.type||f.type.indexOf('image/')!==0)return;
+const rd=new FileReader();
+rd.onload=()=>{
+const d=document.createElement('div');d.className='ptile';
+d.innerHTML='<img src="'+rd.result+'"><button class="star" title="Cover photo">\u2605</button><button class="rm" title="Remove photo">\u00D7</button>';
+grid.insertBefore(d,grid.querySelector('.ptile.add'));
+};
+rd.readAsDataURL(f);
+});
+e.target.value='';
+});
+// editor photos (demo tiles)
+const PHOTOS={bike:'images/listing-6.jpg',laptop:'images/listing-1.jpg',car:'images/listing-7.jpg'};
+function openEditor(name){
+const isNew=name.indexOf('New')===0;
+$('edTitle').textContent=isNew?name:'Edit ad';
+$('edSub').textContent=isNew?'Fill in the details \u2014 your ad goes live the moment you post it.':'Changes go live instantly. Drafts auto-save.';
+$('edName').value=isNew?'':name;
+$('edName').placeholder=isNew?'What are you selling?':'';
+if(isNew){$('edPrice').value='';$('edDesc').value='';}
+$('edDesc').placeholder=isNew?'Condition, size, pickup details\u2026':'';
+$('edSave').textContent=isNew?'Post ad':'Save changes';
+const g=$('pgrid');g.innerHTML='';
+const key=/bike/i.test(name)?'bike':/laptop/i.test(name)?'laptop':/civic|rav4/i.test(name)?'car':null;
+if(key){g.innerHTML='<div class="ptile cover"><img src="'+PHOTOS[key]+'"><button class="star" title="Cover photo">&#9733;</button><button class="rm" title="Remove photo">&times;</button></div>';}
+g.innerHTML+='<div class="ptile add" title="Add photo" onclick="pickEditorPhoto()">+</div>';
+openM('mEditor');
+}
+function pickEditorPhoto(){$('edPhotoInput').click();}
+function editorPhotoLimit(){return ROLE==='biz'?20:8;}
+function saveEditor(){
+const isNew=$('edTitle').textContent.indexOf('New')===0;
+const t=$('edName').value.trim()||'Untitled ad';
+const pr=$('edPrice').value.trim();
+if(isNew){
+const biz=ROLE==='biz';
+const card=document.createElement('div');card.className='lcard';
+card.innerHTML='<div class="ph">'+(biz?'&#127978;':'&#128722;')+'</div>'
++'<div class="inf"><div class="t">'+esc(t)+' <span class="pill live">Live</span></div>'
++'<div class="p">'+(pr?'$'+esc(pr):'\u2014')+'</div>'
++'<div class="s">0 impressions \u00B7 0 clicks \u00B7 0 messages \u00B7 posted just now</div></div>'
++'<div class="acts"><button class="btn gho" data-edcard>'+(biz?'Edit ad':'Edit')+'</button>'
++(biz?'<button class="btn gho" data-stcard>Stats</button>':'<button class="btn pri" data-bocard>Boost \u00B7 $2.99</button>')+'<button class="btn gho danger" data-delcard>Delete</button></div>';
+const list=$(biz?'listBiz':'listSeller');
+list.insertBefore(card,list.firstChild);
+}
+closeM('mEditor');
+toast(isNew?'Ad posted \u2014 it is live now':'Ad saved \u2014 changes are live');
+}
+document.addEventListener('click',e=>{
+const edb=e.target.closest('[data-edcard]');
+if(edb){openEditor(edb.closest('.lcard').querySelector('.t').childNodes[0].textContent.trim());return;}
+const bob=e.target.closest('[data-bocard]');
+if(bob){openBoost(bob.closest('.lcard').querySelector('.t').childNodes[0].textContent.trim());return;}
+const stb=e.target.closest('[data-stcard]');
+if(stb){openStats(stb);return;}
+const delb=e.target.closest('[data-delcard]');
+if(delb){deleteAd(delb);return;}
+const star=e.target.closest('.ptile .star');
+if(star){const grid=star.closest('.pgrid');if(grid)grid.querySelectorAll('.ptile').forEach(t=>t.classList.remove('cover'));star.closest('.ptile').classList.add('cover');return;}
+const rmt=e.target.closest('.ptile .rm');
+if(rmt){const tile=rmt.closest('.ptile');const wasCover=tile.classList.contains('cover');const grid=tile.closest('.pgrid');tile.remove();if(wasCover){const first=grid.querySelector('.ptile:not(.add)');if(first)first.classList.add('cover');}}
+});
+function deleteAd(btn){
+const card=btn.closest('.lcard');if(!card)return;
+if(btn.dataset.armed){card.style.transition='opacity .25s';card.style.opacity='0';setTimeout(()=>{card.remove();toast('Ad deleted');},260);}
+else{btn.dataset.armed='1';btn.textContent='Confirm?';btn.classList.add('armed');setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent='Delete';btn.classList.remove('armed');}},3000);}
+}
+function openBoost(name){
+$('boostFor').textContent=name;
+$('boostForm').classList.remove('hidden');
+$('boostDone').classList.add('hidden');
+openM('mBoost');
+}
+let _ac=null;
+function playFanfare(){
+try{
+_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();
+if(_ac.state==='suspended')_ac.resume();
+const t0=_ac.currentTime+0.02;
+const note=(f,start,dur,vol)=>{
+const o=_ac.createOscillator(),o2=_ac.createOscillator(),g=_ac.createGain();
+o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;
+const g2=_ac.createGain();g2.gain.value=0.4;
+o.connect(g);o2.connect(g2);g2.connect(g);g.connect(_ac.destination);
+g.gain.setValueAtTime(0.0001,t0+start);
+g.gain.exponentialRampToValueAtTime(vol,t0+start+0.015);
+g.gain.exponentialRampToValueAtTime(0.0001,t0+start+dur);
+o.start(t0+start);o2.start(t0+start);o.stop(t0+start+dur+0.05);o2.stop(t0+start+dur+0.05);
+};
+note(523.25,0,0.35,0.22);note(659.25,0.11,0.35,0.22);note(783.99,0.22,0.35,0.22);
+[523.25,659.25,783.99,1046.50].forEach(f=>note(f,0.36,1.1,0.13));
+note(1567.98,0.40,0.5,0.06);note(2093.00,0.48,0.5,0.05);
+}catch(e){}
+}
+document.addEventListener('pointerdown',()=>{try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();}catch(e){}},{passive:true});
+function boostPay(){
+const b=document.querySelector('#mBoost .btn.pri');b.disabled=true;b.textContent='Processing…';
+setTimeout(()=>{b.disabled=false;b.textContent='Pay $2.99 & boost';
+playFanfare();$('boostForm').classList.add('hidden');$('boostDone').classList.remove('hidden');},1200);
+}
+function openBilling(){openM('mBilling');}
+const PLANS=[{n:'Featured placement',p:29,d:'Your logo in the homepage featured strip'},{n:'Homepage Spotlight',p:79,d:'Hero placement on the homepage'},{n:'Messages sponsor rail',p:79,d:'Desktop-only rail beside every chat'},{n:'Category Takeover',p:149,d:'Own an entire category page'}];
+let CURPLAN='Homepage Spotlight';
+function openPlan(){renderPlans();closeM('mBilling');openM('mPlan');}
+function renderPlans(){$('planList').innerHTML=PLANS.map((x,i)=>{const cur=x.n===CURPLAN;return '<div class="sellcard" style="margin-bottom:10px"><div class="av" style="background:'+(cur?'var(--ok)':'var(--navy)')+'">'+(cur?'&#10003;':'&#9733;')+'</div><div style="flex:1;min-width:0"><div class="n">'+x.n+'</div><div class="s">$'+x.p+'/mo &middot; '+x.d+'</div></div>'+(cur?'<span class="pill live" style="margin-left:auto">Current</span>':'<button class="btn pri" style="margin-left:auto" onclick="switchPlan('+i+')">Switch</button>')+'</div>';}).join('');}
+function switchPlan(i){const x=PLANS[i];CURPLAN=x.n;closeM('mPlan');const b=document.querySelector('#mBilling .badge');if(b)b.textContent=x.n;const mt=document.querySelector('#mBilling .plan .meta');if(mt)mt.innerHTML='<b>$'+x.p+'/mo</b> &middot; next invoice Nov 18';openM('mBilling');toast('Plan changed to '+x.n+' \u2014 starts Nov 18');}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function openPublic(){
+const logo=$('logoImg').classList.contains('hidden')?'':'<img src="'+$('logoImg').src+'">';
+const nm=esc($('bpName').value||'Your business'), tg=esc($('bpTag').value||'');
+const vals=[...document.querySelectorAll('#profileBiz .fld input')].map(i=>i.value);
+const web=esc(vals[2]||''), pho=esc(vals[3]||''), adr=esc(vals[4]||''), hrs=esc(vals[5]||'');
+const about=esc(document.querySelector('#profileBiz .fld textarea').value||'');
+$('pvBody').innerHTML=
+'<div class="pvhead"><div class="plogo">'+(logo||'&#127978;')+'</div><div><div class="pn">'+nm+'</div><div class="pt">'+tg+'</div></div></div>'
++'<div class="pvinfo"><b>Hours:</b> '+hrs+'<br><b>Address:</b> '+adr+'<br><b>Phone:</b> '+pho+'<br><b>Web:</b> '+web+'</div>'
++'<p style="font-size:14px;line-height:1.65">'+about+'</p>'
++'<h4 class="st">Current ads</h4><div class="pvads">'
++'<div class="pvad"><img src="'+PHOTOS.car+'"><div class="t">2019 Honda Civic LX</div><div class="pr">$16,900</div></div>'
++'<div class="pvad"><div style="height:110px;display:grid;place-items:center;font-size:40px;background:#E9EDF4">&#128663;</div><div class="t">2021 Toyota RAV4 LE</div><div class="pr">$24,500</div></div>'
++'</div><button class="btn pri" style="width:100%;margin-top:16px" onclick="toast(\u0027Message thread would open here\u0027)">Message '+nm+'</button>';
+openM('mPublic');
+}
+const STATS={'2019 Honda Civic LX':{imp:'8,204',clk:'412',msg:'21',bars:[42,58,50,72,66,90,78]},
+'2021 Toyota RAV4 LE':{imp:'4,276',clk:'484',msg:'13',bars:[30,44,38,52,48,64,58]}};
+function openStats(btn){
+const card=btn.closest('.lcard');
+const name=card.querySelector('.t').childNodes[0].textContent.trim();
+const d=STATS[name]||{imp:'–',clk:'–',msg:'–',bars:[40,50,45,55,50,60,52]};
+$('stTitle').textContent=name;
+$('stImp').textContent=d.imp;$('stClk').textContent=d.clk;$('stMsg').textContent=d.msg;
+$('stBars').innerHTML=d.bars.map(v=>'<div class="bar" style="height:'+v+'%"><span>'+v+'</span></div>').join('');
+openM('mStats');
+}
+function openAdPreview(){
+const t=esc($('edName').value||'Untitled ad'), pr=esc($('edPrice').value||'\u2014');
+const d=esc($('edDesc').value||'');
+let cover='';
+const covTile=document.querySelector('#pgrid .ptile.cover')||document.querySelector('#pgrid .ptile:not(.add)');
+if(covTile){const im=covTile.querySelector('img');if(im)cover=im.getAttribute('src');}
+if(!cover){if(/rav4/i.test(t))cover='images/listing-8.jpg';const key=/bike/i.test(t)?'bike':/laptop/i.test(t)?'laptop':/civic/i.test(t)?'car':null;if(key)cover=PHOTOS[key];}
+$('adpvBody').innerHTML=(cover?'<img class="hero" src="'+cover+'">':'')
++'<div class="t">'+t+'</div><div class="pr">$'+pr+'</div>'
++'<div class="meta"><span>'+(ROLE==='biz'?'Business':'Private seller')+'</span><span>\u2022</span><span>Mississauga</span></div>'
++(d?'<p>'+d+'</p>':'')
++'<div class="notice">Buyer preview \u2014 this is how your ad will look.</div>';
+openM('mAdPrev');
+}
+</script>
+<script>var CF_DARK_DEFAULT=false;var CF_MOON='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';var CF_SUN='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';function cfTheme(){var h=document.documentElement,cur=h.dataset.theme||(CF_DARK_DEFAULT?'dark':'light'),nxt=cur==='dark'?'light':'dark';h.dataset.theme=nxt;try{localStorage.setItem('cf-theme',nxt)}catch(e){}cfThemeBtn()}function cfThemeBtn(){var b=document.getElementById('themeBtn');if(!b)return;var cur=document.documentElement.dataset.theme||(CF_DARK_DEFAULT?'dark':'light');b.innerHTML=cur==='dark'?CF_SUN:CF_MOON;b.setAttribute('aria-label',cur==='dark'?'Switch to light mode':'Switch to dark mode')}document.addEventListener('DOMContentLoaded',cfThemeBtn);</script>
+<nav class="cftabs" aria-label="ClassiFlip mobile navigation"><a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5L5.2 4h13.6l1.7 5.5"/><path d="M3.5 9.5h17"/><path d="M5.2 9.5V20h13.6V9.5"/><path d="M9.6 20v-5.2h4.8V20"/></svg><span>Marketplace</span></a><a href="dashboard.html" class="on" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg><span>Dashboard</span></a><a href="messaging.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.5-4.9a8.5 8.5 0 1 1 16-4.1z"/></svg><span>Messages</span></a><a href="advertise.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.2v3.6h2.8L19 19V5L6.8 10.2H4z"/><path d="M8.2 15.2L9.7 20h2.1l-1.4-4.6"/><path d="M18.8 9.8a3.6 3.6 0 0 1 0 4.9"/></svg><span>Advertise</span></a></nav>
+<script>var loggedIn=false;function updateAccountUI(){if(window.CFDashboard)window.CFDashboard.refresh();}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="cf-auth.js"></script>
+<script src="cf-account.js"></script>
+<script src="cf-messages.js"></script>
+<script src="cf-dashboard.js"></script>
+</body>
+</html>

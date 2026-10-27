@@ -389,6 +389,24 @@
         return;
       }
       if (isNaN(price)) price = 0;
+      /* Boost-at-post (v1.12): the Cars form's private-seller option
+         is now Boost $2.99 (replacing the stale '$5 bump to top',
+         which bought nothing — the real path never read the plan).
+         Read BEFORE any reset below. The option only exists on the
+         Cars form; package holders never see the dropdown, so they
+         reach this only if a value lingered — a paid boost on top
+         of a package post is coherent, not contradictory. The boost
+         is reserved only AFTER the listing insert succeeds, and the
+         live-listing gate in canRealBoost deliberately does NOT
+         apply here: this is a pending ad, and the Pending boost
+         waits for admin activation (7 days from activation),
+         ideally when the ad is approved. */
+      var wantBoost = false, boostCode = null, boostErr = null;
+      try {
+        var _planEl = document.getElementById('carPostingPlan');
+        var _catEl = document.getElementById('adCategory');
+        wantBoost = !!(_planEl && _catEl && _catEl.value === 'Cars' && _planEl.value === 'boost');
+      } catch (e) {}
       /* Multi-photo (v1.7): pendingPhotos[0] is the cover photo — the
          picker moves a starred photo to index 0. EVERY picked photo
          uploads to the listing-photos bucket, in picker order, BEFORE
@@ -483,6 +501,31 @@
           notifyAdminPendingAd({ id: ins.data.id, title: title, category: newRow.category, price: price });
         }
       } catch (e) {}
+      /* Boost-at-post reserve: a Pending boosts row for the new
+         listing, mirroring reserveRealBoost (same $2.99 Interac
+         reserve, same DB-generated BST code, same rollback on a
+         code-less row). RLS boosts_create allows own-listing
+         inserts regardless of listing status, so no migration is
+         needed. Failure here must NOT fail the post: the ad is
+         already pending, and the seller can still boost it from
+         the ad once it goes live. */
+      if (wantBoost) {
+        try {
+          var bins = await client.from('boosts').insert([{
+            listing_id: ins.data.id, buyer_id: user.id,
+            amount: 2.99, payment_method: 'etransfer', status: 'Pending'
+          }]).select('id').single();
+          if (bins.error || !bins.data || !bins.data.id) throw bins.error || new Error('Could not reserve the boost.');
+          var bcode = await client.from('boosts').select('payment_ref').eq('id', bins.data.id).maybeSingle();
+          boostCode = bcode && bcode.data && bcode.data.payment_ref;
+          if (bcode.error || !boostCode) {
+            try { await client.from('boosts').delete().eq('id', bins.data.id); } catch (e2) {}
+            throw new Error('The step-5 SQL has not been run yet — boosts need it first (BST codes).');
+          }
+        } catch (berr) {
+          boostErr = berr && berr.message ? berr.message : 'Something went wrong.';
+        }
+      }
       /* Consume the preview ad, mirroring the page's own preview-post
          handler (which nulls window._pendingAd before unshifting). */
       try { window._pendingAd = null; } catch (e) {}
@@ -513,8 +556,33 @@
       var mp = document.getElementById('marketplace');
       if (mp) mp.scrollIntoView({ behavior: 'smooth' });
       var rn = document.getElementById('resultsNote');
-      if (rn) rn.textContent = 'Your ad is pending approval — it will appear once Martin approves it.';
-      if (noticeEl) noticeEl.textContent = 'Your ad was posted and is awaiting approval.';
+      if (boostCode) {
+        if (rn) rn.textContent = 'Your ad is pending approval — and your Boost is reserved (see the Boost instructions).';
+        if (noticeEl) noticeEl.textContent = 'Your ad was posted and is awaiting approval. Boost reserved — see the instructions.';
+        /* Boost instructions modal, mirroring reserveRealBoost's
+           success screen: the seller needs the BST code and the
+           Interac address before anything else. Opens last, on
+           top of the refreshed grid. */
+        try {
+          document.getElementById('detailTitle').textContent = 'Boost reserved';
+          document.getElementById('detailBody').innerHTML =
+            '<div style="max-width:440px;margin:0 auto;text-align:center">' +
+            '<div style="font-size:44px;line-height:1">🚀</div>' +
+            '<h3 style="margin:10px 0 6px">Boost reserved — send $2.99 to activate it</h3>' +
+            '<p>Send <b>$2.99</b> by Interac e-Transfer to <b>mm905media@gmail.com</b> with <b>' + safe(boostCode) + '</b> in the message.<br>' +
+            'Your ad is still pending approval — Martin activates your boost once the ad is approved, and it then runs 7 days, pinned first in its category.</p>' +
+            '<p>Boost ref: <b>' + safe(boostCode) + '</b> · Ad: ' + safe(title) + '</p>' +
+            '<button class="primary" id="cfPostBoostDone">Done</button>' +
+            '</div>';
+          if (typeof closeModals === 'function') closeModals();
+          if (typeof openModal === 'function') openModal('detailModal');
+          var _bd = document.getElementById('cfPostBoostDone');
+          if (_bd && typeof closeModals === 'function') _bd.addEventListener('click', function () { closeModals(); });
+        } catch (e) {}
+      } else {
+        if (rn) rn.textContent = boostErr ? 'Your ad is pending approval — it will appear once Martin approves it. (The Boost reservation failed: ' + boostErr + ' — you can still boost the ad once it is live.)' : 'Your ad is pending approval — it will appear once Martin approves it.';
+        if (noticeEl) noticeEl.textContent = boostErr ? 'Your ad was posted and is awaiting approval. Boost reservation failed — boost it from the ad once live.' : 'Your ad was posted and is awaiting approval.';
+      }
     } catch (err) {
       fail('Could not post your ad: ' + (err && err.message ? err.message : 'Something went wrong. Please try again.'));
     }

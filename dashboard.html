@@ -270,19 +270,19 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="lzmeta"><b>Your logo</b> appears on every ad, in search results,<br>and at the top of your public business page.</div>
 </div>
 <div class="f2">
-<div class="fld"><label>Display name</label><input id="bpName" value="Dixie Auto Mall"></div>
-<div class="fld"><label>Tagline</label><input id="bpTag" value="Mississauga's friendliest used cars"></div>
+<div class="fld"><label>Display name</label><input id="bpName" value=""></div>
+<div class="fld"><label>Tagline</label><input id="bpTag" value=""></div>
 </div>
 <div class="f2">
-<div class="fld"><label>Website</label><input value="https://dixieautomall.example"></div>
-<div class="fld"><label>Phone</label><input value="(905) 555-0134"></div>
+<div class="fld"><label>Website</label><input id="bpWeb" value=""></div>
+<div class="fld"><label>Phone</label><input id="bpPhone" value=""></div>
 </div>
-<div class="fld"><label>Address</label><input value="1250 Dixie Rd, Mississauga, ON"></div>
-<div class="fld"><label>Hours</label><input value="Mon–Sat 9am–7pm · Sun closed"></div>
-<div class="fld"><label>About the business</label><textarea>Family-run dealership for 15 years. Every vehicle safety-certified, financing available, no-pressure lot — come kick some tires.</textarea></div>
+<div class="fld"><label>Address</label><input id="bpAddr" value=""></div>
+<div class="fld"><label>Hours</label><input id="bpHours" value=""></div>
+<div class="fld"><label>About the business</label><textarea id="bpAbout"></textarea></div>
 <div style="display:flex;gap:10px;flex-wrap:wrap">
-<button class="btn dark" onclick="toast('Business profile saved')">Save profile</button>
-<button class="btn gho" onclick="openPublic()">Preview public page</button>
+<button class="btn dark" id="bpSaveBtn">Save profile</button>
+<button class="btn gho" id="bpPreviewBtn">Preview public page</button>
 </div>
 </div>
 
@@ -451,7 +451,7 @@ $('lzprev').onclick=()=>$('logoInput').click();
 $('logoInput').addEventListener('change',e=>{
 const f=e.target.files[0];if(!f)return;
 const rd=new FileReader();
-rd.onload=()=>{$('logoImg').src=rd.result;$('logoImg').classList.remove('hidden');$('lzEmpty').classList.add('hidden');toast('Logo uploaded');};
+rd.onload=()=>{$('logoImg').src=rd.result;$('logoImg').classList.remove('hidden');$('lzEmpty').classList.add('hidden');toast('Logo ready — save your profile to publish it');};
 rd.readAsDataURL(f);
 });
 $('edPhotoInput').addEventListener('change',e=>{

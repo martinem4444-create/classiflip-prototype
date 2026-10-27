@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.10 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10).
+/* ClassiFlip real listings v1.11 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -41,6 +41,19 @@
  *   If the RPC fails (step-5 SQL not run yet), the set is empty
  *   and the page renders exactly as before — no pins, no badges.
  *
+ * - Dealer pages (v1.11): alongside the listings fetch, the public
+ *   business_profiles table is read for the fetched sellers' ids, and
+ *   window.__cfStorefronts marks which sellers have a public page.
+ *   The page's card + detail templates show a "Visit dealer's page"
+ *   button only for those sellers; private sellers never have rows
+ *   (the migration's trigger enforces advertiser-only), so they get
+ *   no button. If the read fails (migration not run yet), the set
+ *   stays empty and the page renders exactly as before.
+ *   Deep link: seller.html cards link back here as
+ *   index.html?listing=<id>; maybeOpenDeepLink opens that ad's
+ *   detail once its rows exist (real rows via openRealDetail, demo
+ *   rows via the page's own openListingDetail).
+ *
  * SAFETY / FALLBACK RULES:
  * - This file contains NO API key or secret. It only reuses
  *   window.CFAuth.client, which cf-auth.js already created. If that
@@ -79,6 +92,12 @@
 
 (function () {
   'use strict';
+
+  /* Dealer pages (v1.11): seller ids with a public storefront.
+     Filled by refreshListings from business_profiles; the page's
+     card + detail templates read it. Empty until then, so no
+     dealer buttons render before the first successful fetch. */
+  window.__cfStorefronts = new Set();
 
   /* The page's own Supabase client, or null. Never a key of our own. */
   function getClient() {
@@ -275,6 +294,26 @@
         }
       } catch (e) { boostedIds = {}; boostSort = {}; }
       var rows = res.data.map(function (r) { return mapRow(r, photosById, boostedIds, boostSort); });
+      /* Dealer pages (v1.11): which fetched sellers have a public
+         storefront? business_profiles is publicly readable by
+         policy, so this works logged-out too. A seller with no row
+         gets no dealer button — private sellers never have rows
+         (the migration's trigger enforces advertiser-only). If the
+         query fails (migration not run yet), the set stays empty
+         and the page renders exactly as before. */
+      try {
+        var sellerIds = [];
+        res.data.forEach(function (r) {
+          if (r.seller_id && sellerIds.indexOf(r.seller_id) === -1) sellerIds.push(r.seller_id);
+        });
+        if (sellerIds.length) {
+          var sp = await client.from('business_profiles').select('id').in('id', sellerIds);
+          if (sp && !sp.error && sp.data) {
+            window.__cfStorefronts = new Set();
+            sp.data.forEach(function (b) { window.__cfStorefronts.add(String(b.id)); });
+          }
+        }
+      } catch (e) { /* leave the previous set; buttons just stay hidden */ }
       // v1.5 merge: keep the page's demo filler BELOW the real ads.
       // Snapshot the demo rows once, before the first replace, so later
       // refreshes never duplicate them.
@@ -291,6 +330,7 @@
       if (typeof renderHeroCarousel === 'function') renderHeroCarousel();
       var rn = document.getElementById('resultsNote');
       if (rn) rn.textContent = rows.length + (rows.length === 1 ? ' live listing' : ' live listings') + (demo.length ? ' + ' + demo.length + ' samples' : '');
+      try { maybeOpenDeepLink(); } catch (e) {}
       return true;
     } catch (e) {
       return false;
@@ -630,12 +670,52 @@
   try {
     if (typeof updateCarPostingFields === 'function' && !updateCarPostingFields.__cfPkgWrapped) {
       var _ucpf = updateCarPostingFields;
+      /* Synchronous re-assert (belt-and-braces): the page's
+         own updater just set the button to 'See business packages'
+         and re-showed the pitch for business posters. If a package
+         is currently defaulted for THIS category, put them back at
+         once — pkgRefresh() below re-verifies async, but the button
+         must not lie in the meantime. If no package is defaulted
+         (or the stored default is for another category — e.g. the
+         user just changed category), leave the page's behaviour
+         alone; pkgRefresh() will set the correct new state. */
+      var _pkgReassert = function () {
+        try {
+          var st = window.__cfPkgDefault;
+          if (!st || !st.orderId) return;
+          var catEl = document.getElementById('adCategory');
+          if (catEl && st.category && catEl.value !== st.category) return;
+          var pitch = document.getElementById('bizPitchField');
+          if (pitch) pitch.classList.remove('show');
+          var sb = document.querySelector('#postForm .form-actions .primary');
+          if (sb) sb.textContent = 'Preview listing';
+        } catch (e) {}
+      };
       var _ucpfWrapped = function () {
         _ucpf();
+        _pkgReassert();
         pkgRefresh();
       };
       _ucpfWrapped.__cfPkgWrapped = true;
       updateCarPostingFields = _ucpfWrapped;
+      /* Re-bind the two listeners the page script attached DIRECTLY
+         to the original function reference at page-script time
+         (index.html:809 #carSellerType, :866 #bizType 'change').
+         Reassigning the global does not move those listeners, so
+         without this they would keep calling the original updater
+         forever — resetting the button to 'See business packages'
+         and re-showing the pitch without re-running the package
+         refresh. Runs once (inside the not-yet-wrapped branch) and
+         never throws if the elements are absent. The page's other
+         call sites (adCategory change, quick-post buttons, modal
+         open) call updateCarPostingFields by name, so they already
+         pick up the wrapped version and need no re-bind. */
+      try {
+        var _cs = document.getElementById('carSellerType');
+        if (_cs) { _cs.removeEventListener('change', _ucpf); _cs.addEventListener('change', _ucpfWrapped); }
+        var _bt = document.getElementById('bizType');
+        if (_bt) { _bt.removeEventListener('change', _ucpf); _bt.addEventListener('change', _ucpfWrapped); }
+      } catch (e) {}
     }
   } catch (e) {}
 
@@ -697,6 +777,55 @@
     return '<div class="detail-gallery"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of ' + photos.length + '"><img src="' + escAttr(photos[0]) + '" alt="" loading="lazy"></div><div class="gallery-thumbs" aria-label="Listing image gallery">' + thumbs + '</div></div>';
   }
 
+  /* Dealer-page detail opener (v1.11): the same real-row detail
+     the View-details guard renders, as a callable function, so the
+     ?listing= deep link from seller.html can open an ad directly.
+     Kept beside the guard on purpose: both render through the
+     page's own helpers, so the two paths can never drift apart in
+     markup — only the entry point differs (click vs. deep link). */
+  function openRealDetail(x) {
+    try {
+      activeListingId = x.id;
+      document.getElementById('detailTitle').textContent = 'Listing details';
+      document.getElementById('detailBody').innerHTML =
+        '<div class="detail">' + detailGalleryMarkup(x) + '<div>' +
+        '<div class="prototype-tag">LIVE LISTING · ' + safe(x.category).toUpperCase() + '</div>' +
+        (x.boostedEffective ? '<div class="prototype-tag">🚀 BOOSTED</div>' : '') +
+        '<h3>' + safe(x.title) + '</h3>' +
+        '<div class="detail-price">' + displayPrice(x) + '</div>' +
+        (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
+        listingContactMarkup(x) +
+        '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
+        '<p>' + safe(x.desc) + '</p>' +
+        '<div class="notice">This is a live listing posted on ClassiFlip.</div>' +
+        ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
+        '</div></div>';
+      if (typeof closeModals === 'function') closeModals();
+      if (typeof openModal === 'function') openModal('detailModal');
+    } catch (err) { /* Never crash the page from a deep link. */ }
+  }
+
+  /* Dealer-page deep link (v1.11): seller.html cards link back as
+     index.html?listing=<id>. Runs once per id, only when the row
+     is already in the listings array — real rows open via
+     openRealDetail, demo rows via the page's own openListingDetail.
+     Called after a successful refresh (real rows) and once at init
+     (demo rows, when there is no live client at all). */
+  function maybeOpenDeepLink() {
+    try {
+      var m = /[?&]listing=([^&]+)/.exec(location.search || '');
+      if (!m) return;
+      var raw = decodeURIComponent(m[1]);
+      if (window.__cfDeepLinkDone === raw) return;
+      var x = null;
+      try { x = listings.find(function (y) { return String(y.id) === raw; }); } catch (e) { x = null; }
+      if (!x) return;
+      window.__cfDeepLinkDone = raw;
+      if (x.live) { try { openRealDetail(x); } catch (e) {} }
+      else if (typeof openListingDetail === 'function') { try { openListingDetail(x); } catch (e) {} }
+    } catch (e) {}
+  }
+
   /* View-details guard for real rows. The page's own handler does
      listings.find(y => y.id === Number(dataset.view)) with no
      not-found check, which throws for UUID ids. Non-numeric ids are
@@ -724,9 +853,9 @@
         (x.boostedEffective ? '<div class="prototype-tag">🚀 BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' +
-        (canRealBoost(x) ? '<div style="margin-top:12px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
+        (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         /* Messages move-up (Oct 26, 2026): contact (Message seller + Share) sits under the price, mirroring the v1.10 Boost move — the bottom of a tall modal hides behind the mobile tab bar. */
-        listingContactMarkup() +
+        listingContactMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         '<p>' + safe(x.desc) + '</p>' +
         '<div class="notice">This is a live listing posted on ClassiFlip.</div>' +
@@ -876,4 +1005,7 @@
 
   /* Page load: switch to database rows when possible, demo otherwise. */
   refreshListings();
+  /* Dealer-page deep link for demo rows (no live client): real rows
+     are covered by the post-refresh call above. */
+  try { maybeOpenDeepLink(); } catch (e) {}
 })();

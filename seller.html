@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>ClassiFlip — Business page</title>
+<script>
+  /* Same theme rule as the rest of the site: light by default,
+     remembered choice in localStorage. Runs before paint. */
+  try { document.documentElement.dataset.theme = localStorage.getItem('cf-theme') || 'light'; } catch (e) {}
+</script>
+<style>
+  :root{--bg:#0f1722;--surface:#172231;--surface-2:#202e3f;--ink:#f5f8fc;--muted:#b4bfce;--line:#33445a;--navy:#A9CDF5;--navy-2:#BCD9F7;--orange:#ff7448;--orange-2:#ff8b67;--green:#75d5a9;--shadow:0 18px 48px rgba(0,0,0,.3)}
+  html[data-theme="light"]{--bg:#EDF1F7;--surface:#FFFFFF;--surface-2:#E7EDF5;--ink:#152A45;--muted:#5A6B82;--line:#D5DFEC;--navy:#18365F;--navy-2:#0F2547;--shadow:0 18px 48px rgba(21,42,69,.14);color-scheme:light}
+  html[data-theme="dark"]{--bg:#07090D;--surface:#12161F;--surface-2:#1A212E;--ink:#EDF2F9;--muted:#C3CEDF;--line:#232B3A;--navy:#A9CDF5;--shadow:0 18px 48px rgba(0,0,0,.55)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--orange)}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;max-width:1100px;margin:0 auto}
+  .brand{font-weight:800;font-size:20px;color:var(--ink);text-decoration:none}
+  .brand span{color:var(--orange)}
+  .back{color:var(--navy);font-weight:700;font-size:14px;text-decoration:none}
+  main{max-width:1100px;margin:0 auto;padding:8px 20px 60px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:26px}
+  .seller-head{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+  .seller-logo{width:110px;height:110px;flex:none;border-radius:20px;object-fit:cover;background:var(--surface-2);display:grid;place-items:center;font-size:52px}
+  .seller-logo img{width:100%;height:100%;object-fit:cover;border-radius:20px;display:block}
+  .seller-name{font:800 30px/1.15 'Manrope',system-ui,sans-serif;margin:0 0 6px}
+  .verified{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--green);margin-left:8px;vertical-align:middle}
+  .tagline{color:var(--muted);margin:0 0 4px}
+  .contact-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 22px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line);font-size:14.5px}
+  .contact-strip b{display:block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+  .about{margin:18px 0 0;color:var(--muted);line-height:1.65}
+  .msg-box{margin-top:22px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+  .msg-box h3{margin:0 0 4px;font-size:17px}
+  .msg-box p{margin:0 0 12px;color:var(--muted);font-size:14px}
+  .msg-row{display:flex;gap:10px;flex-wrap:wrap}
+  .msg-row input{flex:1;min-width:220px;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px;background:var(--surface);color:var(--ink);outline:none}
+  .primary{height:44px;border-radius:10px;padding:0 18px;font-weight:700;border:1px solid var(--orange);background:var(--orange);color:#fff;cursor:pointer}
+  .primary:disabled{opacity:.6;cursor:default}
+  .ghost{height:44px;border-radius:10px;padding:0 18px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--navy);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+  .count{margin:30px 0 14px;font-size:20px;font-weight:800}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+  .ad{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;text-decoration:none;color:inherit;display:block}
+  .ad-media{height:150px;background:var(--surface-2);display:grid;place-items:center;overflow:hidden}
+  .ad-media img{width:100%;height:100%;object-fit:cover;display:block}
+  .ad-body{padding:14px}
+  .ad-body h3{margin:0 0 4px;font-size:15.5px;line-height:1.3}
+  .price{font-weight:800;font-size:17px;color:var(--orange)}
+  .meta{color:var(--muted);font-size:12.5px;margin-top:4px}
+  .boosted{color:var(--orange);font-weight:700;font-size:12.5px}
+  .empty{padding:44px;text-align:center;border:1px dashed var(--line);border-radius:16px;color:var(--muted)}
+  .state{padding:60px 20px;text-align:center;color:var(--muted)}
+  @media(max-width:560px){.seller-logo{width:84px;height:84px;font-size:40px}.seller-name{font-size:24px}.card{padding:20px}.topbar{padding:12px 14px}main{padding:8px 14px 48px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="brand" href="index.html">Classi<span>Flip</span></a>
+  <a class="back" href="index.html">← Back to marketplace</a>
+</div>
+<main>
+  <div id="sellerState" class="state">Loading business page…</div>
+  <div id="sellerPage" class="card" hidden>
+    <div class="seller-head">
+      <div class="seller-logo" id="sellerLogo">🏬</div>
+      <div style="min-width:0;flex:1">
+        <h1 class="seller-name"><span id="sellerName"></span><span class="verified" id="sellerVerified" hidden>✓ Verified seller</span></h1>
+        <p class="tagline" id="sellerTagline" hidden></p>
+      </div>
+    </div>
+    <div class="contact-strip" id="sellerContact"></div>
+    <p class="about" id="sellerAbout" hidden></p>
+    <div class="msg-box" id="sellerMsgBox">
+      <h3>Message this dealer</h3>
+      <p id="sellerMsgNote">Ask about any listing below — your message lands in their inbox.</p>
+      <div class="msg-row" id="sellerMsgRow" hidden>
+        <input id="sellerMsgInput" maxlength="1000" placeholder="Hi! Is this still available?">
+        <button class="primary" id="sellerMsgSend">Send message</button>
+      </div>
+      <div id="sellerMsgLogin" hidden>
+        <a class="ghost" href="index.html">Log in to message this dealer</a>
+      </div>
+      <p id="sellerMsgSent" hidden style="color:var(--green);font-weight:700;margin:12px 0 0">Message sent — find it in <a href="messaging.html">Messages</a>.</p>
+    </div>
+    <div class="count" id="sellerCount"></div>
+    <div class="grid" id="sellerGrid"></div>
+    <div class="empty" id="sellerEmpty" hidden>No live listings right now — message them anyway.</div>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  /* Stubs for cf-auth.js globals this page doesn't define: on
+     session restore cf-auth.js sets loggedIn and calls
+     updateAccountUI() unguarded. Without these, that restore
+     throws. No-ops are correct here — seller.html has no account
+     menu or modals, and login itself lives on index.html. */
+  var loggedIn = false;
+  function updateAccountUI() {}
+  function closeModals() {}
+</script>
+<script src="cf-auth.js"></script>
+<script src="cf-messages.js"></script>
+<script src="cf-seller.js"></script>
+</body>
+</html>

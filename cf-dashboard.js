@@ -160,6 +160,162 @@
     inFlight = false;
   }
 
+  /* ============================================================
+     Dealer pages (v1.11): real business-profile storage.
+     - The dashboard's "Business profile" section (profileBiz) is
+       wired to the public.business_profiles table: Save upserts the
+       signed-in advertiser's row (display name required), the logo
+       file uploads to the existing public 'listing-photos' bucket
+       at business-logos/<uid>/logo.<ext> on Save, and Preview
+       navigates to the real seller.html page.
+     - The section is only un-hidden for advertisers (see renderReal
+       below); private sellers never see it and can never create a
+       row — the migration's trigger enforces advertiser-only.
+     - Fails soft everywhere: if the migration hasn't run yet, or
+       the user isn't signed in, Save/Preview toast and nothing
+       breaks. No demo data is ever written.
+     ============================================================ */
+  var __cfBizLoaded = false;
+  window.__cfBizUserId = null;
+
+  function cfBizClient() {
+    try {
+      if (window.CFAuth && window.CFAuth.client) return window.CFAuth.client;
+    } catch (e) {}
+    return null;
+  }
+
+  function cfBizUid() {
+    try {
+      var c = cfBizClient();
+      if (c && c.auth && typeof c.auth.getUser === 'function') {
+        return c.auth.getUser().then(function (r) {
+          return (r && r.data && r.data.user) ? r.data.user.id : null;
+        });
+      }
+    } catch (e) {}
+    return Promise.resolve(null);
+  }
+
+  function cfBizLoad() {
+    /* Load the signed-in advertiser's row once per session, into
+       the form — but never clobber a form the user is mid-edit on
+       (a refresh re-render would wipe their typing). */
+    if (__cfBizLoaded) return Promise.resolve();
+    __cfBizLoaded = true;
+    var client = cfBizClient();
+    if (!client) return Promise.resolve();
+    return cfBizUid().then(function (uid) {
+      if (!uid) return;
+      window.__cfBizUserId = uid;
+      return client.from('business_profiles').select('*').eq('id', uid).maybeSingle()
+        .then(function (res) {
+          if (res.error || !res.data) return;
+          var b = res.data;
+          var set = function (id, v) {
+            var el = document.getElementById(id);
+            if (el && !el.value) el.value = v || '';
+          };
+          set('bpName', b.display_name);
+          set('bpTag', b.tagline);
+          set('bpWeb', b.website);
+          set('bpPhone', b.business_phone);
+          set('bpAddr', b.address);
+          set('bpHours', b.hours);
+          set('bpAbout', b.about);
+          var img = document.getElementById('logoImg');
+          var empty = document.getElementById('lzEmpty');
+          if (b.logo_url && img) {
+            img.src = b.logo_url;
+            img.classList.remove('hidden');
+            if (empty) empty.classList.add('hidden');
+          }
+        });
+    }).catch(function () { /* fail soft: form stays blank, Save still works */ });
+  }
+
+  function cfBizSave() {
+    var nameEl = document.getElementById('bpName');
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) {
+      if (typeof toast === 'function') toast('Add a display name first');
+      if (nameEl) nameEl.focus();
+      return;
+    }
+    var client = cfBizClient();
+    if (!client) {
+      if (typeof toast === 'function') toast('Sign in as a business to save a profile');
+      return;
+    }
+    var btn = document.getElementById('bpSaveBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    var done = function (msg) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save profile'; }
+      if (typeof toast === 'function') toast(msg);
+    };
+    cfBizUid().then(function (uid) {
+      if (!uid) { done('Sign in as a business to save a profile'); return; }
+      window.__cfBizUserId = uid;
+      var web = (document.getElementById('bpWeb') || {}).value || '';
+      web = web.trim();
+      /* Bare domains get https:// — the migration's CHECK requires
+         a scheme, and buyers expect a clickable link. */
+      if (web && !/^https?:\/\//i.test(web)) web = 'https://' + web;
+      var row = {
+        id: uid,
+        display_name: name,
+        tagline: ((document.getElementById('bpTag') || {}).value || '').trim() || null,
+        website: web || null,
+        business_phone: ((document.getElementById('bpPhone') || {}).value || '').trim() || null,
+        address: ((document.getElementById('bpAddr') || {}).value || '').trim() || null,
+        hours: ((document.getElementById('bpHours') || {}).value || '').trim() || null,
+        about: ((document.getElementById('bpAbout') || {}).value || '').trim() || null
+      };
+      var fileInput = document.getElementById('logoInput');
+      var file = fileInput && fileInput.files ? fileInput.files[0] : null;
+      var uploadLogo = Promise.resolve(null);
+      if (file) {
+        var ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+        var path = 'business-logos/' + uid + '/logo.' + ext;
+        uploadLogo = client.storage.from('listing-photos').upload(path, file, { upsert: true })
+          .then(function (up) {
+            if (up.error) throw up.error;
+            return client.storage.from('listing-photos').getPublicUrl(path).data.publicUrl;
+          });
+      }
+      return uploadLogo.then(function (logoUrl) {
+        if (logoUrl) row.logo_url = logoUrl;
+        return client.from('business_profiles').upsert(row, { onConflict: 'id' });
+      }).then(function (res) {
+        if (res.error) throw res.error;
+        done('Business profile saved');
+      }).catch(function (err) {
+        done('Could not save profile: ' + (err && err.message ? err.message : 'unknown error'));
+      });
+    }).catch(function () { done('Could not save profile — try again'); });
+  }
+
+  function cfBizPreview() {
+    /* Preview = the real public page, never the old demo modal. */
+    if (window.__cfBizUserId) {
+      location.href = 'seller.html?id=' + encodeURIComponent(window.__cfBizUserId);
+      return;
+    }
+    cfBizUid().then(function (uid) {
+      if (uid) {
+        window.__cfBizUserId = uid;
+        location.href = 'seller.html?id=' + encodeURIComponent(uid);
+      } else if (typeof toast === 'function') {
+        toast('Sign in as a business to preview your page');
+      }
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'bpSaveBtn') { e.preventDefault(); cfBizSave(); }
+    if (e.target && e.target.id === 'bpPreviewBtn') { e.preventDefault(); cfBizPreview(); }
+  });
+
   async function renderReal(client, user) {
     /* Profile (may be missing: the sign-in upsert bug means brand-new
        users can lack a row until Martin adds one manually). */
@@ -220,6 +376,17 @@
     ['statsBiz', 'planBiz', 'upgradeSeller', 'listBiz', 'profileBiz'].forEach(function (id) {
       var n = el(id); if (n) n.classList.add('hidden');
     });
+    /* Dealer pages (v1.11): the Business profile section is real
+       now (wired to business_profiles), so advertisers get it back
+       — with their saved row loaded. Private sellers never see it:
+       the section stays hidden for them, and the migration's
+       trigger would refuse their row anyway. */
+    if (role === 'advertiser') {
+      var pb = el('profileBiz');
+      if (pb) pb.classList.remove('hidden');
+      window.__cfBizUserId = user.id;
+      cfBizLoad();
+    }
     var statsSeller = el('statsSeller');
     if (statsSeller) {
       statsSeller.classList.remove('hidden');

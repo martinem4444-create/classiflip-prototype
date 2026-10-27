@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.9 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9).
+/* ClassiFlip real listings v1.10 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -53,7 +53,11 @@
  *   Post click of a logged-in user is intercepted. The
  *   business-posting redirect (advertise.html) still happens in the
  *   page's own submit handler before any preview opens, with a
- *   defensive copy of the check in the interceptor.
+ *   defensive copy of the check in the interceptor. The one
+ *   exception is package-default (v1.10): when
+ *   window.__cfPkgDefault carries an orderId, both the page's
+ *   submit handler and the interceptor let the post through instead
+ *   of redirecting, because the poster already owns a package.
  *
  * KNOWN LIMITS (forced by the page's existing code, not this module):
  * - The page's card template hardcodes a SAMPLE tag and render()
@@ -400,6 +404,14 @@
         status: 'pending'
       };
       if (photoUrl) newRow.photo_url = photoUrl;
+      /* Package-default (v1.10): attach the defaulted order when one
+         is active for this category (the form refresh validated it —
+         the quota read proving the order_id column exists). A stale
+         or absent state posts exactly as before, without order_id. */
+      try {
+        var pd = window.__cfPkgDefault;
+        if (pd && pd.orderId && pd.category === newRow.category) newRow.order_id = pd.orderId;
+      } catch (e) {}
       var ins = await client.from('listings').insert([newRow]).select().single();
       if (ins.error || !ins.data || !ins.data.id) {
         /* Listing insert failed after uploads: remove the objects so
@@ -468,6 +480,165 @@
     }
   }
 
+  /* Package-default (v1.10): when a signed-in user has a bought
+     Active package for the form's category, the form shows it as a
+     label line (no dropdown) and the post attaches
+     listings.order_id. Only status='Active' with a future
+     expires_at counts; Pending reserves and expired orders NEVER
+     default. Newest Active wins (latest expires_at, then latest
+     created_at). At quota the form falls back to today's behaviour
+     WITH a notice — never a hard block. The quota read doubles as
+     the migration probe: if listings.order_id does not exist yet,
+     the read fails and the feature stays silent (posts work
+     exactly as before) until
+     supabase/cf-package-default-migration.sql runs. Jobs is in
+     the family map, but the Jobs flow lives in the job modal
+     (follow-up), so no jobs default is wired in v1. Founding
+     packages match no family in v1 (spec families only) — a
+     flagged open question for Martin, not a silent decision. */
+  var PKG_FAMILY = {
+    Cars: 'dealer', Homes: 'agent', Rentals: 'agent',
+    Services: 'services', Jobs: 'jobs'
+  };
+  function pkgFamilyOf(pkgLabel) {
+    if (!pkgLabel) return null;
+    var l = String(pkgLabel);
+    if (l.indexOf('Dealer') === 0) return 'dealer';
+    if (l.indexOf('Agent') === 0) return 'agent';
+    if (l.indexOf('Services') === 0) return 'services';
+    if (l.indexOf('Jobs') === 0) return 'jobs';
+    return null; /* Founding + anything else: no family in v1 */
+  }
+  function pkgQuotaOf(pkgLabel) {
+    var l = String(pkgLabel || '');
+    if (l.indexOf('Unlimited') !== -1) return Infinity;
+    if (l.indexOf('5-Pack') !== -1) return 5;
+    if (l.indexOf('Lot Pack') !== -1) return 25;
+    return 1; /* every Single tier */
+  }
+  function pkgMoney(n) {
+    try {
+      return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
+    } catch (e) { return '$' + n; }
+  }
+  function pkgDate(s) {
+    try {
+      return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) { return ''; }
+  }
+  /* Shared state the page's submit handler reads: orderId is set
+     ONLY when a default is active and quota allows (null = today's
+     form, including the business -> Advertise redirect). */
+  function pkgClearState() {
+    window.__cfPkgDefault = { orderId: null, category: null };
+    var f = document.getElementById('pkgDefaultField');
+    if (f) f.hidden = true;
+  }
+  function pkgShowLine(text) {
+    var f = document.getElementById('pkgDefaultField');
+    var l = document.getElementById('pkgDefaultLine');
+    if (!f || !l) return;
+    l.textContent = text;
+    f.hidden = false;
+  }
+  var pkgFetch = null; /* in-flight orders fetch, deduped */
+  var pkgCache = null; /* { userId, orders } */
+  async function pkgFetchOrders(client, userId) {
+    if (pkgCache && pkgCache.userId === userId) return pkgCache.orders;
+    if (!pkgFetch) {
+      pkgFetch = (async function () {
+        var nowIso = new Date().toISOString();
+        var res = await client.from('orders')
+          .select('id,package,amount,status,expires_at,created_at')
+          .eq('buyer_id', userId).eq('status', 'Active')
+          .gt('expires_at', nowIso)
+          .order('expires_at', { ascending: false })
+          .order('created_at', { ascending: false });
+        if (res.error) throw res.error;
+        return res.data || [];
+      })().then(function (orders) {
+        pkgCache = { userId: userId, orders: orders };
+        pkgFetch = null;
+        return orders;
+      }, function (err) {
+        pkgFetch = null;
+        throw err;
+      });
+    }
+    return pkgFetch;
+  }
+  async function pkgRefresh() {
+    /* Runs after every updateCarPostingFields() (wrapped below), so
+       it always sees the form's current category. Any failure is
+       silent by design: the form keeps today's behaviour and the
+       post still goes through. */
+    try {
+      var catEl = document.getElementById('adCategory');
+      var cat = catEl ? catEl.value : '';
+      var fam = PKG_FAMILY[cat];
+      if (!fam) { pkgClearState(); return; }
+      var client = getClient();
+      if (!client || !isLoggedIn()) { pkgClearState(); return; }
+      var userRes = await client.auth.getUser();
+      var user = userRes && userRes.data && userRes.data.user;
+      if (!user) { pkgClearState(); return; }
+      var orders = await pkgFetchOrders(client, user.id);
+      var match = null;
+      for (var i = 0; i < orders.length; i++) {
+        if (pkgFamilyOf(orders[i].package) === fam) { match = orders[i]; break; }
+      }
+      if (!match) { pkgClearState(); return; }
+      /* Quota read — also the migration probe. If order_id does
+         not exist yet this errors and the feature stays off. */
+      var cnt = await client.from('listings')
+        .select('id', { count: 'exact', head: true })
+        .eq('order_id', match.id);
+      if (cnt.error) throw cnt.error;
+      var used = (typeof cnt.count === 'number') ? cnt.count : 0;
+      var limit = pkgQuotaOf(match.package);
+      if (limit !== Infinity && used >= limit) {
+        /* At quota: fallback to today's form WITH a notice. The
+           state keeps orderId null, so the business redirect and
+           the page's own button text both behave as before. */
+        window.__cfPkgDefault = { orderId: null, category: cat };
+        pkgShowLine('Your ' + match.package + ' has used ' + used + '/' + limit + ' posts — renew or upgrade on Advertise.');
+        return;
+      }
+      window.__cfPkgDefault = { orderId: match.id, category: cat };
+      pkgShowLine('Posting under your ' + match.package + ' — ' + pkgMoney(match.amount) + '/mo, active until ' + pkgDate(match.expires_at) + '.');
+      /* The package owner already bought: hide the business pitch
+         and keep the submit button on 'Preview listing' (the page's
+         own updateCarPostingFields just set it to 'See business
+         packages' for business posters — that text + redirect no
+         longer apply once a package defaults). */
+      try {
+        var pitch = document.getElementById('bizPitchField');
+        if (pitch) pitch.classList.remove('show');
+        var sb = document.querySelector('#postForm .form-actions .primary');
+        if (sb) sb.textContent = 'Preview listing';
+      } catch (e) {}
+    } catch (e) {
+      pkgClearState();
+    }
+  }
+  /* Wrap the page's own field updater: every path that touches the
+     post form (modal open, category change, seller-type change,
+     business-type change, quick-post buttons) flows through it, so
+     the package lookup refreshes with the form's current category.
+     The wrap installs after the page script defined it (this file
+     loads after the page's inline script). */
+  try {
+    if (typeof updateCarPostingFields === 'function' && !updateCarPostingFields.__cfPkgWrapped) {
+      var _ucpf = updateCarPostingFields;
+      var _ucpfWrapped = function () {
+        _ucpf();
+        pkgRefresh();
+      };
+      _ucpfWrapped.__cfPkgWrapped = true;
+      updateCarPostingFields = _ucpfWrapped;
+    }
+  } catch (e) {}
+
   /* Real post on the preview's Post click (v1.2), but only for
      logged-in users with a live client. The form's submit is no
      longer intercepted, so the page's own submit handler always runs
@@ -491,7 +662,8 @@
     var bizField = document.getElementById('bizTypeField');
     var bizType = document.getElementById('bizType');
     if (bizField && bizField.classList.contains('show') &&
-        bizType && bizType.value === 'business') {
+        bizType && bizType.value === 'business' &&
+        !(window.__cfPkgDefault && window.__cfPkgDefault.orderId)) {
       e.preventDefault();
       e.stopPropagation();
       location.href = 'advertise.html';

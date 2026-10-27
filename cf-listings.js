@@ -552,12 +552,12 @@
         (x.boostedEffective ? '<div class="prototype-tag">🚀 BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' +
+        (canRealBoost(x) ? '<div style="margin-top:12px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         '<p>' + safe(x.desc) + '</p>' +
         '<div class="notice">This is a live listing posted on ClassiFlip.</div>' +
         ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
         listingContactMarkup() +
-        (canRealBoost(x) ? '<div style="margin-top:12px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');

@@ -553,11 +553,12 @@
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' +
         (canRealBoost(x) ? '<div style="margin-top:12px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
+        /* Messages move-up (Oct 26, 2026): contact (Message seller + Share) sits under the price, mirroring the v1.10 Boost move — the bottom of a tall modal hides behind the mobile tab bar. */
+        listingContactMarkup() +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         '<p>' + safe(x.desc) + '</p>' +
         '<div class="notice">This is a live listing posted on ClassiFlip.</div>' +
         ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
-        listingContactMarkup() +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');

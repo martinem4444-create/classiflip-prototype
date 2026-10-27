@@ -650,10 +650,16 @@
          and keep the submit button on 'Preview listing' (the page's
          own updateCarPostingFields just set it to 'See business
          packages' for business posters — that text + redirect no
-         longer apply once a package defaults). */
+         longer apply once a package defaults). Also hide the stale
+         'Listing option' dropdown (carPlanField): for Cars the page
+         shows pre-package dealer options ('$5 per dealer car',
+         '$49/month unlimited') that contradict the bought package —
+         the package IS the listing option, so holders never see it. */
       try {
         var pitch = document.getElementById('bizPitchField');
         if (pitch) pitch.classList.remove('show');
+        var planField = document.getElementById('carPlanField');
+        if (planField) planField.classList.remove('show');
         var sb = document.querySelector('#postForm .form-actions .primary');
         if (sb) sb.textContent = 'Preview listing';
       } catch (e) {}
@@ -672,7 +678,8 @@
       var _ucpf = updateCarPostingFields;
       /* Synchronous re-assert (belt-and-braces): the page's
          own updater just set the button to 'See business packages'
-         and re-showed the pitch for business posters. If a package
+         and re-showed the pitch for business posters (and, for Cars,
+         re-showed the stale 'Listing option' dropdown). If a package
          is currently defaulted for THIS category, put them back at
          once — pkgRefresh() below re-verifies async, but the button
          must not lie in the meantime. If no package is defaulted
@@ -687,6 +694,8 @@
           if (catEl && st.category && catEl.value !== st.category) return;
           var pitch = document.getElementById('bizPitchField');
           if (pitch) pitch.classList.remove('show');
+          var planField = document.getElementById('carPlanField');
+          if (planField) planField.classList.remove('show');
           var sb = document.querySelector('#postForm .form-actions .primary');
           if (sb) sb.textContent = 'Preview listing';
         } catch (e) {}

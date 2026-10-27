@@ -132,6 +132,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .pvhead .pt{color:var(--mu);font-size:13.5px;margin-top:2px}
 .pvinfo{font-size:13.5px;color:var(--mu);margin-bottom:12px;line-height:1.7}
 .pvinfo b{color:var(--ink)}
+.pvbanner{background:var(--tint);border:1.5px solid #FBD9C2;border-radius:12px;padding:10px 12px;font-size:13.5px;margin-bottom:14px}
 .pvads{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .pvad{border:1px solid var(--ln);border-radius:14px;overflow:hidden}
 .pvad img{width:100%;height:110px;object-fit:cover;display:block;background:#E9EDF4}
@@ -399,6 +400,17 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <button class="mx" onclick="closeM('mPublic')">&times;</button>
 <h3>Public business page</h3><p class="sub">Exactly what buyers see.</p>
 <div id="pvBody"></div>
+</div></div>
+
+<!-- ============ LIVE BUSINESS PREVIEW (unsaved form values) ============ -->
+<div class="mback" id="mBizPreview"><div class="mcard">
+<button class="mx" onclick="closeM('mBizPreview')">&times;</button>
+<h3>Preview</h3><p class="sub">Your public page, before you save.</p>
+<div id="bpvBody"></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+<button class="btn dark" id="bpvSaveBtn">Save profile</button>
+<button class="btn gho" onclick="closeM('mBizPreview')">Close</button>
+</div>
 </div></div>
 
 <!-- ============ PER-AD STATS ============ -->

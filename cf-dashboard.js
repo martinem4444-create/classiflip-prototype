@@ -167,7 +167,9 @@
        signed-in advertiser's row (display name required), the logo
        file uploads to the existing public 'listing-photos' bucket
        at business-logos/<uid>/logo.<ext> on Save, and Preview
-       navigates to the real seller.html page.
+       navigates to the real seller.html page when a saved row
+       exists — otherwise it renders a live preview modal from the
+       form's current unsaved values (no database write).
      - The section is only un-hidden for advertisers (see renderReal
        below); private sellers never see it and can never create a
        row — the migration's trigger enforces advertiser-only.
@@ -295,25 +297,101 @@
     }).catch(function () { done('Could not save profile — try again'); });
   }
 
-  function cfBizPreview() {
-    /* Preview = the real public page, never the old demo modal. */
-    if (window.__cfBizUserId) {
-      location.href = 'seller.html?id=' + encodeURIComponent(window.__cfBizUserId);
-      return;
-    }
-    cfBizUid().then(function (uid) {
-      if (uid) {
-        window.__cfBizUserId = uid;
-        location.href = 'seller.html?id=' + encodeURIComponent(uid);
-      } else if (typeof toast === 'function') {
-        toast('Sign in as a business to preview your page');
+  function cfBizEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /* Same bare-domain rule as Save: trim, prefix https:// when no
+     scheme is present. The result always starts with http(s), so
+     it is safe to render as a link; anything else yields null. */
+  function cfBizWebLink() {
+    var el = document.getElementById('bpWeb');
+    var web = el ? el.value.trim() : '';
+    if (!web) return null;
+    if (!/^https?:\/\//i.test(web)) web = 'https://' + web;
+    return web;
+  }
+
+  function cfBizLivePreview() {
+    /* Unsaved-form preview: renders ONLY what the seller typed
+       (plus the picked logo — the logo-pick preview image, data URL
+       or saved URL) into the dashboard modal. Writes NOTHING to
+       the database, so it works before the first Save. */
+    var val = function (id) {
+      var el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    };
+    var name = val('bpName') || 'Your business';
+    var tag = val('bpTag');
+    var web = cfBizWebLink();
+    var phone = val('bpPhone'), addr = val('bpAddr'), hours = val('bpHours');
+    var about = val('bpAbout');
+    var logoHtml = '&#127978;';
+    try {
+      var img = document.getElementById('logoImg');
+      if (img && !img.classList.contains('hidden') && img.src &&
+          /^(data:image\/|https?:\/\/)/i.test(img.src)) {
+        logoHtml = '<img src="' + cfBizEsc(img.src) + '" alt="">';
       }
-    });
+    } catch (e) {}
+    var info = [];
+    if (web) info.push('<b>Web:</b> <a href="' + cfBizEsc(web) + '" target="_blank" rel="noopener">' + cfBizEsc(web) + '</a>');
+    if (phone) info.push('<b>Phone:</b> ' + cfBizEsc(phone));
+    if (addr) info.push('<b>Address:</b> ' + cfBizEsc(addr));
+    if (hours) info.push('<b>Hours:</b> ' + cfBizEsc(hours));
+    var body = document.getElementById('bpvBody');
+    if (!body) return;
+    body.innerHTML =
+      '<div class="pvbanner">Preview &mdash; this is how buyers will see it. Hit Save to publish.</div>' +
+      '<div class="pvhead"><div class="plogo">' + logoHtml + '</div><div><div class="pn">' + cfBizEsc(name) + '</div>' +
+      (tag ? '<div class="pt">' + cfBizEsc(tag) + '</div>' : '') + '</div></div>' +
+      (info.length ? '<div class="pvinfo">' + info.join('<br>') + '</div>' : '') +
+      (about ? '<p style="font-size:14px;line-height:1.65;white-space:pre-line">' + cfBizEsc(about) + '</p>' : '') +
+      '<p style="font-size:13.5px;color:var(--mu)">Your live listings will appear here on the real page.</p>';
+    try {
+      if (typeof openM === 'function') openM('mBizPreview');
+      else document.getElementById('mBizPreview').classList.add('on');
+    } catch (e) {}
+  }
+
+  function cfBizPreview() {
+    /* Saved row? Navigate to the real public page. No row yet?
+       Render the live preview from the form's unsaved values
+       instead of the "doesn't exist yet" page. Never writes. */
+    var client = cfBizClient();
+    var check = function (uid) {
+      if (!uid) {
+        if (typeof toast === 'function') toast('Sign in as a business to preview your page');
+        return;
+      }
+      window.__cfBizUserId = uid;
+      if (!client) { cfBizLivePreview(); return; }
+      client.from('business_profiles').select('id').eq('id', uid).maybeSingle()
+        .then(function (res) {
+          if (res && res.data) location.href = 'seller.html?id=' + encodeURIComponent(uid);
+          else cfBizLivePreview();
+        })
+        .catch(function () { cfBizLivePreview(); });
+    };
+    /* The cached id alone doesn't prove a row exists (a seller can
+       be signed in without ever saving), so always check the row. */
+    if (window.__cfBizUserId) { check(window.__cfBizUserId); return; }
+    cfBizUid().then(check);
   }
 
   document.addEventListener('click', function (e) {
     if (e.target && e.target.id === 'bpSaveBtn') { e.preventDefault(); cfBizSave(); }
     if (e.target && e.target.id === 'bpPreviewBtn') { e.preventDefault(); cfBizPreview(); }
+    if (e.target && e.target.id === 'bpvSaveBtn') {
+      e.preventDefault();
+      try {
+        if (typeof closeM === 'function') closeM('mBizPreview');
+        else document.getElementById('mBizPreview').classList.remove('on');
+      } catch (err) {}
+      cfBizSave();
+    }
   });
 
   async function renderReal(client, user) {

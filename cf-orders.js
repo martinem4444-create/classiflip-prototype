@@ -155,12 +155,40 @@
       el('orderDone').style.display = 'block';
       notice('');
       el('orderDone').scrollIntoView({ behavior: 'smooth' });
+      /* Package-reserve admin email (Oct 26, 2026): fire-and-forget,
+         mirroring the pending-ad email — the Edge Function verifies the
+         caller's JWT server-side and emails ONLY mm905media@gmail.com
+         via Resend. Silent on failure by design — the reserve stands
+         regardless. Logged-out reserves send no email (no token). */
+      notifyAdminNewOrder({ order_number: num, package: PACKAGES[pkgKey][0], amount: PACKAGES[pkgKey][1], business_name: business, buyer_name: name, buyer_email: email, buyer_phone: phone });
     } catch (err) {
       notice('Could not reserve: ' + (err && err.message ? err.message : 'Something went wrong.'));
     }
     submit.disabled = false;
     submit.textContent = orig;
   });
+
+  /* Package-reserve admin email (Oct 26, 2026): fire-and-forget ping
+     to the notify-admin-new-order Edge Function after a successful
+     reserve. Same rules as the pending-ad email: signed-in callers
+     only (JWT bearer), recipient hardcoded server-side to
+     mm905media@gmail.com, no key in this file, browser never calls
+     api.resend.com directly. Failures are swallowed on purpose. */
+  function notifyAdminNewOrder(order) {
+    try {
+      var client = getClient();
+      if (!client) return;
+      client.auth.getSession().then(function (s) {
+        var token = s && s.data && s.data.session && s.data.session.access_token;
+        if (!token) return;
+        fetch('https://dbgmyvjaavpmernaxnav.functions.supabase.co/notify-admin-new-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(order)
+        }).catch(function () {});
+      }).catch(function () {});
+    } catch (e) {}
+  }
 
   /* ---------- Advertise-pay boost Interac reserve (Oct 26, 2026) ----
    * Option 1, approved Oct 26: the boost card on advertise-pay.html

@@ -159,6 +159,23 @@
      reserve). The page's demo openBoost(name) flow never sets this,
      so demo boosts always take the page's original fake path. */
   var boostListing = null;
+  function playBoostSound() {
+    try {
+      var C = window._cfBoostAc || (window._cfBoostAc = new (window.AudioContext || window.webkitAudioContext)());
+      if (C.state === 'suspended') C.resume();
+      var t0 = C.currentTime;
+      function ping(at, fq, peak, dur) {
+        var o = C.createOscillator(), o2 = C.createOscillator(), g = C.createGain();
+        o.type = 'square'; o.frequency.value = fq; o2.type = 'square'; o2.frequency.value = fq * 1.007;
+        g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        o.connect(g); o2.connect(g); g.connect(C.destination); o.start(at); o.stop(at + dur + 0.02); o2.start(at); o2.stop(at + dur + 0.02);
+      }
+      var gaps = [0.055, 0.065, 0.075, 0.085, 0.1, 0.115, 0.13], tt = t0;
+      gaps.forEach(function (gp, i) { tt += gp; ping(tt, i % 2 ? 2093 : 1568, 0.05, 0.05); });
+      ping(t0 + 0.80, 2637, 0.16, 0.5); ping(t0 + 0.80, 3520, 0.07, 0.4); ping(t0 + 0.80, 1046.5, 0.06, 0.5);
+    } catch (e) {}
+  }
+
 
   /* Restore the mBoost modal to its demo state (fake Pay button
      visible, real Interac button hidden). Used only for the stale
@@ -959,6 +976,7 @@
             '<p class="sub">Boost ref: <b>' + esc(bst) + '</b> · Ad: ' + esc(boostListing.title) + '</p>' +
             '<button class="btn dark" onclick="closeM(\'mBoost\')">Back to my listings</button>';
           rdone.classList.remove('hidden');
+          try { playBoostSound(); } catch (e3) {}
         }
         boostListing = null;
         realPay.disabled = false; realPay.textContent = rpOrig;

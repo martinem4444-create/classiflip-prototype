@@ -1178,6 +1178,7 @@
         '<p>Boost ref: <b>' + safe(bst) + '</b> · Ad: ' + safe(x.title) + '</p>' +
         '<button class="primary" id="cfRealBoostDone">Done</button>' +
         '</div>';
+      try { if (typeof window.playCoinFlip === 'function') window.playCoinFlip(); } catch (e3) {}
       var doneBtn = document.getElementById('cfRealBoostDone');
       if (doneBtn && typeof closeModals === 'function') doneBtn.addEventListener('click', function () { closeModals(); });
     } catch (err) {

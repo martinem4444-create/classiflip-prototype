@@ -336,6 +336,9 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="adminsearch"><div style="font-weight:800;margin-bottom:8px">Find a business</div><div class="row"><input id="adminSearchInput" placeholder="Business name, email, or phone (last 4 digits work too)"><button class="btn pri" data-cf-admin-search>Search</button></div><div class="hint">For phone-requested takedowns: find the account, then Delete the ad (same Confirm step). Deleting an ad never touches the order — no refund moves automatically.</div><div id="adminSearchResults" style="margin-top:12px"></div></div>
 <h3 style="margin:16px 0 8px">Ads awaiting approval</h3>
 <div id="adminAdsList"></div>
+<h3 style="margin:16px 0 8px">All ads (newest first)</h3>
+<p class="hint">Every seller's ads, all statuses — business and private. Delete uses the same two-tap Confirm, and never touches the order.</p>
+<div id="adminAllAdsList"></div>
 <h3 style="margin:16px 0 8px">Orders</h3>
 <div id="adminOrdersList"></div>
 <h3 style="margin:16px 0 8px">Expiring within 3 days</h3>
@@ -459,7 +462,7 @@ const $=id=>document.getElementById(id);
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._h);e._h=setTimeout(()=>e.classList.remove('on'),2400);}
 function closeM(id){$(id).classList.remove('on');document.body.style.overflow='';}
 function openM(id){$(id).classList.add('on');document.body.style.overflow='hidden';}
-document.querySelectorAll('.mback').forEach(b=>b.addEventListener('click',e=>{if(e.target===b)closeM(b.id);}));
+document.querySelectorAll('.mback').forEach(b=>b.addEventListener('click',e=>{if(e.target===b && b.id!=='mEditor')closeM(b.id);}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.mback.on').forEach(b=>closeM(b.id));});
 // role switching (demo)
 let ROLE='seller';

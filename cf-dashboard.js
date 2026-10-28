@@ -765,6 +765,41 @@
       adsList.innerHTML = '<div class="notice">No ads awaiting approval. If you know a pending ad exists and this stays empty, the step-4 SQL has not been run yet (see the note below).</div>';
     }
 
+    /* All ads (admin takedowns): every seller's ads, all
+       statuses, newest first — not just pending, not just own.
+       Uses the step-4 admin read policy; Delete reuses the
+       existing two-tap data-cf-del handler (admin delete
+       policy), which refreshes the dashboard after. */
+    var allAdsList = el('adminAllAdsList');
+    if (allAdsList) {
+      allAdsList.innerHTML = '<div class="notice">Loading all ads…</div>';
+      try {
+        var ar2 = await client.from('listings')
+          .select('id,title,price,category,location,status,created_at,seller_id')
+          .order('created_at', { ascending: false }).limit(100);
+        var allAds = (ar2 && ar2.data) || [];
+        if (!allAds.length) {
+          allAdsList.innerHTML = '<div class="notice">No ads on file.</div>';
+        } else {
+          var aIds = allAds.map(function (x) { return x.seller_id; }).filter(Boolean);
+          var aSellers = {};
+          try {
+            var asr = await client.from('profiles').select('id,display_name,email').in('id', aIds);
+            (asr.data || []).forEach(function (r) { aSellers[r.id] = r; });
+          } catch (e) {}
+          allAdsList.innerHTML = allAds.map(function (x) {
+            var s2 = aSellers[x.seller_id] || {};
+            return '<div class="lcard"><div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + '</div>' +
+              '<div class="p">' + money(x.price) + '</div>' +
+              '<div class="s">' + esc(s2.display_name || s2.email || x.seller_id || '') + ' · ' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div></div>' +
+              '<div class="acts"><button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button></div></div>';
+          }).join('');
+        }
+      } catch (e) {
+        allAdsList.innerHTML = '<div class="notice">Could not load all ads.</div>';
+      }
+    }
+
     /* All orders, newest first. */
     var allOrders = [];
     try {

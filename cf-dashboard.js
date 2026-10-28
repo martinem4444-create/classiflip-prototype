@@ -704,6 +704,21 @@
   }
 
   async function renderAdmin(client) {
+    /* Site pause switch (admin only): read the single site_settings
+       row, show its state, and let the admin flip it. Until the
+       pause SQL runs, the read fails and the box says so — the
+       rest of Admin still works. */
+    try {
+      var ps = await client.from('site_settings').select('paused,paused_note').eq('id', 1).maybeSingle();
+      var paused = !!(ps && ps.data && ps.data.paused);
+      var st = el('sitePauseStatus'), tg = document.querySelector('[data-cf-pause-toggle]');
+      if (st) st.textContent = paused ? 'PAUSED — new ads, boosts, and packages are off for non-admins. Browsing is still open.' : 'Live — site is not paused.';
+      if (tg) { tg.textContent = paused ? 'Unpause site' : 'Pause site'; tg.dataset.cfPauseNext = paused ? 'false' : 'true'; }
+    } catch (e) {
+      var st2 = el('sitePauseStatus');
+      if (st2) st2.textContent = 'Pause status unavailable — run supabase/cf-site-pause-migration.sql first.';
+    }
+
     var adsList = el('adminAdsList'), ordersList = el('adminOrdersList'), expList = el('adminExpiringList');
     if (adsList) adsList.innerHTML = '<div class="notice">Loading pending ads…</div>';
     if (ordersList) ordersList.innerHTML = '<div class="notice">Loading orders…</div>';
@@ -911,6 +926,19 @@
 
   /* Delegated actions: own-listing delete + all admin actions. */
   document.addEventListener('click', async function (e) {
+    var pauseBtn = e.target.closest ? e.target.closest('[data-cf-pause-toggle]') : null;
+    if (pauseBtn) {
+      var next = pauseBtn.dataset.cfPauseNext === 'true';
+      try {
+        var upd = await getClient().from('site_settings').update({ paused: next, updated_at: new Date().toISOString() }).eq('id', 1);
+        if (upd.error) throw upd.error;
+        var st3 = el('sitePauseStatus');
+        if (st3) st3.textContent = next ? 'PAUSED — new ads, boosts, and packages are off for non-admins. Browsing is still open.' : 'Live — site is not paused.';
+        pauseBtn.textContent = next ? 'Unpause site' : 'Pause site';
+        pauseBtn.dataset.cfPauseNext = next ? 'false' : 'true';
+      } catch (err2) { alert('Could not flip the pause switch: ' + (err2 && err2.message ? err2.message : 'unknown error') + ' — run supabase/cf-site-pause-migration.sql first.'); }
+      return;
+    }
     var client = getClient();
     if (!client) return;
     var del = e.target.closest ? e.target.closest('[data-cf-del]') : null;

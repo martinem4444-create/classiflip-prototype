@@ -126,6 +126,17 @@
       notice('Checkout needs the live site connection — please open the live site to reserve.');
       return;
     }
+    /* Site pause switch: non-admin package reserves are blocked
+       while paused (admins can still reserve/test). Missing table
+       = not paused, as before. */
+    try {
+      var ps = await client.from('site_settings').select('paused').eq('id', 1).maybeSingle();
+      if (ps && !ps.error && ps.data && ps.data.paused) {
+        var isAdm = false;
+        try { var uu = await client.auth.getUser(); var uid2 = uu && uu.data && uu.data.user && uu.data.user.id; if (uid2) { var pr2 = await client.from('profiles').select('is_admin').eq('id', uid2).maybeSingle(); isAdm = !!(pr2 && !pr2.error && pr2.data && pr2.data.is_admin); } } catch (e2) {}
+        if (!isAdm) { notice('Site is under maintenance — posting ads is disabled at the moment. Feel free to browse.'); return; }
+      }
+    } catch (e3) {}
     submit.disabled = true;
     var orig = submit.textContent;
     submit.textContent = 'Reserving…';
@@ -313,6 +324,14 @@
       boostShow('boostReserveSignedOut');
       return;
     }
+    try {
+      var psb = await client.from('site_settings').select('paused').eq('id', 1).maybeSingle();
+      if (psb && !psb.error && psb.data && psb.data.paused) {
+        var isAdmB = false;
+        try { var prb = await client.from('profiles').select('is_admin').eq('id', user.id).maybeSingle(); isAdmB = !!(prb && !prb.error && prb.data && prb.data.is_admin); } catch (eB) {}
+        if (!isAdmB) { boostNotice('Site is under maintenance — posting ads is disabled at the moment. Feel free to browse.'); return; }
+      }
+    } catch (eC) {}
     boostSubmit.disabled = true;
     var orig = boostSubmit.textContent;
     boostSubmit.textContent = 'Reserving…';

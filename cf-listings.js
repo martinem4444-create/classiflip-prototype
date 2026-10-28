@@ -265,6 +265,50 @@
     };
   }
 
+  /* SITE PAUSE SWITCH (v1.17, admin-only): one row in site_settings.
+     Browsing stays open for everyone; non-admins cannot post, boost,
+     or reserve while paused. Admins can still post/test. Until the
+     pause SQL runs, a missing table means "not paused" — the site
+     works exactly as before. */
+  async function readSitePause(client) {
+    try {
+      var r = await client.from('site_settings').select('paused,paused_note').eq('id', 1).maybeSingle();
+      if (r && !r.error && r.data) return { paused: !!r.data.paused, note: r.data.paused_note || 'Site is under maintenance — posting ads is disabled at the moment. Feel free to browse.' };
+    } catch (e) {}
+    return { paused: false, note: '' };
+  }
+  async function isPausedForNonAdmin(client, user) {
+    var s = await readSitePause(client);
+    if (!s.paused) return null;
+    try {
+      var pr = await client.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+      if (pr && !pr.error && pr.data && pr.data.is_admin) return null;
+    } catch (e) {}
+    return s;
+  }
+  function showPauseBanner(note, isAdmin) {
+    if (document.getElementById('cfPauseBanner')) return;
+    var main = document.querySelector('main') || document.body;
+    var d = document.createElement('div');
+    d.id = 'cfPauseBanner';
+    d.className = 'notice';
+    d.style.cssText = 'margin:16px 0;border-color:var(--orange);font-weight:700';
+    d.textContent = (isAdmin ? 'ADMIN — site is paused, you can still post. Visitors see: ' : '') + note;
+    if (main.firstChild) main.insertBefore(d, main.firstChild); else main.appendChild(d);
+  }
+  async function refreshPauseBanner() {
+    try {
+      var client = getClient(); if (!client) return;
+      var s = await readSitePause(client);
+      window.__cfSitePaused = s.paused;
+      var old = document.getElementById('cfPauseBanner');
+      if (!s.paused) { if (old) old.remove(); return; }
+      var isAdmin = false;
+      try { var u = await client.auth.getUser(); var uid = u && u.data && u.data.user && u.data.user.id; if (uid) { var pr = await client.from('profiles').select('is_admin').eq('id', uid).maybeSingle(); isAdmin = !!(pr && !pr.error && pr.data && pr.data.is_admin); } } catch (e) {}
+      if (!old) showPauseBanner(s.note, isAdmin);
+    } catch (e) {}
+  }
+
   /* Fetch active listings, newest first. Returns true only when the
      page was actually switched to database rows; false means "leave
      the demo listings exactly as they are". */
@@ -279,6 +323,7 @@
       var uRes = await client.auth.getUser();
       window.__cfMyId = (uRes && uRes.data && uRes.data.user) ? uRes.data.user.id : null;
     } catch (e) { window.__cfMyId = null; }
+    try { refreshPauseBanner(); } catch (e2) {}
     try {
       var res = await client
         .from('listings')
@@ -434,6 +479,8 @@
         fail('Could not post your ad: you are not signed in. Please log in again.');
         return;
       }
+      var pauseCheck = await isPausedForNonAdmin(client, user);
+      if (pauseCheck) { fail(pauseCheck.note); return; }
       var title = document.getElementById('adTitle').value.trim();
       var price = Number(document.getElementById('adPrice').value);
       if (!title) {
@@ -1177,6 +1224,8 @@
         showErr('Please log in again to reserve a boost.');
         return;
       }
+      var pauseCheck2 = await isPausedForNonAdmin(client, user);
+      if (pauseCheck2) { showErr(pauseCheck2.note); return; }
       btn.disabled = true;
       btn.textContent = 'Reserving…';
       /* Mirror of the dashboard real reserve: the database

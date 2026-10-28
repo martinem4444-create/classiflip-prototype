@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.12 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12).
+/* ClassiFlip real listings v1.13 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -641,6 +641,10 @@
     window.__cfPkgDefault = { orderId: null, category: null };
     var f = document.getElementById('pkgDefaultField');
     if (f) f.hidden = true;
+    /* No package: the page's own postNotice text stands, so make
+       sure it is visible again (a previous holder state hid it). */
+    var pn0 = document.getElementById('postNotice');
+    if (pn0) pn0.style.display = '';
     _gateDealerChoice();
   }
   function pkgShowLine(text) {
@@ -757,11 +761,21 @@
            the page's own button text both behave as before. */
         window.__cfPkgDefault = { orderId: null, category: cat };
         pkgShowLine('Your ' + match.package + ' has used ' + used + '/' + limit + ' posts — renew or upgrade on Advertise.');
+        var pnQ = document.getElementById('postNotice');
+        if (pnQ) pnQ.style.display = '';
         _gateDealerChoice();
         return;
       }
       window.__cfPkgDefault = { orderId: match.id, category: cat };
       pkgShowLine('Posting under your ' + match.package + ' — ' + pkgMoney(match.amount) + '/mo, active until ' + pkgDate(match.expires_at) + '.');
+      /* Holder: hide the page's own postNotice (v1.13). It carries
+         pre-package prototype copy — e.g. the Cars dealer rule
+         '$5 per car or $49/month' — which contradicts the bought
+         package. The pkgDefaultLine above already says the true
+         plan, so the stale box just goes away. Same for agent /
+         services holders, whose notices quote prototype prices. */
+      var pnH = document.getElementById('postNotice');
+      if (pnH) pnH.style.display = 'none';
       _gateDealerChoice();
       /* The package owner already bought: hide the business pitch
          and keep the submit button on 'Preview listing' (the page's
@@ -815,6 +829,11 @@
           if (planField) planField.classList.remove('show');
           var sb = document.querySelector('#postForm .form-actions .primary');
           if (sb) sb.textContent = 'Preview listing';
+          /* v1.13: hide the page's stale postNotice too — the page's
+             updater just rewrote it (e.g. the dealer rule) and the
+             package line already carries the true plan. */
+          var pn = document.getElementById('postNotice');
+          if (pn) pn.style.display = 'none';
         } catch (e) {}
       };
       var _ucpfWrapped = function () {

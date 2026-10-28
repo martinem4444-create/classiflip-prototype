@@ -484,9 +484,15 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
       const count=5;
       return `<div class="detail-gallery"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of ${count}">${x.photo?'<img src="'+x.photo+'" alt="" loading="lazy">':icons[x.icon]}</div><div class="gallery-thumbs" aria-label="Listing image gallery">${Array.from({length:count},(_,i)=>`<button class="gallery-thumb gallery-tone-${i+1}${i===0?' active':''}" data-gallery-image="${i+1}" data-gallery-icon="${x.icon}" data-gallery-photo="${x.photo||''}" aria-label="Show image ${i+1} of ${count}">${x.photo?'<img src="'+x.photo+'" alt="" loading="lazy">':icons[x.icon]}</button>`).join('')}</div></div>`;
     }
+    /* v1.14: real rows carry UUID string ids, but the map math below
+       expects a number (UUID * 29 = NaN = broken pins). Hash any id
+       to a stable number so pin scatter works for UUIDs and demo
+       numeric ids alike. Function declarations hoist, so this is
+       safe to call from markup defined above it. */
+    function cfIdNum(id){if(id!==''&&!isNaN(Number(id)))return Number(id);var h=0,s=String(id);for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%100000;return h;}
     function locationCardMarkup(x){
       const base=HOOD_POS[x.location]||HOOD_POS['Mississauga'];
-      const jx=((x.id*29)%9)-4,jy=((x.id*41)%9)-4;
+      const n=cfIdNum(x.id),jx=((n*29)%9)-4,jy=((n*41)%9)-4;
       const px=Math.min(84,Math.max(16,base[0]+jx)),py=Math.min(86,Math.max(32,base[1]+jy));
       return '<button class="loc-card" data-goto-map="'+x.id+'" aria-label="See this property on the map"><span class="loc-map"><svg viewBox="0 0 118 78" preserveAspectRatio="none" aria-hidden="true"><rect width="118" height="78" fill="#EDF3F9"/><path d="M0 62 C 30 58, 60 66, 118 62 L118 78 L0 78 Z" fill="#C7DFF2"/><path d="M58 0 C 56 20, 53 40, 55 62" fill="none" stroke="#A9CCE8" stroke-width="4"/><path d="M0 12 H118" stroke="#D3DAE4" stroke-width="4"/><path d="M0 58 C 30 55, 70 62, 118 58" fill="none" stroke="#C9D2DE" stroke-width="3"/></svg><span class="loc-pin" style="left:'+px+'%;top:'+py+'%">'+shortPrice(x)+'</span></span><span class="loc-txt"><b>'+safe(x.location)+', Mississauga</b><small>See this property on the map \u2192</small></span></button>';
     }
@@ -693,9 +699,9 @@ openModal('detailModal');
     }
     function selectMapPin(id){
       mapSelId=id;
-      document.querySelectorAll('.map-pin').forEach(p=>p.classList.toggle('sel',Number(p.dataset.pin)===id));
-      document.querySelectorAll('.map-row').forEach(r=>r.classList.toggle('sel',Number(r.dataset.mapsel)===id));
-      const x=listings.find(y=>y.id===id),card=document.getElementById('mapCard');
+      document.querySelectorAll('.map-pin').forEach(p=>p.classList.toggle('sel',String(p.dataset.pin)===String(id)));
+      document.querySelectorAll('.map-row').forEach(r=>r.classList.toggle('sel',String(r.dataset.mapsel)===String(id)));
+      const x=listings.find(y=>String(y.id)===String(id)),card=document.getElementById('mapCard');
       if(!x||!card)return;
       card.innerHTML='<div class="map-card">'+(x.photo?'<img src="'+x.photo+'" alt="">':'')+'<div class="mc-body"><div class="price">'+displayPrice(x)+'</div><h3>'+safe(x.title)+'</h3><div class="meta"><span>'+safe(x.condition)+'</span><span>\u2022</span><span>'+safe(x.location)+'</span></div><p>'+safe(x.desc)+'</p><button class="view" data-view="'+x.id+'">View details \u2192</button></div></div>';
     }
@@ -708,20 +714,20 @@ openModal('detailModal');
       const props=rows.filter(x=>x.category==='Homes'||x.category==='Rentals');
       pins.innerHTML=props.map(x=>{
         const base=HOOD_POS[x.location]||HOOD_POS['Mississauga'];
-        const jx=((x.id*29)%9)-4,jy=((x.id*41)%9)-4;
+        const n=cfIdNum(x.id),jx=((n*29)%9)-4,jy=((n*41)%9)-4;
         const hot=x.promotion||x.featured;
-        return '<button class="map-pin'+(hot?' hot':'')+(mapSelId===x.id?' sel':'')+'" data-pin="'+x.id+'" style="left:'+(base[0]+jx)+'%;top:'+(base[1]+jy)+'%" aria-label="'+safe(x.title)+' '+shortPrice(x)+'">'+shortPrice(x)+'</button>';
+        return '<button class="map-pin'+(hot?' hot':'')+(String(mapSelId)===String(x.id)?' sel':'')+'" data-pin="'+x.id+'" style="left:'+(base[0]+jx)+'%;top:'+(base[1]+jy)+'%" aria-label="'+safe(x.title)+' '+shortPrice(x)+'">'+shortPrice(x)+'</button>';
       }).join('');
-      list.innerHTML=props.map(x=>'<button class="map-row'+(mapSelId===x.id?' sel':'')+'" data-mapsel="'+x.id+'"><span>'+safe(x.title)+'</span><b>'+shortPrice(x)+'</b></button>').join('')||'<div class="map-hint">No properties match those filters.</div>';
-      if(mapSelId&&props.some(x=>x.id===mapSelId))selectMapPin(mapSelId);
+      list.innerHTML=props.map(x=>'<button class="map-row'+(String(mapSelId)===String(x.id)?' sel':'')+'" data-mapsel="'+x.id+'"><span>'+safe(x.title)+'</span><b>'+shortPrice(x)+'</b></button>').join('')||'<div class="map-hint">No properties match those filters.</div>';
+      if(mapSelId&&props.some(x=>String(x.id)===String(mapSelId)))selectMapPin(mapSelId);
       else if(props.length)selectMapPin(props[0].id);
       else document.getElementById('mapCard').innerHTML='<div class="map-hint">No properties to show on the map.</div>';
     }
     document.addEventListener('click',e=>{
       const gm=e.target.closest('[data-goto-map]');
-      if(gm){const x=listings.find(y=>y.id===Number(gm.dataset.gotoMap));if(x){closeModals();currentCategory=x.category;savedOnly=false;mapSelId=x.id;document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c.dataset.category===currentCategory));setView('map');document.getElementById('marketplace').scrollIntoView({behavior:'smooth'});}return;}
-      const pin=e.target.closest('[data-pin]');if(pin){selectMapPin(Number(pin.dataset.pin));return;}
-      const row=e.target.closest('[data-mapsel]');if(row){selectMapPin(Number(row.dataset.mapsel));}
+      if(gm){const x=listings.find(y=>String(y.id)===String(gm.dataset.gotoMap));if(x){closeModals();currentCategory=x.category;savedOnly=false;mapSelId=x.id;document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c.dataset.category===currentCategory));setView('map');document.getElementById('marketplace').scrollIntoView({behavior:'smooth'});}return;}
+      const pin=e.target.closest('[data-pin]');if(pin){selectMapPin(pin.dataset.pin);return;}
+      const row=e.target.closest('[data-mapsel]');if(row){selectMapPin(row.dataset.mapsel);}
     });
     (function(){
       const gb=document.getElementById('gridViewBtn'),lb=document.getElementById('listViewBtn'),mb=document.getElementById('mapViewBtn');
@@ -785,7 +791,7 @@ const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCat
       if(e.target.closest('[data-close]'))closeModals();
       const save=e.target.closest('[data-save]');if(save){const id=save.dataset.save;saved.has(id)?saved.delete(id):saved.add(id);render()}
       const view=e.target.closest('[data-view]');if(view){const x=listings.find(y=>y.id===Number(view.dataset.view));openListingDetail(x)}
-      const galleryImage=e.target.closest('[data-gallery-image]');if(galleryImage){const index=galleryImage.dataset.galleryImage,main=document.getElementById('galleryMain');main.className=`detail-visual gallery-tone-${index}`;main.innerHTML=galleryImage.dataset.galleryPhoto?'<img src="'+galleryImage.dataset.galleryPhoto+'" alt="" loading="lazy">':icons[galleryImage.dataset.galleryIcon];main.setAttribute('aria-label',`Image ${index} of 5`);document.querySelectorAll('[data-gallery-image]').forEach(button=>button.classList.toggle('active',button===galleryImage))}
+      const galleryImage=e.target.closest('[data-gallery-image]');if(galleryImage){const index=galleryImage.dataset.galleryImage,main=document.getElementById('galleryMain');main.className=`detail-visual gallery-tone-${index}`;main.innerHTML=galleryImage.dataset.galleryPhoto?'<img src="'+galleryImage.dataset.galleryPhoto+'" alt="" loading="lazy">':icons[galleryImage.dataset.galleryIcon];const total=document.querySelectorAll('[data-gallery-image]').length||5;main.setAttribute('aria-label',`Image ${index} of ${total}`);document.querySelectorAll('[data-gallery-image]').forEach(button=>button.classList.toggle('active',button===galleryImage))}
       const pcover=e.target.closest('[data-pcover]');if(pcover){const pi=Number(pcover.dataset.pcover);const moved=pendingPhotos.splice(pi,1);if(moved.length){pendingPhotos.unshift(moved[0]);renderPhotoStrip();}}
       const prm=e.target.closest('[data-prm]');if(prm){pendingPhotos.splice(Number(prm.dataset.prm),1);renderPhotoStrip();}
       const pvPhoto=e.target.closest('[data-preview-photo]');if(pvPhoto){const ad=window._pendingAd;if(ad&&ad.photos&&ad.photos.length){const pidx=Number(pvPhoto.dataset.previewPhoto);const main=document.getElementById('galleryMain');if(main){main.innerHTML='<img src="'+ad.photos[pidx]+'" alt="" style="width:100%;height:300px;object-fit:cover;display:block;border-radius:14px">';main.setAttribute('aria-label','Photo '+(pidx+1)+' of '+ad.photos.length);}document.querySelectorAll('[data-preview-photo]').forEach(b=>b.classList.toggle('active',b===pvPhoto));}}
@@ -808,8 +814,8 @@ const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCat
       if(e.target.closest('[data-edit-apply]')){const a=window._jobApp;if(a)openJobApply(a.id,a.d);}
       if(e.target.closest('[data-submit-apply]')){submitJobApp();}
       const job=e.target.closest('[data-job]');if(job){openJobDetail(jobs.find(y=>y.id===Number(job.dataset.job)))}
-      const jobsCategory=e.target.closest('[data-jobs]');if(jobsCategory){currentCategory='Jobs';savedOnly=false;document.getElementById('searchInput').value='';document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c===jobsCategory));render();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})}
-      const cat=e.target.closest('[data-category]');if(cat){currentCategory=cat.dataset.category;savedOnly=false;document.getElementById('searchInput').value='';document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c.dataset.category===currentCategory));render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'})}
+      const jobsCategory=e.target.closest('[data-jobs]');if(jobsCategory){currentCategory='Jobs';savedOnly=false;document.getElementById('searchInput').value='';document.getElementById('conditionFilter').value='All';document.getElementById('sortFilter').value='featured';document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c===jobsCategory));render();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})}
+      const cat=e.target.closest('[data-category]');if(cat){currentCategory=cat.dataset.category;savedOnly=false;document.getElementById('searchInput').value='';document.getElementById('conditionFilter').value='All';document.getElementById('sortFilter').value='featured';document.querySelectorAll('.cat').forEach(c=>c.classList.toggle('active',c.dataset.category===currentCategory));render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'})}
     });
     document.getElementById('searchBtn').addEventListener('click',()=>{savedOnly=false;render();document.getElementById('marketplace').scrollIntoView({behavior:'smooth'})});
     document.getElementById('searchInput').addEventListener('input',()=>{savedOnly=false;render()});

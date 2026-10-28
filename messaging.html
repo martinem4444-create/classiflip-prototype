@@ -63,6 +63,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .comp input:focus{outline:2px solid var(--orange);border-color:var(--orange)}
 .send{width:48px;height:48px;border-radius:50%;border:0;background:var(--orange);color:#fff;font-size:19px;cursor:pointer;flex:none}
 .send:hover{background:var(--orange2)}
+.offerbtn{height:48px;padding:0 16px;border-radius:999px;border:0;background:var(--orange);color:#fff;font-size:14px;font-weight:700;cursor:pointer;flex:none}.offerbtn:hover{background:var(--orange2)}
 .iconbtn{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--ln);background:#fff;font-size:19px;cursor:pointer;flex:none;color:var(--mu)}
 .backbtn{display:none;border:0;background:none;color:#fff;font-size:20px;cursor:pointer}
 .typing{align-self:flex-start;background:#F1F4F9;border-radius:18px;border-bottom-left-radius:6px;padding:13px 18px;font-size:14px;color:var(--mu);display:none}
@@ -111,7 +112,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="msgs" id="msgs"></div>
 <div class="qr" id="qr"></div>
 <div class="comp">
-<button class="iconbtn" title="Make an offer" onclick="makeOffer()">$</button>
+<button class="offerbtn" title="Make an offer" aria-label="Make an offer" onclick="makeOffer()">Make offer</button>
 <input id="box" placeholder="Write a message…" autocomplete="off">
 <button class="send" onclick="sendMsg()" title="Send">&#10148;</button>
 </div>
@@ -171,7 +172,7 @@ cur=id;t.unread=false;
 $('adbar').innerHTML=(t.img?'<img src="'+t.img+'" alt="">':'')
 +'<div><div class="t">'+t.ad+'</div><div class="p">'+t.price+(t.biz?' · '+t.biz:'')+'</div>'
 +'<div class="st">● '+t.name+' is online</div></div>'
-+'<button class="iconbtn" title="Make an offer" onclick="makeOffer()">$</button>';
++'<button class="offerbtn" title="Make an offer" aria-label="Make an offer" onclick="makeOffer()">Make offer</button>';
 renderMsgs();renderThreads();
 if(t.live&&window.CFMessages){window.CFMessages.getMessages(t.listingId,t.otherId).then(function(msgs){if(msgs&&msgs.length){t.msgs=msgs;renderMsgs();var mm=$('msgs');mm.scrollTop=mm.scrollHeight;}});}
 $('qr').innerHTML=t.qr.map(q=>'<button onclick="quickRe(\''+q.replace(/'/g,"\\'")+'\')">'+q+'</button>').join('');

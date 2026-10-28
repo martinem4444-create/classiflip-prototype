@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.13 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13).
+/* ClassiFlip real listings v1.14 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -355,6 +355,11 @@
         if (typeof closeModals === 'function' && typeof openModal === 'function') {
           closeModals();
           openModal('postModal');
+          /* v1.14: the form updater runs synchronously on modal open
+             and overwrites the notice text (and hides it for package
+             holders) — re-apply the error AFTER the reopen so the
+             user actually sees it. */
+          if (noticeEl) { noticeEl.textContent = msg; noticeEl.style.display = ''; }
           reopened = true;
         }
       } catch (e) {}
@@ -917,9 +922,9 @@
      clicked thumb — so no new click wiring is needed; the thumbs
      below carry exactly the attributes it expects. Single-photo (or
      no-photo) ads use the page's galleryMarkup exactly as before:
-     byte-identical output, no behaviour change. Note: the page's
-     handler labels the main image "Image N of 5" regardless of the
-     real photo count — a cosmetic label only, the images are right. */
+     byte-identical output, no behaviour change. Note (v1.14): the
+     page's thumb handler now counts the real thumbs for its
+     "Image N of M" label (index.html fix); the images were always right. */
   function escAttr(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }

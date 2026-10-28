@@ -547,9 +547,25 @@
           throw phIns.error;
         }
       }
-      /* Admin email: fire-and-forget, never blocks the post flow. */
+      /* Auto-moderation safety net (cf-auto-moderate.js v1, OFF by
+         default): if the switch is on and this is a clean trusted-
+         seller ad, flip it to active now; otherwise it stays pending
+         and the admin email below fires exactly as before. A failed
+         check or update always leaves the ad pending — never live. */
+      var autoApproved = false;
       try {
-        if (ins.data && ins.data.id) {
+        if (window.CFAutoMod && typeof window.CFAutoMod.tryAutoApprove === 'function') {
+          autoApproved = await window.CFAutoMod.tryAutoApprove(client, user, ins.data.id, {
+            title: title,
+            description: document.getElementById('adDescription').value.trim(),
+            category: newRow.category, price: price, photo_url: photoUrl
+          });
+        }
+      } catch (e) { autoApproved = false; }
+      /* Admin email: fire-and-forget, never blocks the post flow.
+         Skipped for auto-approved ads — there is nothing pending. */
+      try {
+        if (ins.data && ins.data.id && !autoApproved) {
           notifyAdminPendingAd({ id: ins.data.id, title: title, category: newRow.category, price: price });
         }
       } catch (e) {}
@@ -609,8 +625,8 @@
       if (mp) mp.scrollIntoView({ behavior: 'smooth' });
       var rn = document.getElementById('resultsNote');
       if (boostCode) {
-        if (rn) rn.textContent = 'Your ad is pending approval — and your Boost is reserved (see the Boost instructions).';
-        if (noticeEl) noticeEl.textContent = 'Your ad was posted and is awaiting approval. Boost reserved — see the instructions.';
+        if (rn) rn.textContent = autoApproved ? 'Your ad is live now — and your Boost is reserved (see the Boost instructions).' : 'Your ad is pending approval — and your Boost is reserved (see the Boost instructions).';
+        if (noticeEl) noticeEl.textContent = autoApproved ? 'Your ad is live now. Boost reserved — see the instructions.' : 'Your ad was posted and is awaiting approval. Boost reserved — see the instructions.';
         /* Boost instructions modal, mirroring reserveRealBoost's
            success screen: the seller needs the BST code and the
            Interac address before anything else. Opens last, on
@@ -619,10 +635,10 @@
           document.getElementById('detailTitle').textContent = 'Boost reserved';
           document.getElementById('detailBody').innerHTML =
             '<div style="max-width:440px;margin:0 auto;text-align:center">' +
-            '<div style="font-size:44px;line-height:1">🚀</div>' +
+            '<div style="font-size:44px;line-height:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:44px;height:44px;vertical-align:middle"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>' +
             '<h3 style="margin:10px 0 6px">Boost reserved — send $2.99 to activate it</h3>' +
             '<p>Send <b>$2.99</b> by Interac e-Transfer to <b>mm905media@gmail.com</b> with <b>' + safe(boostCode) + '</b> in the message.<br>' +
-            'Your ad is still pending approval — Martin activates your boost once the ad is approved, and it then runs 7 days, pinned first in its category.</p>' +
+            (autoApproved ? 'Your ad is live now — Martin activates your boost, and it then runs 7 days, pinned first in its category.</p>' : 'Your ad is still pending approval — Martin activates your boost once the ad is approved, and it then runs 7 days, pinned first in its category.</p>') +
             '<p>Boost ref: <b>' + safe(boostCode) + '</b> · Ad: ' + safe(title) + '</p>' +
             '<button class="primary" id="cfPostBoostDone">Done</button>' +
             '</div>';
@@ -632,8 +648,8 @@
           if (_bd && typeof closeModals === 'function') _bd.addEventListener('click', function () { closeModals(); });
         } catch (e) {}
       } else {
-        if (rn) rn.textContent = boostErr ? 'Your ad is pending approval — it will appear once Martin approves it. (The Boost reservation failed: ' + boostErr + ' — you can still boost the ad once it is live.)' : 'Your ad is pending approval — it will appear once Martin approves it.';
-        if (noticeEl) noticeEl.textContent = boostErr ? 'Your ad was posted and is awaiting approval. Boost reservation failed — boost it from the ad once live.' : 'Your ad was posted and is awaiting approval.';
+        if (rn) rn.textContent = autoApproved ? 'Your ad is live now.' : (boostErr ? 'Your ad is pending approval — it will appear once Martin approves it. (The Boost reservation failed: ' + boostErr + ' — you can still boost the ad once it is live.)' : 'Your ad is pending approval — it will appear once Martin approves it.');
+        if (noticeEl) noticeEl.textContent = autoApproved ? 'Your ad is live now.' : (boostErr ? 'Your ad was posted and is awaiting approval. Boost reservation failed — boost it from the ad once live.' : 'Your ad was posted and is awaiting approval.');
       }
     } catch (err) {
       fail('Could not post your ad: ' + (err && err.message ? err.message : 'Something went wrong. Please try again.'));
@@ -996,7 +1012,7 @@
       document.getElementById('detailTitle').textContent = 'Listing details';
       document.getElementById('detailBody').innerHTML =
         '<div class="detail">' + detailGalleryMarkup(x) + '<div>' +
-                (x.boostedEffective ? '<div class="prototype-tag">🚀 BOOSTED</div>' : '') +
+                (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' +
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
@@ -1055,7 +1071,7 @@
       document.getElementById('detailTitle').textContent = 'Listing details';
       document.getElementById('detailBody').innerHTML =
         '<div class="detail">' + detailGalleryMarkup(x) + '<div>' +
-                (x.boostedEffective ? '<div class="prototype-tag">🚀 BOOSTED</div>' : '') +
+                (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' +
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
@@ -1155,7 +1171,7 @@
       }
       document.getElementById('detailBody').innerHTML =
         '<div style="max-width:440px;margin:0 auto;text-align:center">' +
-        '<div style="font-size:44px;line-height:1">🚀</div>' +
+        '<div style="font-size:44px;line-height:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:44px;height:44px;vertical-align:middle"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>' +
         '<h3 style="margin:10px 0 6px">Payment sent — Martin activates your boost</h3>' +
         '<p>Send <b>$2.99</b> by Interac e-Transfer to <b>mm905media@gmail.com</b> with <b>' + safe(bst) + '</b> in the message.<br>' +
         'Martin activates your boost, usually the same day — it then runs 7 days, pinned first in its category.</p>' +

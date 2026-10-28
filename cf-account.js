@@ -122,9 +122,9 @@
       '.cf-acct-nm{font-size:13px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
       '@media(max-width:480px){.cf-acct-nm{display:none}}' +
       /* Menu backdrop + menu (dropdown desktop, bottom sheet phone). */
-      '.cf-acct-backdrop{position:fixed;inset:0;background:rgba(13,21,38,.45);z-index:118;display:none}' +
+      '.cf-acct-backdrop{position:fixed;inset:0;background:rgba(13,21,38,.45);z-index:1000;display:none}' +
       '.cf-acct-backdrop.on{display:block}' +
-      '.cf-acct-menu{position:fixed;z-index:119;background:#fff;color:#1a2333;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:8px;display:none;width:220px}' +
+      '.cf-acct-menu{position:fixed;z-index:1001;background:#fff;color:#1a2333;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:8px;display:none;width:220px}' +
       '.cf-acct-menu.on{display:block}' +
       '.cf-acct-menu button,.cf-acct-menu a{display:flex;width:100%;text-align:left;padding:12px 14px;min-height:44px;align-items:center;border:none;background:none;font:inherit;font-size:15px;color:inherit;cursor:pointer;border-radius:10px;text-decoration:none;box-sizing:border-box}' +
       '.cf-acct-menu button:hover,.cf-acct-menu a:hover{background:#f0f3f9}' +
@@ -132,9 +132,9 @@
       'html[data-theme="dark"] .cf-acct-menu button:hover,html[data-theme="dark"] .cf-acct-menu a:hover{background:#1D2739}' +
       '@media(max-width:900px){.cf-acct-menu{left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;width:auto!important;border-radius:18px 18px 14px 14px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}}' +
       /* Panels (profile + settings share one overlay + card). */
-      '.cf-acct-panel{position:fixed;inset:0;z-index:121;display:none;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}' +
+      '.cf-acct-panel{position:fixed;inset:0;z-index:1003;display:none;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}' +
       '.cf-acct-panel.on{display:block}' +
-      '.cf-acct-panel-backdrop{position:fixed;inset:0;background:rgba(13,21,38,.62);z-index:120;display:none}' +
+      '.cf-acct-panel-backdrop{position:fixed;inset:0;background:rgba(13,21,38,.62);z-index:1002;display:none}' +
       '.cf-acct-panel-backdrop.on{display:block}' +
       '.cf-acct-card{background:#fff;color:#1a2333;border-radius:22px;padding:26px;max-width:520px;width:100%;margin:5vh auto;position:relative;box-shadow:0 24px 70px rgba(0,0,0,.28);box-sizing:border-box}' +
       'html[data-theme="dark"] .cf-acct-card{background:#12161F;color:#EDF2F9}' +
@@ -161,7 +161,7 @@
       '.cf-acct-notice.ok{background:#EAF7EE;border-color:#9ED5B0;color:#1E5C33}' +
       'html[data-theme="dark"] .cf-acct-notice{background:#2B1A12;border-color:#4A3220;color:#D8BFA8}' +
       /* Toast (same 2,400 ms rhythm as the dashboard toast). */
-      '.cf-acct-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#101828;color:#fff;padding:12px 18px;border-radius:999px;font-size:14px;z-index:200;display:none;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:calc(100vw - 32px);text-align:center}' +
+      '.cf-acct-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#101828;color:#fff;padding:12px 18px;border-radius:999px;font-size:14px;z-index:1004;display:none;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:calc(100vw - 32px);text-align:center}' +
       '.cf-acct-toast.on{display:block}';
     var st = document.createElement('style');
     st.id = 'cf-account-css';

@@ -186,7 +186,7 @@
           '<div class="ad-media">' + media + '</div>' +
           '<div class="ad-body"><h3>' + esc(a.title || 'Listing') + '</h3>' +
           '<div class="price">' + priceOf(a) + '</div>' +
-          (a._boosted ? '<div class="boosted">🚀 BOOSTED</div>' : '') +
+          (a._boosted ? '<div class="boosted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
           '<div class="meta">' + esc(a.condition || '') + (a.location ? ' · ' + esc(a.location) : '') + '</div>' +
           '</div></a>';
       }).join('');

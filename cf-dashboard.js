@@ -73,6 +73,30 @@
     } catch (e) { return '$' + n; }
   }
 
+  /* Buyer approval emails (Oct 28, 2026, automatic + fire-and-forget):
+     after a successful Approve or order Activate, ping the matching
+     Edge Function, which verifies the admin caller server-side and
+     emails the buyer from the database row — never from a request
+     field. Email failure is silent by design: the approval/activation
+     still stands. Buyer delivery itself only lands once Resend's
+     sender switches to @classiflip.com after domain day (sandbox
+     sender only reaches the account owner until then). */
+  function notifyBuyer(fn, body) {
+    try {
+      var client = getClient();
+      if (!client) return;
+      client.auth.getSession().then(function (s) {
+        var token = s && s.data && s.data.session && s.data.session.access_token;
+        if (!token) return;
+        fetch('https://dbgmyvjaavpmernaxnav.functions.supabase.co/' + fn, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(body)
+        }).catch(function () {});
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
   function shortDate(iso) {
     try {
       var d = new Date(iso);
@@ -546,7 +570,7 @@
             ? '<a class="btn gho" href="index.html">View</a>'
             : '<span class="btn gho" style="opacity:.55">' + (x.status === 'pending' ? 'Awaiting approval' : esc(x.status)) + '</span>';
           var boostPill = liveBoostByListing[x.id]
-            ? ' <span class="pill boost">🚀 Boosted until ' + fullDate(new Date(liveBoostByListing[x.id]).toISOString()) + '</span>' : '';
+            ? ' <span class="pill boost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> Boosted until ' + fullDate(new Date(liveBoostByListing[x.id]).toISOString()) + '</span>' : '';
           var boostBtn = x.status === 'active'
             ? '<button class="btn pri" data-cf-boost="' + esc(x.id) + '" data-cf-boost-title="' + esc(x.title) + '">Boost · $2.99</button>' : '';
           var editBtn = (x.status === 'active' || x.status === 'pending' || x.status === 'rejected')
@@ -929,7 +953,7 @@
         var bform2 = el('boostForm'); if (bform2) bform2.classList.add('hidden');
         var rdone = el('boostRealDone');
         if (rdone) {
-          rdone.innerHTML = '<div class="big">🚀</div><h2>Payment sent — Martin activates your boost</h2>' +
+          rdone.innerHTML = '<div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:44px;height:44px;vertical-align:middle"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div><h2>Payment sent — Martin activates your boost</h2>' +
             '<p>Send <b>$2.99</b> by Interac e-Transfer to <b>' + esc(BOOST_ADMIN_EMAIL) + '</b> with <b>' + esc(bst) + '</b> in the message.<br>' +
             'Martin activates your boost, usually the same day — it then runs 7 days, pinned first in its category.</p>' +
             '<p class="sub">Boost ref: <b>' + esc(bst) + '</b> · Ad: ' + esc(boostListing.title) + '</p>' +
@@ -966,6 +990,7 @@
     };
     if (approve) {
       client.from('listings').update({ status: 'active' }).eq('id', approve.dataset.cfApprove).then(function (res) {
+        if (!res.error) notifyBuyer('notify-buyer-ad-live', { listing_id: approve.dataset.cfApprove });
         done(!res.error, res.error ? 'Approve failed: ' + res.error.message + ' — run the step-4 SQL first?' : 'Ad approved — it is live now');
       });
     } else if (reject) {
@@ -975,6 +1000,7 @@
     } else if (act) {
       var exp30 = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
       client.from('orders').update({ status: 'Active', expires_at: exp30 }).eq('id', act.dataset.cfOrderActivate).then(function (res) {
+        if (!res.error) notifyBuyer('notify-buyer-package-live', { order_id: act.dataset.cfOrderActivate });
         done(!res.error, res.error ? 'Activate failed: ' + res.error.message : 'Order activated — live for 30 days');
       });
     } else if (soon) {

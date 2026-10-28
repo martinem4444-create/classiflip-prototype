@@ -717,6 +717,19 @@
     } catch (e) {
       var st2 = el('sitePauseStatus');
       if (st2) st2.textContent = 'Pause status unavailable — run supabase/cf-site-pause-migration.sql first.';
+    /* Total users count — ADMIN ONLY. Runs inside renderAdmin, which
+       only runs for admins, and the box lives in the admin section
+       (hidden for everyone else). Profiles are auto-created on
+       signup, so the profiles count = total users. */
+    try {
+      var cnt = await client.from('profiles').select('id', { count: 'exact', head: true });
+      var uc = el('adminUserCount');
+      if (uc) uc.textContent = (cnt && !cnt.error && typeof cnt.count === 'number') ? String(cnt.count) : 'Unavailable';
+    } catch (e3) {
+      var uc2 = el('adminUserCount');
+      if (uc2) uc2.textContent = 'Unavailable';
+    }
+
     }
 
     var adsList = el('adminAdsList'), ordersList = el('adminOrdersList'), expList = el('adminExpiringList');

@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.11 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11).
+/* ClassiFlip real listings v1.12 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -641,6 +641,7 @@
     window.__cfPkgDefault = { orderId: null, category: null };
     var f = document.getElementById('pkgDefaultField');
     if (f) f.hidden = true;
+    _gateDealerChoice();
   }
   function pkgShowLine(text) {
     var f = document.getElementById('pkgDefaultField');
@@ -648,6 +649,52 @@
     if (!f || !l) return;
     l.textContent = text;
     f.hidden = false;
+  }
+  /* Dealer-choice gate (v1.12, Martin's ruling Oct 27): the Cars
+     form's 'Car seller' select is baked HTML with a dealer option
+     anyone could pick, with no role check. The real postAd never
+     stored the choice, so it was label-only — but the option must
+     not be offered to non-holders at all. Rule: the 'Automotive
+     dealer' option exists ONLY while an Active dealer package is
+     defaulted for Cars (window.__cfPkgDefault.orderId set with
+     category 'Cars' — the same state the package-default feature
+     already maintains: Active + unexpired + under quota). Everyone
+     else sees 'Private seller' only. If the dealer option was
+     selected when the gate closes, the value falls back to
+     'private' and the function returns true so the caller can
+     re-run the page's updater and refresh the plan options.
+     Never throws; a missing select is a no-op. Logged-out users
+     have no package, so the dealer option is hidden for them too
+     (their posts are demo previews only). */
+  function _gateDealerChoice() {
+    try {
+      var sel = document.getElementById('carSellerType');
+      if (!sel) return false;
+      var catEl = document.getElementById('adCategory');
+      if (!catEl || catEl.value !== 'Cars') return false;
+      var st = window.__cfPkgDefault;
+      var hasDealerPkg = !!(st && st.orderId && st.category === 'Cars');
+      var dealerOpt = null;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === 'dealer') { dealerOpt = sel.options[i]; break; }
+      }
+      if (hasDealerPkg) {
+        if (!dealerOpt) {
+          var o = document.createElement('option');
+          o.value = 'dealer';
+          o.textContent = 'Automotive dealer';
+          sel.appendChild(o);
+        }
+        return false;
+      }
+      if (dealerOpt) {
+        var wasDealer = (sel.value === 'dealer');
+        if (wasDealer) sel.value = 'private';
+        sel.removeChild(dealerOpt);
+        return wasDealer;
+      }
+      return false;
+    } catch (e) { return false; }
   }
   var pkgFetch = null; /* in-flight orders fetch, deduped */
   var pkgCache = null; /* { userId, orders } */
@@ -710,10 +757,12 @@
            the page's own button text both behave as before. */
         window.__cfPkgDefault = { orderId: null, category: cat };
         pkgShowLine('Your ' + match.package + ' has used ' + used + '/' + limit + ' posts — renew or upgrade on Advertise.');
+        _gateDealerChoice();
         return;
       }
       window.__cfPkgDefault = { orderId: match.id, category: cat };
       pkgShowLine('Posting under your ' + match.package + ' — ' + pkgMoney(match.amount) + '/mo, active until ' + pkgDate(match.expires_at) + '.');
+      _gateDealerChoice();
       /* The package owner already bought: hide the business pitch
          and keep the submit button on 'Preview listing' (the page's
          own updateCarPostingFields just set it to 'See business
@@ -771,6 +820,16 @@
       var _ucpfWrapped = function () {
         _ucpf();
         _pkgReassert();
+        /* Dealer-choice gate (v1.12): the page's updater just
+           rendered the plan options for whatever seller value is
+           showing. If the gate just flipped a non-holder off the
+           dealer choice, re-run the page's updater once so the
+           plan options + notice match 'private' instead of still
+           showing dealer plans, then re-assert the package hides. */
+        if (_gateDealerChoice()) {
+          try { _ucpf(); } catch (e) {}
+          _pkgReassert();
+        }
         pkgRefresh();
       };
       _ucpfWrapped.__cfPkgWrapped = true;

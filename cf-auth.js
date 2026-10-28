@@ -115,7 +115,7 @@
           var res = await client.auth.signUp({
             email: email,
             password: pw,
-            options: { data: { display_name: name, role: roleSel ? roleSel.value : 'private' } }
+            options: { emailRedirectTo: 'https://martinem4444-create.github.io/classiflip-prototype/', data: { display_name: name, role: roleSel ? roleSel.value : 'private' } }
           });
           if (res.error) throw res.error;
           if (res.data && res.data.session) {

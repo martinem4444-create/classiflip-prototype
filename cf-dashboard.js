@@ -161,18 +161,27 @@
   var boostListing = null;
   function playBoostSound() {
     try {
-      var C = window._cfBoostAc || (window._cfBoostAc = new (window.AudioContext || window.webkitAudioContext)());
-      if (C.state === 'suspended') C.resume();
-      var t0 = C.currentTime;
-      function ping(at, fq, peak, dur) {
-        var o = C.createOscillator(), o2 = C.createOscillator(), g = C.createGain();
-        o.type = 'square'; o.frequency.value = fq; o2.type = 'square'; o2.frequency.value = fq * 1.007;
-        g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-        o.connect(g); o2.connect(g); g.connect(C.destination); o.start(at); o.stop(at + dur + 0.02); o2.start(at); o2.stop(at + dur + 0.02);
-      }
-      var gaps = [0.055, 0.065, 0.075, 0.085, 0.1, 0.115, 0.13], tt = t0;
-      gaps.forEach(function (gp, i) { tt += gp; ping(tt, i % 2 ? 2093 : 1568, 0.05, 0.05); });
-      ping(t0 + 0.80, 2637, 0.16, 0.5); ping(t0 + 0.80, 3520, 0.07, 0.4); ping(t0 + 0.80, 1046.5, 0.06, 0.5);
+      var C = window._cfBoostAc;
+      if (!C || C.state === 'closed') C = window._cfBoostAc = new (window.AudioContext || window.webkitAudioContext)();
+      var run = function () {
+        try {
+          var t0 = C.currentTime;
+          function ping(at, fq, peak, dur) {
+            var o = C.createOscillator(), o2 = C.createOscillator(), g = C.createGain();
+            o.type = 'square'; o.frequency.value = fq; o2.type = 'square'; o2.frequency.value = fq * 1.007;
+            g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+            o.connect(g); o2.connect(g); g.connect(C.destination); o.start(at); o.stop(at + dur + 0.02); o2.start(at); o2.stop(at + dur + 0.02);
+          }
+          var gaps = [0.055, 0.065, 0.075, 0.085, 0.1, 0.115, 0.13], tt = t0;
+          gaps.forEach(function (gp, i) { tt += gp; ping(tt, i % 2 ? 2093 : 1568, 0.05, 0.05); });
+          ping(t0 + 0.80, 2637, 0.16, 0.5); ping(t0 + 0.80, 3520, 0.07, 0.4); ping(t0 + 0.80, 1046.5, 0.06, 0.5);
+        } catch (e) {}
+      };
+      /* Repeat-play fix: on phones the audio context can go
+         suspended between boosts, and notes scheduled while
+         suspended never sound — so resume first, then play. */
+      if (C.state === 'suspended') { try { C.resume().then(run).catch(run); } catch (e) { run(); } }
+      else run();
     } catch (e) {}
   }
 

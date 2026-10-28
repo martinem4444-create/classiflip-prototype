@@ -1,4 +1,4 @@
-/* ClassiFlip dashboard wiring v1.3 (step 4 + multi-photo + step 5 Boost + ad manager) — Supabase (marketplace-dev).
+/* ClassiFlip dashboard wiring v1.4 (step 4 + multi-photo + step 5 Boost + ad manager + business stats) — Supabase (marketplace-dev).
  *
  * WHAT IT DOES (signed-in users only; logged-out visitors keep the demo):
  * - Replaces the demo listing cards with the signed-in user's REAL listings
@@ -450,6 +450,33 @@
       }
     } catch (e) {}
 
+    /* Business stats (v1.4): per-ad views/clicks via the
+       get_my_listing_stats RPC (ownership enforced inside the
+       function) + message counts from the messages table (RLS
+       already limits rows to threads this seller is party to).
+       Best-effort throughout: a failed fetch leaves zeroes and
+       never blocks the dashboard. Stats start at this deploy —
+       older traffic was never recorded, so early counts are low
+       by design, not by error. */
+    var statsByListing = {};
+    var msgCountByListing = {};
+    try {
+      var st = await client.rpc('get_my_listing_stats');
+      (st.data || []).forEach(function (r) { statsByListing[r.listing_id] = r; });
+    } catch (e) {}
+    try {
+      var ids = listings.map(function (l) { return l.id; });
+      if (ids.length) {
+        var mq = await client.from('messages').select('listing_id').in('listing_id', ids);
+        (mq.data || []).forEach(function (m) { msgCountByListing[m.listing_id] = (msgCountByListing[m.listing_id] || 0) + 1; });
+      }
+    } catch (e2) {}
+    function statsLine(id) {
+      var s = statsByListing[id] || {};
+      var v = s.impressions || 0, c = s.clicks || 0, m = msgCountByListing[id] || 0;
+      return v + ' views · ' + c + ' clicks · ' + m + ' messages';
+    }
+
     var nActive = listings.filter(function (x) { return x.status === 'active'; }).length;
     var nPending = listings.filter(function (x) { return x.status === 'pending'; }).length;
     var nUnread = threads.filter(function (t) { return t.unread; }).length;
@@ -531,13 +558,15 @@
               '<div class="gb"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
               '<div class="p">' + money(x.price) + '</div>' +
               '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div>' +
+              '<div class="s">' + statsLine(x.id) + '</div>' +
               '<div class="acts">' + viewBtn + boostBtn + editBtn + delBtn + '</div></div></div>';
           }
           return '<div class="lcard">' +
             (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
             '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
             '<div class="p">' + money(x.price) + '</div>' +
-            '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div></div>' +
+            '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div>' +
+            '<div class="s">' + statsLine(x.id) + '</div></div>' +
             '<div class="acts">' + viewBtn + boostBtn + editBtn + delBtn + '</div>' +
             '</div>';
         }).join('');
@@ -1334,6 +1363,7 @@
       e.preventDefault();
       runAdminSearch();
     }
+    if (e.key === 'Escape' && realEdit) { closeRealEditor(); }
   });
 
   window.CFDashboard = { refresh: refresh };

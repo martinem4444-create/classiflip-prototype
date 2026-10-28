@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.14 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater).
+/* ClassiFlip real listings v1.15 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard.
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -106,6 +106,53 @@
     } catch (e) {}
     return null;
   }
+
+  /* Business stats (v1.15): record a view or click for a live
+     listing. Fire-and-forget: never blocks the UI, never shows
+     an error, never stores personal data — just the ad id, the
+     event type, and the time. Impressions count once per browser
+     session per ad (scrolling past twice doesn't double-count);
+     clicks count every detail open. The seller's own views and
+     clicks on their own ads are skipped at the call sites. */
+  function recordListingEvent(listingId, type) {
+    try {
+      if (!listingId) return;
+      if (type === 'impression') {
+        var k = 'cf_imp_' + listingId;
+        try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) {}
+      }
+      var c = getClient();
+      if (!c) return;
+      c.from('listing_events').insert({ listing_id: listingId, event_type: type }).then(function () {}, function () {});
+    } catch (e) {}
+  }
+
+  /* Impression observer: watch marketplace grid cards; when a
+     countable card scrolls at least halfway into view, record
+     one impression and stop watching it. Called by the page's
+     render() after every grid render (filters and pagination
+     re-render, so re-observation is required — disconnect first
+     so detached cards from the last render don't linger). */
+  var __cfImpObserver = null;
+  function observeListingImpressions() {
+    try {
+      if (typeof IntersectionObserver === 'undefined') return;
+      if (!__cfImpObserver) {
+        __cfImpObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (!en.isIntersecting) return;
+            var id = en.target.getAttribute('data-listing-id');
+            __cfImpObserver.unobserve(en.target);
+            if (id) recordListingEvent(id, 'impression');
+          });
+        }, { threshold: 0.5 });
+      }
+      __cfImpObserver.disconnect();
+      var cards = document.querySelectorAll('.listing[data-listing-id]');
+      for (var i = 0; i < cards.length; i++) __cfImpObserver.observe(cards[i]);
+    } catch (e) {}
+  }
+  window.__cfObserveImpressions = observeListingImpressions;
 
   /* The page's own logged-in flag (set by cf-auth.js on sign-in). */
   function isLoggedIn() {
@@ -1000,6 +1047,7 @@
       x = null;
     }
     if (!x) return;
+    try { if (x.live && String(x.seller_id || '') !== String(window.__cfMyId || '')) recordListingEvent(x.id, 'click'); } catch (err2) {}
     e.preventDefault();
     e.stopPropagation();
     try {

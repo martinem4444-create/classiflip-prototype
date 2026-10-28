@@ -1,4 +1,4 @@
-/* ClassiFlip dashboard wiring v1.2 (step 4 + multi-photo + step 5 Boost) — Supabase (marketplace-dev).
+/* ClassiFlip dashboard wiring v1.3 (step 4 + multi-photo + step 5 Boost + ad manager) — Supabase (marketplace-dev).
  *
  * WHAT IT DOES (signed-in users only; logged-out visitors keep the demo):
  * - Replaces the demo listing cards with the signed-in user's REAL listings
@@ -29,6 +29,13 @@
  *   as before. Deleting an ad also best-effort removes its storage
  *   objects (paths derived from the photo URLs); the row delete itself
  *   never waits on storage, so a storage failure can't block a delete.
+ * - Ad manager (v1.3): My listings gains a List/Grid toggle; real ads
+ *   gain a working Edit (title/price/description/location/photos) that
+ *   sends the ad back to pending approval, with category locked so the
+ *   package linkage can't drift. Admin gains a "Find a business" search
+ *   (business name, email, or phone) listing the account's ads with
+ *   Delete for phone-requested takedowns; deleting an ad never touches
+ *   its order, so no refund moves automatically.
  *
  * SECURITY NOTES:
  * - This file contains NO keys. It reuses window.CFAuth.client (no keys of
@@ -97,6 +104,12 @@
     var p = STATUS_PILL[status] || ['pause', status || 'Unknown'];
     return '<span class="pill ' + p[0] + '">' + esc(p[1]) + '</span>';
   }
+
+  /* Ad manager v1.3 state: list/grid view for My ads, plus the ad
+     currently being really edited (null when the editor is in demo
+     mode, so demo Save keeps working untouched). */
+  var dashView = 'list';
+  var realEdit = null;
 
   var renderedReal = false;
   var inFlight = false;
@@ -475,8 +488,10 @@
         '<div class="stat"><div class="n">' + orders.length + '</div><div class="l">My orders</div></div>';
     }
 
-    /* Real listing cards. Edit stays demo-only (real ad editing is a
-       later pass); Delete is real; View links to the marketplace.
+    /* Real listing cards (ad manager v1.3): List/Grid toggle above the
+       list; Edit is real (title/price/description/location/photos,
+       back to pending on save); Delete is real; View links to the
+       marketplace.
        Step 5 Boost: a Boost button on ACTIVE rows only, plus a
        "Boosted until" pill when the ad has a live boost (an Active
        boosts row with expires_at in the future — the latest expiry
@@ -496,7 +511,10 @@
       if (!listings.length) {
         listSeller.innerHTML = '<div class="notice">No ads yet — post one from the Marketplace and it will show up here once approved.</div>';
       } else {
-        listSeller.innerHTML = listings.map(function (x) {
+        var viewBar = '<div class="adviewbar"><span class="lbl">My ads</span>' +
+          '<button class="btn gho' + (dashView === 'list' ? ' on' : '') + '" data-cf-view="list">List</button>' +
+          '<button class="btn gho' + (dashView === 'grid' ? ' on' : '') + '" data-cf-view="grid">Grid</button></div>';
+        var cardsHtml = listings.map(function (x) {
           var viewBtn = x.status === 'active'
             ? '<a class="btn gho" href="index.html">View</a>'
             : '<span class="btn gho" style="opacity:.55">' + (x.status === 'pending' ? 'Awaiting approval' : esc(x.status)) + '</span>';
@@ -504,14 +522,26 @@
             ? ' <span class="pill boost">🚀 Boosted until ' + fullDate(new Date(liveBoostByListing[x.id]).toISOString()) + '</span>' : '';
           var boostBtn = x.status === 'active'
             ? '<button class="btn pri" data-cf-boost="' + esc(x.id) + '" data-cf-boost-title="' + esc(x.title) + '">Boost · $2.99</button>' : '';
+          var editBtn = (x.status === 'active' || x.status === 'pending' || x.status === 'rejected')
+            ? '<button class="btn gho" data-cf-edit="' + esc(x.id) + '">Edit</button>' : '';
+          var delBtn = '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button>';
+          if (dashView === 'grid') {
+            return '<div class="gtile"><div class="gph">' +
+              (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '&#128722;') + '</div>' +
+              '<div class="gb"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
+              '<div class="p">' + money(x.price) + '</div>' +
+              '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div>' +
+              '<div class="acts">' + viewBtn + boostBtn + editBtn + delBtn + '</div></div></div>';
+          }
           return '<div class="lcard">' +
             (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
             '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
             '<div class="p">' + money(x.price) + '</div>' +
             '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div></div>' +
-            '<div class="acts">' + viewBtn + boostBtn + '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button></div>' +
+            '<div class="acts">' + viewBtn + boostBtn + editBtn + delBtn + '</div>' +
             '</div>';
         }).join('');
+        listSeller.innerHTML = viewBar + (dashView === 'grid' ? '<div class="adgrid">' + cardsHtml + '</div>' : cardsHtml);
       }
     }
 
@@ -972,6 +1002,337 @@
           done(false, 'Update failed: ' + (err && err.message ? err.message : 'Something went wrong.'));
         }
       })();
+    }
+  });
+
+  /* ============ Ad manager v1.3: real Edit + admin search ============ */
+
+  function dataUrlToBlob(dataUrl) {
+    try {
+      var parts = String(dataUrl).split(',');
+      var mime = (parts[0].match(/data:(.*?);/) || [])[1] || 'image/jpeg';
+      var bin = atob(parts[1] || '');
+      var arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: mime });
+    } catch (e) { return null; }
+  }
+
+  function closeRealEditor() {
+    realEdit = null;
+    var save = el('edSave');
+    if (save) save.onclick = null; /* falls back to the demo saveEditor() */
+    var sub = el('edSub');
+    if (sub) sub.textContent = 'Changes go live instantly. Drafts auto-save.';
+    var cat = el('edCat');
+    if (cat) cat.disabled = false;
+  }
+
+  function photoTile(url, isCover, isNew, previewKey) {
+    var attrs = isNew ? ' data-preview="' + esc(previewKey) + '"' : ' data-url="' + esc(url) + '"';
+    return '<div class="ptile' + (isCover ? ' cover' : '') + '"' + attrs + '>' +
+      '<img src="' + esc(isNew ? previewKey : url) + '">' +
+      '<button class="star" title="Cover photo">&#9733;</button>' +
+      '<button class="rm" title="Remove photo">&times;</button></div>';
+  }
+
+  async function openRealEditor(id) {
+    var client = getClient();
+    if (!client) return;
+    var user = await getUser(client);
+    if (!user) { say('Please log in first.'); return; }
+    var lr = await client.from('listings')
+      .select('id,title,description,price,category,location,status,photo_url,seller_id')
+      .eq('id', id).maybeSingle();
+    if (!lr || !lr.data) { say('Could not load that ad.'); return; }
+    var ad = lr.data;
+    if (String(ad.seller_id || '') !== String(user.id)) { say('That ad is not yours.'); return; }
+    if (['active', 'pending', 'rejected'].indexOf(ad.status) === -1) {
+      say('Only active, pending, or rejected ads can be edited — post a new ad for the rest.');
+      return;
+    }
+    var photos = [];
+    try {
+      var ph = await client.from('listing_photos')
+        .select('photo_url,position').eq('listing_id', id).order('position', { ascending: true });
+      (ph.data || []).forEach(function (p) { if (p.photo_url) photos.push(p.photo_url); });
+    } catch (e) {}
+    if (!photos.length && ad.photo_url) photos = [ad.photo_url];
+    var limit = 8;
+    try {
+      var pr = await client.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      if (pr && pr.data && pr.data.role === 'advertiser') limit = 20;
+    } catch (e2) {}
+    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit };
+    var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = 'Edit ad';
+    var edSub = el('edSub');
+    if (edSub) edSub.textContent = 'Saved edits go back for approval before they show again. Category stays as-is.';
+    var name = el('edName'); if (name) name.value = ad.title || '';
+    var price = el('edPrice'); if (price) price.value = ad.price == null ? '' : String(ad.price);
+    var desc = el('edDesc'); if (desc) desc.value = ad.description || '';
+    var loc = el('edLoc'); if (loc) loc.value = ad.location || '';
+    var cat = el('edCat');
+    if (cat) {
+      var hasOpt = false;
+      for (var ci = 0; ci < cat.options.length; ci++) {
+        if (cat.options[ci].text === ad.category || cat.options[ci].value === ad.category) { hasOpt = true; break; }
+      }
+      if (!hasOpt && ad.category) {
+        var opt = document.createElement('option');
+        opt.text = ad.category; opt.value = ad.category;
+        cat.appendChild(opt);
+      }
+      cat.value = ad.category || '';
+      cat.disabled = true;
+    }
+    var grid = el('pgrid');
+    if (grid) {
+      var tiles = photos.map(function (u, i) {
+        return photoTile(u, (ad.photo_url ? u === ad.photo_url : i === 0), false, null);
+      }).join('');
+      grid.innerHTML = tiles + '<div class="ptile add" title="Add photo" data-cf-add-photo>+</div>';
+    }
+    var save = el('edSave');
+    if (save) save.onclick = function () { realSave(); };
+    try { if (typeof openM === 'function') openM('mEditor'); } catch (e3) {}
+  }
+
+  async function realSave() {
+    if (!realEdit) { try { if (typeof saveEditor === 'function') saveEditor(); } catch (e) {} return; }
+    var client = getClient();
+    if (!client) return;
+    var st = realEdit;
+    var title = (el('edName') ? el('edName').value : '').trim();
+    var priceRaw = (el('edPrice') ? el('edPrice').value : '').replace(/[$,\s]/g, '');
+    var price = parseFloat(priceRaw);
+    if (!title) { say('Give the ad a title first.'); return; }
+    if (isNaN(price) || price < 0) { say('Enter a valid price.'); return; }
+    var grid = el('pgrid');
+    var tiles = grid ? grid.querySelectorAll('.ptile:not(.add)') : [];
+    var finalExisting = [];
+    var toUpload = [];
+    var cover = null;
+    for (var ti = 0; ti < tiles.length; ti++) {
+      var t = tiles[ti];
+      var isCover = t.classList.contains('cover');
+      if (t.dataset && t.dataset.url) {
+        finalExisting.push(t.dataset.url);
+        if (isCover) cover = t.dataset.url;
+      } else if (t.dataset && t.dataset.preview && st.newFiles[t.dataset.preview]) {
+        toUpload.push({ file: st.newFiles[t.dataset.preview], preview: t.dataset.preview });
+        if (isCover) cover = '__NEW__' + (toUpload.length - 1);
+      }
+    }
+    if (!tiles.length) cover = null;
+    var uploaded = [];
+    try {
+      for (var ui = 0; ui < toUpload.length; ui++) {
+        var blob = dataUrlToBlob(toUpload[ui].preview);
+        if (!blob) throw new Error('Could not read a new photo. Please pick it again.');
+        var path = st.uid + '/' + Date.now() + '-' + ui + '.jpg';
+        var up = await client.storage.from('listing-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+        if (up.error) throw up.error;
+        var pub = client.storage.from('listing-photos').getPublicUrl(path);
+        var purl = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
+        if (!purl) throw new Error('Could not get a public link for a new photo.');
+        uploaded.push({ path: path, url: purl });
+      }
+    } catch (upErr) {
+      if (uploaded.length) {
+        try { await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; })); } catch (e2) {}
+      }
+      say('Could not save photos: ' + (upErr && upErr.message ? upErr.message : 'Something went wrong.'));
+      return;
+    }
+    var finalUrls = [];
+    for (var fi = 0; fi < tiles.length; fi++) {
+      var ft = tiles[fi];
+      if (ft.dataset && ft.dataset.url) finalUrls.push(ft.dataset.url);
+      else if (ft.dataset && ft.dataset.preview) {
+        var match = uploaded.filter(function (r) { return r.url; });
+        /* New tiles appear in tile order, same as toUpload/uploaded order. */
+        var slot = 0;
+        for (var sj = 0; sj < fi; sj++) {
+          var pt = tiles[sj];
+          if (pt.dataset && pt.dataset.preview) slot++;
+        }
+        if (match[slot]) finalUrls.push(match[slot].url);
+      }
+    }
+    finalUrls = finalUrls.filter(Boolean);
+    if (cover && String(cover).indexOf('__NEW__') === 0) {
+      var slotN = parseInt(String(cover).slice(7), 10);
+      cover = uploaded[slotN] ? uploaded[slotN].url : null;
+    }
+    if (!cover && finalUrls.length) cover = finalUrls[0];
+    var removed = st.origUrls.filter(function (u) { return finalUrls.indexOf(u) === -1; });
+    try {
+      if (removed.length) {
+        await client.from('listing_photos').delete().eq('listing_id', st.id).in('photo_url', removed);
+        var paths = [];
+        removed.forEach(function (u) {
+          var marker = '/listing-photos/';
+          var idx = String(u).indexOf(marker);
+          if (idx !== -1) {
+            var p = String(u).slice(idx + marker.length).split('?')[0];
+            try { p = decodeURIComponent(p); } catch (e3) {}
+            if (p && paths.indexOf(p) === -1) paths.push(p);
+          }
+        });
+        if (paths.length) {
+          try { await client.storage.from('listing-photos').remove(paths); } catch (e4) {}
+        }
+      }
+    } catch (e5) {}
+    try {
+      var newRows = uploaded.map(function (u, i) {
+        return { listing_id: st.id, photo_url: u.url, position: 1000 + i };
+      });
+      if (newRows.length) {
+        var ins = await client.from('listing_photos').insert(newRows);
+        if (ins.error) throw ins.error;
+      }
+    } catch (e6) {
+      say('Photos saved, but the photo list could not be updated: ' + (e6 && e6.message ? e6.message : ''));
+    }
+    var upd = {
+      title: title,
+      price: price,
+      description: el('edDesc') ? el('edDesc').value : '',
+      location: el('edLoc') ? el('edLoc').value : '',
+      photo_url: cover,
+      status: 'pending'
+    };
+    var res = await client.from('listings').update(upd).eq('id', st.id);
+    if (res.error) { say('Could not save: ' + res.error.message); return; }
+    closeRealEditor();
+    try { if (typeof closeM === 'function') closeM('mEditor'); } catch (e7) {}
+    say('Edits saved — back for approval');
+    refresh();
+  }
+
+  async function runAdminSearch() {
+    var input = el('adminSearchInput');
+    var box = el('adminSearchResults');
+    if (!input || !box) return;
+    var q = (input.value || '').trim();
+    if (q.length < 2) { box.innerHTML = '<div class="notice">Type at least 2 characters — a name, an email, or part of a phone number.</div>'; return; }
+    var client = getClient();
+    if (!client) return;
+    box.innerHTML = '<div class="notice">Searching…</div>';
+    var pat = '%' + q.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, '') + '%';
+    var sellerIds = [];
+    var sellerLabel = {};
+    try {
+      var orr = await client.from('orders')
+        .select('buyer_id,business_name,buyer_name,buyer_email,buyer_phone,order_number,status')
+        .or('business_name.ilike.' + pat + ',buyer_email.ilike.' + pat + ',buyer_phone.ilike.' + pat)
+        .limit(50);
+      (orr.data || []).forEach(function (o) {
+        if (o.buyer_id && sellerIds.indexOf(o.buyer_id) === -1) sellerIds.push(o.buyer_id);
+        if (o.buyer_id && !sellerLabel[o.buyer_id]) sellerLabel[o.buyer_id] = o.business_name || o.buyer_name || o.buyer_email || o.buyer_id;
+      });
+    } catch (e) {}
+    try {
+      var prr = await client.from('profiles')
+        .select('id,display_name,email')
+        .or('display_name.ilike.' + pat + ',email.ilike.' + pat)
+        .limit(50);
+      (prr.data || []).forEach(function (p) {
+        if (p.id && sellerIds.indexOf(p.id) === -1) sellerIds.push(p.id);
+        sellerLabel[p.id] = p.display_name || p.email || p.id;
+      });
+    } catch (e2) {}
+    try {
+      var bpr = await client.from('business_profiles')
+        .select('id,display_name')
+        .ilike('display_name', pat)
+        .limit(50);
+      (bpr.data || []).forEach(function (b) {
+        if (b.id && sellerIds.indexOf(b.id) === -1) sellerIds.push(b.id);
+        sellerLabel[b.id] = b.display_name || sellerLabel[b.id];
+      });
+    } catch (e3) {}
+    if (!sellerIds.length) {
+      box.innerHTML = '<div class="notice">No business found for "' + esc(q) + '". Try another spelling, an email, or the last 4 digits of the phone number.</div>';
+      return;
+    }
+    var ads = [];
+    try {
+      var ar = await client.from('listings')
+        .select('id,title,price,status,category,location,created_at,seller_id')
+        .in('seller_id', sellerIds).order('created_at', { ascending: false }).limit(100);
+      if (ar && ar.data) ads = ar.data;
+    } catch (e4) {}
+    if (!ads.length) {
+      box.innerHTML = '<div class="notice">Found ' + sellerIds.length + ' matching account(s) but no ads on file for them.</div>';
+      return;
+    }
+    box.innerHTML = ads.map(function (x) {
+      return '<div class="lcard">' +
+        '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + '</div>' +
+        '<div class="p">' + money(x.price) + '</div>' +
+        '<div class="s">' + esc(sellerLabel[x.seller_id] || x.seller_id) + ' · ' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div></div>' +
+        '<div class="acts"><button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button></div></div>';
+    }).join('');
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target : null;
+    if (!t) return;
+    var viewBtn = t.closest('[data-cf-view]');
+    if (viewBtn) {
+      dashView = viewBtn.dataset.cfView === 'grid' ? 'grid' : 'list';
+      refresh();
+      return;
+    }
+    var editBtn = t.closest('[data-cf-edit]');
+    if (editBtn) { openRealEditor(editBtn.dataset.cfEdit); return; }
+    var addBtn = t.closest('[data-cf-add-photo]');
+    if (addBtn && realEdit) {
+      var grid = el('pgrid');
+      var count = grid ? grid.querySelectorAll('.ptile:not(.add)').length : 0;
+      if (count >= realEdit.limit) { say('Photo limit reached for this account.'); return; }
+      var fi = document.createElement('input');
+      fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true; fi.style.display = 'none';
+      document.body.appendChild(fi);
+      fi.addEventListener('change', function () {
+        var files = fi.files || [];
+        for (var k = 0; k < files.length; k++) {
+          (function (file) {
+            var g2 = el('pgrid');
+            var c2 = g2 ? g2.querySelectorAll('.ptile:not(.add)').length : 0;
+            if (c2 >= realEdit.limit) { say('Photo limit reached for this account.'); return; }
+            var rd = new FileReader();
+            rd.onload = function () {
+              var preview = rd.result;
+              realEdit.newFiles[preview] = file;
+              var g3 = el('pgrid');
+              if (!g3) return;
+              var addTile = g3.querySelector('.ptile.add');
+              var tile = document.createElement('div');
+              tile.className = 'ptile';
+              tile.dataset.preview = preview;
+              tile.innerHTML = '<img src="' + preview + '"><button class="star" title="Cover photo">&#9733;</button><button class="rm" title="Remove photo">&times;</button>';
+              if (addTile) g3.insertBefore(tile, addTile); else g3.appendChild(tile);
+            };
+            rd.readAsDataURL(file);
+          })(files[k]);
+        }
+        try { document.body.removeChild(fi); } catch (e5) {}
+      });
+      fi.click();
+      return;
+    }
+    var mx = t.closest('#mEditor .mx');
+    if (mx && realEdit) { closeRealEditor(); return; }
+    var sBtn = t.closest('[data-cf-admin-search]');
+    if (sBtn) { runAdminSearch(); return; }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target && e.target.id === 'adminSearchInput') {
+      e.preventDefault();
+      runAdminSearch();
     }
   });
 

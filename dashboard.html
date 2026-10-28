@@ -48,6 +48,26 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .pill.pause{background:#F1F3F7;color:var(--mu)}
 .pill.boost{background:var(--tint);color:var(--orange2)}
 .pill.pend{background:#FEF3C7;color:#92400E}
+/* Ad manager v1.3: List/Grid toggle + grid tiles + admin search */
+.adviewbar{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap}
+.adviewbar .lbl{font-weight:700;font-size:14px}
+.adviewbar .btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.adgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.gtile{background:var(--card);border:1px solid var(--ln);border-radius:18px;overflow:hidden;box-shadow:var(--sh);display:flex;flex-direction:column}
+.gtile .gph{aspect-ratio:4/3;background:#E9EDF4;display:grid;place-items:center;font-size:34px;overflow:hidden}
+.gtile .gph img{width:100%;height:100%;object-fit:cover}
+.gtile .gb{padding:12px;display:flex;flex-direction:column;gap:4px;flex:1}
+.gtile .t{font-weight:700;font-size:14.5px;line-height:1.3}
+.gtile .p{color:var(--orange);font-weight:800;font-size:15.5px}
+.gtile .s{color:var(--mu);font-size:12.5px}
+.gtile .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.gtile .acts .btn{padding:7px 10px;font-size:12.5px}
+@media(max-width:900px){.adgrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.adgrid{grid-template-columns:repeat(2,1fr)}}
+.adminsearch{background:var(--card);border:1px solid var(--ln);border-radius:18px;padding:14px;margin:0 0 14px;box-shadow:var(--sh)}
+.adminsearch .row{display:flex;gap:8px;flex-wrap:wrap}
+.adminsearch input{flex:1;min-width:200px;border:1.5px solid var(--ln);border-radius:12px;padding:10px 12px;font-size:14.5px}
+.adminsearch .hint{color:var(--mu);font-size:12.5px;margin-top:8px}
 .pill.rej{background:#FDE8E8;color:#9B1C1C}
 .lcard .acts{display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
 .btn{border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
@@ -313,6 +333,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Admin — approval queue</h2>
 <p class="hint">Only visible to admins. Approving an ad makes it public immediately; rejecting keeps it hidden.</p>
 <div class="notice">Admin actions need the step-4 SQL run in Supabase first (file: supabase/cf-step4-admin-rls.sql). If Approve / Reject / Activate errors, that SQL is the missing step.</div>
+<div class="adminsearch"><div style="font-weight:800;margin-bottom:8px">Find a business</div><div class="row"><input id="adminSearchInput" placeholder="Business name, email, or phone (last 4 digits work too)"><button class="btn pri" data-cf-admin-search>Search</button></div><div class="hint">For phone-requested takedowns: find the account, then Delete the ad (same Confirm step). Deleting an ad never touches the order — no refund moves automatically.</div><div id="adminSearchResults" style="margin-top:12px"></div></div>
 <h3 style="margin:16px 0 8px">Ads awaiting approval</h3>
 <div id="adminAdsList"></div>
 <h3 style="margin:16px 0 8px">Orders</h3>
@@ -343,7 +364,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="fld"><label>Price (CAD)</label><input id="edPrice" inputmode="decimal" value=""></div>
 <div class="fld"><label>Category</label><select id="edCat"><option>Cars</option><option>Electronics</option><option>Home</option><option>Sports</option><option>Clothes</option></select></div>
 </div>
-<div class="fld"><label>Location</label><input value="Mississauga, ON"></div>
+<div class="fld"><label>Location</label><input id="edLoc" value="Mississauga, ON"></div>
 <div class="fld"><label>Description</label><textarea id="edDesc">Clean, well looked after. Message me with any questions — happy to show it evenings or weekends.</textarea></div>
 <div style="display:flex;gap:10px;flex-wrap:wrap">
 <button class="btn pri" style="flex:1" id="edSave" onclick="saveEditor()">Save changes</button>

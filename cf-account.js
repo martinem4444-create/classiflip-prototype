@@ -13,6 +13,9 @@
  *   change via updateUser (D3: type twice + confirmation notice).
  * - Sign out reuses cf-auth.js's existing [data-cf-logout] handler —
  *   NO new sign-out code is written here.
+ * - Logout header fix (Oct 27, 2026): on logout the dashboard's
+ *   hardcoded "Martin · Seller" button becomes "Log in" (click goes
+ *   to index.html); it no longer fakes a signed-in header.
  * - D2: NO photo upload in v1 — the avatar stays the initial circle.
  * - Out of scope, deliberately NOT built: account deletion,
  *   notification prefs, public seller pages, phone field, role
@@ -247,7 +250,7 @@
     var trig = dashboardTrigger();
     if (trig) {
       var av = trig.querySelector('.av');
-      if (av) av.textContent = init;
+      if (av) { av.style.display = ''; av.textContent = init; }
       var nm = trig.querySelector('.nm') || document.getElementById('whoName');
       if (nm) nm.textContent = text;
       trig.setAttribute('aria-haspopup', 'true');
@@ -284,14 +287,22 @@
   function unrenderHeader() {
     var btn = injectedButton();
     if (btn && btn.parentNode) btn.parentNode.removeChild(btn);
-    /* Dashboard: the static .who button stays visible as today's demo
-       header, but with no session the menu never opens (the toggle
-       handler returns early) — same header as before this build. */
+    /* Dashboard: the static .who button is hardcoded "Martin · Seller"
+       in dashboard.html, so leaving it visible after logout fakes a
+       signed-in header. Turn it into a Log in button instead: hide the
+       avatar initial, show "Log in", and the init click handler sends
+       a logged-out click to index.html where Log in lives. */
     var ab = accountButtons();
     if (ab.login) ab.login.style.display = '';
     if (ab.create) ab.create.style.display = '';
     var trig = dashboardTrigger();
-    if (trig) trig.setAttribute('aria-expanded', 'false');
+    if (trig) {
+      trig.setAttribute('aria-expanded', 'false');
+      var tAv = trig.querySelector('.av');
+      if (tAv) tAv.style.display = 'none';
+      var tNm = trig.querySelector('.nm') || document.getElementById('whoName');
+      if (tNm) tNm.textContent = 'Log in';
+    }
   }
 
   /* ---------- menu ---------- */
@@ -776,14 +787,16 @@
     } catch (e) {}
     try { buildMenu(); } catch (e) {}
 
-    /* Dashboard trigger click: attached once, gated on session inside
-       toggleMenu, so the logged-out header stays inert. */
+    /* Dashboard trigger click: attached once. Logged out, the trigger
+       now reads "Log in" (see unrenderHeader) and goes to index.html
+       where Log in lives; logged in, it opens the account menu. */
     try {
       var trig = dashboardTrigger();
       if (trig && !trig.dataset.cfAcctBound) {
         trig.dataset.cfAcctBound = '1';
         trig.addEventListener('click', function (e) {
           e.preventDefault();
+          if (!authed) { window.location.href = 'index.html'; return; }
           toggleMenu(trig);
         });
       }

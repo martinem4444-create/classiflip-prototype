@@ -653,10 +653,13 @@
           ol.innerHTML = '<div class="notice">No orders yet — pick a package on the Advertise page and reserve it with Interac e-Transfer.</div>';
         } else {
           ol.innerHTML = orders.map(function (o) {
+            var oDel = o.status === 'Pending'
+              ? '<div class="acts"><button class="btn gho danger" data-cf-order-del="' + esc(o.id) + '">Delete</button></div>'
+              : '';
             return '<div class="lcard"><div class="inf"><div class="t">' + esc(o.order_number) + ' · ' + esc(o.package || '') + ' ' + pillForOrder(o.status) + '</div>' +
               '<div class="p">' + money(o.amount) + '</div>' +
               '<div class="s">' + esc(o.business_name || '') + ' · ordered ' + fullDate(o.created_at) +
-              (o.expires_at ? ' · expires ' + fullDate(o.expires_at) : '') + '</div></div></div>';
+              (o.expires_at ? ' · expires ' + fullDate(o.expires_at) : '') + '</div></div>' + oDel + '</div>';
           }).join('');
         }
       }
@@ -676,11 +679,14 @@
           var titlesById = {};
           listings.forEach(function (x) { titlesById[x.id] = x.title; });
           bl.innerHTML = myBoosts.map(function (b) {
+            var bDel = b.status === 'Pending'
+              ? '<div class="acts"><button class="btn gho danger" data-cf-boost-del="' + esc(b.id) + '">Delete</button></div>'
+              : '';
             return '<div class="lcard"><div class="inf"><div class="t">' + esc(b.payment_ref || 'Boost') + ' · ' + esc(titlesById[b.listing_id] || 'Ad') + ' ' + pillForOrder(b.status) + '</div>' +
               '<div class="p">$' + Number(b.amount).toFixed(2) + ' · ' + (b.payment_method === 'etransfer' ? 'Interac e-Transfer' : 'Card') + '</div>' +
               '<div class="s">reserved ' + fullDate(b.created_at) +
               (b.activated_at ? ' · activated ' + fullDate(b.activated_at) : '') +
-              (b.expires_at ? ' · expires ' + fullDate(b.expires_at) : '') + '</div></div></div>';
+              (b.expires_at ? ' · expires ' + fullDate(b.expires_at) : '') + '</div></div>' + bDel + '</div>';
           }).join('');
         }
       }
@@ -994,6 +1000,36 @@
         }
         say('Ad deleted'); refresh();
       });
+      return;
+    }
+    /* My orders / My boosts — Pending-only delete, own rows only.
+       Two-tap confirm, same pattern as the ad delete. The .eq('status',
+       'Pending') guard + the SQL policy (own row + Pending only) mean
+       an Active order or boost can never be deleted this way — paid
+       rows stay as the payment record. Pending orders have no live
+       package yet, and Pending boosts have no pin yet, so deleting
+       them orphans nothing (listings.order_id is ON DELETE SET NULL
+       as a backstop). */
+    var oDel = e.target.closest ? e.target.closest('[data-cf-order-del]') : null;
+    var bDel = e.target.closest ? e.target.closest('[data-cf-boost-del]') : null;
+    if (oDel || bDel) {
+      var btn = oDel || bDel;
+      if (!btn.dataset.armed) {
+        btn.dataset.armed = '1'; btn.textContent = 'Confirm?';
+        setTimeout(function () { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = 'Delete'; } }, 3000);
+        return;
+      }
+      if (oDel) {
+        client.from('orders').delete().eq('id', oDel.dataset.cfOrderDel).eq('status', 'Pending').then(function (res) {
+          if (res.error) { say('Could not delete order: ' + res.error.message); return; }
+          say('Order deleted'); refresh();
+        });
+      } else {
+        client.from('boosts').delete().eq('id', bDel.dataset.cfBoostDel).eq('status', 'Pending').then(function (res) {
+          if (res.error) { say('Could not delete boost: ' + res.error.message); return; }
+          say('Boost deleted'); refresh();
+        });
+      }
       return;
     }
     /* Step 5 Boost: open the mBoost modal for a REAL listing. The

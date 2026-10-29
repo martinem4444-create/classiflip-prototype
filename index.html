@@ -332,7 +332,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
     </section>
 
     <section id="jobs" aria-labelledby="jobsTitle" hidden>
-      <div class="section-head"><div><h2 id="jobsTitle">Jobs</h2><p>Sample job ads show featured and sponsored placement costs at a glance.</p></div><button class="link-btn" data-open="jobPostModal">Post a job</button></div>
+      <div class="section-head"><div><h2 id="jobsTitle">Jobs</h2><p>Sample job ads show featured and sponsored placement costs at a glance.</p></div><button class="link-btn" onclick="location.href='advertise.html'">Post a job</button></div>
       <div class="jobs-shell">
         <div class="jobs-content">
           <div class="job-subcategories" aria-label="Filter jobs by category">
@@ -360,7 +360,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
             <div class="price-plan recommended"><span class="plan-chip">Best for frequent hiring</span><strong>$179/mo</strong><b>Unlimited job posts</b><span>Post as many openings as you need</span></div>
           </div>
           <div class="competitor-compare"><strong>One flat price, no bidding</strong><span>ClassiFlip $49 for 30 days vs. per-day sponsored posts elsewhere.</span></div>
-          <button class="primary" data-open="jobPostModal">Choose a posting plan</button>
+          <button class="primary" onclick="location.href='advertise.html'">Choose a posting plan</button>
           <span class="pricing-note">Founding advertisers: 50% off, locked 12 months. First month free with 3 months.</span>
         </aside>
       </div>
@@ -835,10 +835,10 @@ const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCat
     document.getElementById('adCategory').addEventListener('change',e=>{if(e.currentTarget.value==='Jobs'){e.currentTarget.value='Cars';updateCarPostingFields();closeModals();openModal('jobPostModal');return}updateCarPostingFields()});
     document.getElementById('carSellerType').addEventListener('change',updateCarPostingFields);
     document.querySelectorAll('input[name="jobPlan"]').forEach(input=>input.addEventListener('change',updateJobPostingPlan));
-    document.getElementById('dealerPostBtn').addEventListener('click',()=>{document.getElementById('adCategory').value='Cars';document.getElementById('carSellerType').value='dealer';updateCarPostingFields();openModal('postModal')});
-    document.getElementById('servicePostBtn').addEventListener('click',()=>{document.getElementById('adCategory').value='Services';updateCarPostingFields();openModal('postModal')});
-    document.getElementById('rentalPostBtn').addEventListener('click',()=>{document.getElementById('adCategory').value='Rentals';updateCarPostingFields();openModal('postModal')});
-    document.getElementById('homeSalePostBtn').addEventListener('click',()=>{document.getElementById('adCategory').value='Homes';updateCarPostingFields();openModal('postModal')});
+    document.getElementById('dealerPostBtn').addEventListener('click',()=>{if(!loggedIn){setAccountMode('create');document.getElementById('accountNotice').textContent='Create an account to post a listing. Your account is stored securely.';openModal('accountModal');return;}document.getElementById('adCategory').value='Cars';document.getElementById('carSellerType').value='dealer';updateCarPostingFields();openModal('postModal')});
+    document.getElementById('servicePostBtn').addEventListener('click',()=>{if(!loggedIn){setAccountMode('create');document.getElementById('accountNotice').textContent='Create an account to post a listing. Your account is stored securely.';openModal('accountModal');return;}document.getElementById('adCategory').value='Services';updateCarPostingFields();openModal('postModal')});
+    document.getElementById('rentalPostBtn').addEventListener('click',()=>{if(!loggedIn){setAccountMode('create');document.getElementById('accountNotice').textContent='Create an account to post a listing. Your account is stored securely.';openModal('accountModal');return;}document.getElementById('adCategory').value='Rentals';updateCarPostingFields();openModal('postModal')});
+    document.getElementById('homeSalePostBtn').addEventListener('click',()=>{if(!loggedIn){setAccountMode('create');document.getElementById('accountNotice').textContent='Create an account to post a listing. Your account is stored securely.';openModal('accountModal');return;}document.getElementById('adCategory').value='Homes';updateCarPostingFields();openModal('postModal')});
     let pendingPhotos=[];
     document.getElementById('photoAddBtn').addEventListener('click',()=>document.getElementById('adPhotos').click());
     /* Square cropper (v1.16): every picked photo is cropped to a square

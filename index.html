@@ -896,7 +896,10 @@ const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCat
       plan=document.getElementById('carPostingPlan').value;
       const iconMap={Cars:'monitor',Clothes:'chair',Computers:'laptop',Electronics:'phone',Home:'chair',Rentals:'apartment',Homes:'house',Free:'chair',Services:'drill',Tools:'drill',Sports:'bike'};
       const postingLabel=category==='Cars'?(seller==='dealer'?'Dealer':plan==='boost'?'Bumped':'Private'):'';
-      return {id:Date.now(),title:title,price:price,category:category,condition:condition,location:location,icon:iconMap[category]||'laptop',desc:desc,postingLabel:postingLabel,photo:pendingPhotos[0]||'',photos:pendingPhotos.slice()};
+      /* Tags in the preview: same comma split as the real post path,
+         so what you preview is what buyers will see. */
+      const tags=(document.getElementById('adTags')?document.getElementById('adTags').value:'').split(',').map(t=>t.trim().toLowerCase().replace(/^#+/,'')).filter(Boolean).filter((t,i,a)=>a.indexOf(t)===i).slice(0,5);
+      return {id:Date.now(),title:title,price:price,category:category,condition:condition,location:location,icon:iconMap[category]||'laptop',desc:desc,postingLabel:postingLabel,photo:pendingPhotos[0]||'',photos:pendingPhotos.slice(),tags:tags};
     }
     function openAdPreview(ad){
       window._pendingAd=ad;
@@ -909,9 +912,16 @@ const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCat
         gal=galleryMarkup(ad);
       }
       document.getElementById('detailTitle').textContent='Ad preview';
-      document.getElementById('detailBody').innerHTML='<div class="detail">'+gal+'<div><div class="prototype-tag">PREVIEW \u00B7 '+safe(ad.category).toUpperCase()+(ad.postingLabel?' \u00B7 '+safe(ad.postingLabel).toUpperCase():'')+'</div><h3>'+safe(ad.title)+'</h3><div class="detail-price">'+displayPrice(ad)+'</div><div class="meta"><span>'+safe(ad.condition)+'</span><span>\u2022</span><span>'+safe(ad.location)+'</span></div><p>'+safe(ad.desc)+'</p><div class="notice">This is how your ad will look to buyers. Nothing is published yet.</div><div class="preview-actions"><button type="button" class="ghost" data-preview-edit>\u2190 Edit ad</button><button type="button" class="primary" data-preview-post>Post my ad</button></div></div></div>';
+      const previewTags=(ad.tags||[]).length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">'+ad.tags.map(t=>'<span style="border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px">#'+safe(t)+'</span>').join('')+'</div>':'';
+      document.getElementById('detailBody').innerHTML='<div class="detail">'+gal+'<div><div class="prototype-tag">PREVIEW \u00B7 '+safe(ad.category).toUpperCase()+(ad.postingLabel?' \u00B7 '+safe(ad.postingLabel).toUpperCase():'')+'</div><h3>'+safe(ad.title)+'</h3><div class="detail-price">'+displayPrice(ad)+'</div><div class="meta"><span>'+safe(ad.condition)+'</span><span>\u2022</span><span>'+safe(ad.location)+'</span></div>'+previewTags+'<p>'+safe(ad.desc)+'</p><div class="notice">This is how your ad will look to buyers. Nothing is published yet.</div><div class="preview-actions"><button type="button" class="ghost" data-preview-edit>\u2190 Edit ad</button><button type="button" class="primary" data-preview-post>Post my ad</button></div></div></div>';
       closeModals();openModal('detailModal');
     }
+    /* Tags Enter fix (Oct 29): Enter inside the Tags box used to
+       submit the whole form — the post modal closed into the
+       preview, which felt like the ad vanished. Now Enter just
+       finishes the current tag (adds a comma) and stays in the
+       form; Preview listing is still the button that previews. */
+    document.getElementById('adTags').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const el=e.target;if(el.value.trim()&&!el.value.trim().endsWith(','))el.value=el.value.trim()+', ';el.focus();});
     document.getElementById('postForm').addEventListener('submit',e=>{e.preventDefault();if(document.getElementById('bizTypeField').classList.contains('show')&&document.getElementById('bizType').value==='business'&&!(window.__cfPkgDefault&&window.__cfPkgDefault.orderId)){location.href='advertise.html';return;}openAdPreview(collectAdForm());});
      document.getElementById('bizType').addEventListener('change',updateCarPostingFields);
     document.getElementById('jobPostForm').addEventListener('submit',e=>{e.preventDefault();const category=document.getElementById('jobCategoryInput').value;jobs.unshift({id:Date.now(),title:document.getElementById('jobTitleInput').value.trim(),company:document.getElementById('companyInput').value.trim(),category,type:document.getElementById('jobTypeInput').value,location:document.getElementById('jobLocationInput').value.trim()||'Mississauga',pay:document.getElementById('jobPayInput').value.trim()||'Pay not listed',desc:document.getElementById('jobDescriptionInput').value.trim()||'Your job post preview.'});closeModals();e.target.reset();activeJobCategory=category;renderJobs();document.getElementById('jobs').scrollIntoView({behavior:'smooth'})});

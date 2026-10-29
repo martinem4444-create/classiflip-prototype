@@ -610,8 +610,11 @@
           var editBtn = (x.status === 'active' || x.status === 'pending' || x.status === 'rejected')
             ? '<button class="btn gho" data-cf-edit="' + esc(x.id) + '">Edit</button>' : '';
           var delBtn = '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button>';
-          var rejNote = (x.status === 'rejected' && x.rejection_reason)
-            ? '<div class="s">Admin note: ' + esc(x.rejection_reason) + '</div>' : '';
+          /* Rejected red-box alert (Oct 29, Martin's call): a rejected
+             ad must be impossible to miss, so the seller sees what
+             to fix. Same box in list + grid — rejNote is shared. */
+          var rejNote = (x.status === 'rejected')
+            ? '<div style="margin:8px 0;padding:10px 12px;border:1px solid #e5484d;border-radius:10px;background:#fdecea;color:#7f1d1d;font-size:14px;line-height:1.4"><strong>Rejected — fix this:</strong> ' + esc(x.rejection_reason || 'Rejected by admin.') + '</div>' : '';
           if (dashView === 'grid') {
             return '<div class="gtile"><div class="gph">' +
               (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '&#128722;') + '</div>' +

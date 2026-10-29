@@ -918,7 +918,7 @@
       pkgShowLine('Posting under your ' + match.package + ' — ' + pkgMoney(match.amount) + '/mo, active until ' + pkgDate(match.expires_at) + '.');
       /* Holder: hide the page's own postNotice (v1.13). It carries
          pre-package prototype copy — e.g. the Cars dealer rule
-         '$5 per car or $49/month' — which contradicts the bought
+         '$49 single / $149 lot / $249/mo' — which contradicts the bought
          package. The pkgDefaultLine above already says the true
          plan, so the stale box just goes away. Same for agent /
          services holders, whose notices quote prototype prices. */
@@ -931,8 +931,8 @@
          packages' for business posters — that text + redirect no
          longer apply once a package defaults). Also hide the stale
          'Listing option' dropdown (carPlanField): for Cars the page
-         shows pre-package dealer options ('$5 per dealer car',
-         '$49/month unlimited') that contradict the bought package —
+         shows pre-package dealer options ('$49 single',
+         '$249/mo unlimited') that contradict the bought package —
          the package IS the listing option, so holders never see it. */
       try {
         var pitch = document.getElementById('bizPitchField');

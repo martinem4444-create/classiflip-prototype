@@ -612,9 +612,17 @@
           var delBtn = '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button>';
           /* Rejected red-box alert (Oct 29, Martin's call): a rejected
              ad must be impossible to miss, so the seller sees what
-             to fix. Same box in list + grid — rejNote is shared. */
+             to fix. Same box in list + grid — rejNote is shared.
+             Package guidance (Oct 29, best-solution build): a
+             wrong-category rejection into a PAID family must tell
+             the seller to get the package first, then post new —
+             category stays locked in the editor, so no reclassify
+             dodge around the package gate. */
+          var rejReason = x.rejection_reason || '';
+          var rejPkgLine = /Services/.test(rejReason)
+            ? '<br>Posting as a business? <a href="advertise.html" style="color:#7f1d1d;font-weight:700;text-decoration:underline">Get a services package</a>, then post a new ad under Services.' : '';
           var rejNote = (x.status === 'rejected')
-            ? '<div style="margin:8px 0;padding:10px 12px;border:1px solid #e5484d;border-radius:10px;background:#fdecea;color:#7f1d1d;font-size:14px;line-height:1.4"><strong>Rejected — fix this:</strong> ' + esc(x.rejection_reason || 'Rejected by admin.') + '</div>' : '';
+            ? '<div style="margin:8px 0;padding:10px 12px;border:1px solid #e5484d;border-radius:10px;background:#fdecea;color:#7f1d1d;font-size:14px;line-height:1.4"><strong>Rejected — fix this:</strong> ' + esc(rejReason || 'Rejected by admin.') + rejPkgLine + '</div>' : '';
           if (dashView === 'grid') {
             return '<div class="gtile"><div class="gph">' +
               (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '&#128722;') + '</div>' +
@@ -1279,7 +1287,7 @@
     var sub = el('edSub');
     if (sub) sub.textContent = 'Changes go live instantly. Drafts auto-save.';
     var cat = el('edCat');
-    if (cat) cat.disabled = false;
+    if (cat) { cat.disabled = false; cat.style.opacity = ''; cat.style.background = ''; }
   }
 
   function photoTile(url, isCover, isNew, previewKey) {
@@ -1296,7 +1304,7 @@
     var user = await getUser(client);
     if (!user) { say('Please log in first.'); return; }
     var lr = await client.from('listings')
-      .select('id,title,description,price,category,location,status,photo_url,seller_id')
+      .select('id,title,description,price,category,location,status,photo_url,seller_id,rejection_reason')
       .eq('id', id).maybeSingle();
     if (!lr || !lr.data) { say('Could not load that ad.'); return; }
     var ad = lr.data;
@@ -1320,7 +1328,18 @@
     realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit };
     var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = 'Edit ad';
     var edSub = el('edSub');
-    if (edSub) edSub.textContent = 'Saved edits go back for approval before they show again. Category stays as-is.';
+    /* Rejected-editor guidance (Oct 29, best-solution build):
+       category is LOCKED here on purpose, so say so plainly and
+       point at the package + new post instead of a dead dropdown. */
+    if (edSub) {
+      if (ad.status === 'rejected' && /Services/.test(ad.rejection_reason || '')) {
+        edSub.innerHTML = 'Category stays as-is and cannot be changed here. Posting as a business? <a href="advertise.html">Get a services package</a>, then post a new ad under Services.';
+      } else if (ad.status === 'rejected') {
+        edSub.textContent = 'Category stays as-is and cannot be changed here. Post a new ad in the correct category instead.';
+      } else {
+        edSub.textContent = 'Saved edits go back for approval before they show again. Category stays as-is.';
+      }
+    }
     var name = el('edName'); if (name) name.value = ad.title || '';
     var price = el('edPrice'); if (price) price.value = ad.price == null ? '' : String(ad.price);
     var desc = el('edDesc'); if (desc) desc.value = ad.description || '';
@@ -1338,6 +1357,10 @@
       }
       cat.value = ad.category || '';
       cat.disabled = true;
+      /* Visibly locked, not just functionally locked — no more
+         tappable-looking dropdown that goes nowhere. */
+      cat.style.opacity = '0.6';
+      cat.style.background = '#f1f1f1';
     }
     var grid = el('pgrid');
     if (grid) {

@@ -15,6 +15,17 @@ p,li{font-size:15px;color:#33475E}.muted{color:#68788F;font-size:14px}
 a{color:#F4511E}
 .card{background:#fff;border:1px solid #D5DFEC;border-radius:14px;padding:20px;margin:20px 0}
 footer{color:#68788F;font-size:13px;text-align:center;padding:0 20px 30px}
+
+.site-footer{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:24px;margin-top:28px;padding:24px 20px 40px;border-top:1px solid var(--line,var(--ln,#D5DFEC))}
+.site-footer h3{margin:0 0 10px;font:800 14px/1.2 'Manrope',sans-serif;color:var(--navy,var(--ink,#18365F))}
+.site-footer p{margin:0;color:var(--muted,var(--mu,#68788F));font-size:13px;line-height:1.5}
+.site-footer ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.site-footer a{color:var(--muted,var(--mu,#68788F));font-size:13px;text-decoration:none;font-weight:600}
+.site-footer a:hover{color:var(--orange,var(--rose,#F4511E))}
+.site-footer .soon{color:var(--muted,var(--mu,#68788F));font-size:13px;font-weight:600}
+.site-footer .foot-bottom{grid-column:1/-1;border-top:1px solid var(--line,var(--ln,#D5DFEC));padding-top:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;color:var(--muted,var(--mu,#68788F));font-size:12px}
+@media(max-width:700px){.site-footer{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){.site-footer{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -65,6 +76,6 @@ footer{color:#68788F;font-size:13px;text-align:center;padding:0 20px 30px}
 
 <p><a href="index.html">← Back to marketplace</a> · <a href="about.html">About us</a></p>
 </main>
-<footer>© 2026 ClassiFlip · Mississauga, Ontario</footer>
+<footer class="site-footer"><div><h3>ClassiFlip</h3><p>Classified Marketplace | Local Buy &amp; Sell. Browse free, post with an account, message sellers, and boost the ads that matter.</p></div><div><h3>Marketplace</h3><ul><li><a href="index.html">Browse all</a></li><li><a href="index.html">Cars &amp; vehicles</a></li><li><a href="index.html">Jobs</a></li><li><a href="index.html">Services</a></li><li><a href="index.html">Homes for sale</a></li></ul></div><div><h3>For businesses</h3><ul><li><a href="advertise.html">Advertise</a></li><li><a href="advertise.html">Business packages</a></li><li><a href="advertise.html">Boost an ad — $2.99</a></li><li><a href="advertise.html">Founding advertiser offer</a></li></ul></div><div><h3>Support &amp; legal</h3><ul><li><a href="about.html">About us</a></li><li><span class="soon">Contact us — at launch</span></li><li><span class="soon">Help — at launch</span></li><li><span class="soon">Safety tips — at launch</span></li><li><span class="soon">Posting rules — at launch</span></li><li><a href="privacy.html">Privacy</a></li><li><span class="soon">Terms of service — at launch</span></li></ul></div><div class="foot-bottom"><span>© 2026 ClassiFlip · Mississauga, Ontario</span><span>Prototype listings are illustrative and not real offers.</span></div></footer>
 </body>
 </html>

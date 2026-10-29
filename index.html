@@ -472,7 +472,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
     let saved=new Set(), currentCategory='All', activeJobCategory='All', savedOnly=false, loggedIn=false, activeListingId=null, pendingMessageListingId=null;
     const grid=document.getElementById('listingGrid'), resultsNote=document.getElementById('resultsNote');
     const PER_PAGE=12;let currentPage=1,lastFilterKey='';
-    function updateAccountUI(){document.getElementById('savedBtn').style.display=loggedIn?'':'none';document.getElementById('postAdBtn').hidden=!loggedIn;document.getElementById('dashLink').hidden=!loggedIn;document.getElementById('msgsLink').hidden=!loggedIn}
+    function updateAccountUI(){document.getElementById('savedBtn').style.display=loggedIn?'':'none';document.getElementById('postAdBtn').hidden=!loggedIn;document.getElementById('dashLink').hidden=!loggedIn;document.getElementById('msgsLink').hidden=!loggedIn;const _set=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=loggedIn?txt:'Create account';};_set('dealerPostBtn','Preview a car listing');_set('servicePostBtn','Preview a service listing');_set('rentalPostBtn','Preview a rental listing');_set('homeSalePostBtn','Preview a home listing')}
     function updateMarketplaceView(){
       const showJobs=currentCategory==='Jobs'&&!savedOnly,showCars=currentCategory==='Cars'&&!savedOnly,showServices=currentCategory==='Services'&&!savedOnly,showRentals=currentCategory==='Rentals'&&!savedOnly,showHomes=currentCategory==='Homes'&&!savedOnly;
       document.getElementById('marketplace').hidden=showJobs;

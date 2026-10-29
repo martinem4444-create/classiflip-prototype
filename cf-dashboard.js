@@ -746,7 +746,7 @@
     var pending = [];
     try {
       var pr = await client.from('listings')
-        .select('id,title,description,price,category,location,status,photo_url,created_at,seller_id')
+        .select('id,title,description,price,category,location,status,photo_url,created_at,seller_id,tags')
         .eq('status', 'pending').order('created_at', { ascending: true }).limit(100);
       if (pr && pr.data) pending = pr.data;
     } catch (e) {}
@@ -788,6 +788,9 @@
           '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor('pending') + '</div>' +
           '<div class="p">' + money(x.price) + '</div>' +
           '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · seller ' + esc(s.display_name || s.email || x.seller_id || '') + ' · ' + shortDate(x.created_at) + '</div>' +
+          ((x.tags && x.tags.length) ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + x.tags.map(function (tg) {
+            return '<span style="border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:12px">#' + esc(tg) + ' <button type="button" data-cf-tag-remove="' + esc(x.id) + '|' + esc(tg) + '" title="Remove this tag" style="border:0;background:none;cursor:pointer;color:var(--mu)">×</button></span>';
+          }).join('') + '</div>' : '') +
           strip +
           (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
                 : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + '</div>' +
@@ -959,6 +962,22 @@
     }
     var client = getClient();
     if (!client) return;
+    /* Tags (Oct 29): admin strips a bad tag from a pending ad — the
+       × on a tag chip. Uses the admin UPDATE policy; the row stays
+       pending, only that one tag is removed. Dashboard refreshes. */
+    var tagRm = e.target.closest ? e.target.closest('[data-cf-tag-remove]') : null;
+    if (tagRm) {
+      var parts = String(tagRm.dataset.cfTagRemove || '').split('|');
+      var tagId = parts[0], tagVal = parts.slice(1).join('|');
+      try {
+        var cur = await client.from('listings').select('tags').eq('id', tagId).maybeSingle();
+        var kept = ((cur && cur.data && cur.data.tags) || []).filter(function (tg) { return tg !== tagVal; });
+        var updT = await client.from('listings').update({ tags: kept }).eq('id', tagId);
+        if (updT.error) { say('Could not remove tag: ' + updT.error.message); return; }
+        say('Tag removed'); refresh();
+      } catch (errT) { say('Could not remove tag.'); }
+      return;
+    }
     var del = e.target.closest ? e.target.closest('[data-cf-del]') : null;
     if (del) {
       if (!del.dataset.armed) {

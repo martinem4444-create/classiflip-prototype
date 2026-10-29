@@ -240,6 +240,30 @@
     var m = String(ref).match(/(\d+)/);
     return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
   }
+  /* Tags (Oct 29, 2026): max 5 per ad, free for every ad — private
+     or business, any category, no package gate. Input is a comma
+     list; normalise to lowercase, strip a leading '#', drop empties
+     and duplicates, cap at 5. Anything the DB check would reject
+     never leaves the client. */
+  function parseTags(raw) {
+    var out = [];
+    try {
+      String(raw || '').split(',').forEach(function (t) {
+        var s = String(t || '').trim().toLowerCase().replace(/^#+/, '').replace(/\s+/g, ' ').trim();
+        if (!s || s.length > 30) return;
+        if (!/^[a-z0-9][a-z0-9\- ]*$/.test(s)) return;
+        if (out.indexOf(s) === -1) out.push(s);
+      });
+    } catch (e) { return []; }
+    return out.slice(0, 5);
+  }
+  function tagsMarkup(x) {
+    var tags = (x && x.tags) || [];
+    if (!tags.length) return '';
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">' + tags.map(function (t) {
+      return '<button type="button" data-cf-tag="' + escAttr(t) + '" style="border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer">#' + safe(t) + '</button>';
+    }).join('') + '</div>';
+  }
   function mapRow(r, photosById, boostedIds, boostSort) {
     var price = Number(r.price);
     if (isNaN(price)) price = 0;
@@ -253,6 +277,7 @@
       location: r.location || 'Mississauga, ON',
       desc: r.description || '',
       icon: ICON_MAP[r.category] || 'laptop',
+      tags: Array.isArray(r.tags) ? r.tags.slice(0, 5) : [],
       photo: r.photo_url || '',
       photos: photos,
       verified: false,
@@ -327,7 +352,7 @@
     try {
       var res = await client
         .from('listings')
-        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id')
+        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       if (res.error || !res.data || !res.data.length) return false;
@@ -561,6 +586,13 @@
         status: 'pending'
       };
       if (photoUrl) newRow.photo_url = photoUrl;
+      /* Tags (Oct 29): free, max 5, any seller. Omit when empty so
+         pre-migration rows (no tags column yet) still insert. */
+      try {
+        var _tagsEl = document.getElementById('adTags');
+        var _tags = _tagsEl ? parseTags(_tagsEl.value) : [];
+        if (_tags.length) newRow.tags = _tags;
+      } catch (e) {}
       /* Package-default (v1.10): attach the defaulted order when one
          is active for this category (the form refresh validated it —
          the quota read proving the order_id column exists). A stale
@@ -1066,6 +1098,7 @@
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         listingContactMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
+        tagsMarkup(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
         '</div></div>';
@@ -1126,6 +1159,7 @@
         /* Messages move-up (Oct 26, 2026): contact (Message seller + Share) sits under the price, mirroring the v1.10 Boost move — the bottom of a tall modal hides behind the mobile tab bar. */
         listingContactMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
+        tagsMarkup(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
         '</div></div>';
@@ -1135,6 +1169,23 @@
       /* Never crash the page from this guard. */
     }
   }, true);
+
+  /* Tag click (Oct 29): clicking a #tag chip on an ad detail puts
+     that tag in the single search bar and filters the marketplace
+     to it — tags are a search tool, not decoration. */
+  document.addEventListener('click', function (e) {
+    var tg = e.target && e.target.closest ? e.target.closest('[data-cf-tag]') : null;
+    if (!tg) return;
+    try {
+      var si = document.getElementById('searchInput');
+      if (si) si.value = tg.getAttribute('data-cf-tag') || '';
+      if (typeof savedOnly !== 'undefined') savedOnly = false;
+      if (typeof closeModals === 'function') closeModals();
+      if (typeof render === 'function') render();
+      var mp = document.getElementById('marketplace');
+      if (mp) mp.scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {}
+  });
 
   /* Marketplace real boost button (v1.9): signed-in owners see a
      REAL "Boost · $2.99" on their own marketplace cards / detail

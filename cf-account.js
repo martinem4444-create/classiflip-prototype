@@ -586,6 +586,81 @@
       rowSince.appendChild(rowSinceV);
       card.appendChild(rowSince);
     }
+
+    /* --- Your packages (Oct 29, 2026): profile answers "what do I
+       have?" — package name, status, expiry, ads used vs quota —
+       while Dashboard → My orders stays the full order history.
+       Free private sellers with no orders see the Advertise link,
+       not an empty error. A failed read never breaks the panel:
+       it falls back to the Dashboard link. */
+    var pkgHead = document.createElement('div');
+    pkgHead.className = 'cf-acct-field';
+    var pkgLab = document.createElement('label');
+    pkgLab.textContent = 'Your packages';
+    pkgHead.appendChild(pkgLab);
+    card.appendChild(pkgHead);
+    var pkgBox = document.createElement('div');
+    pkgBox.className = 'cf-acct-sub';
+    pkgBox.textContent = 'Loading packages…';
+    card.appendChild(pkgBox);
+    (function loadPackages() {
+      if (!client || !currentUser) { pkgBox.textContent = 'Sign in to see your packages.'; return; }
+      client.from('orders').select('id,package,amount,status,expires_at,created_at')
+        .eq('buyer_id', currentUser.id).order('created_at', { ascending: false }).limit(20)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          var orders = res.data || [];
+          if (!orders.length) {
+            pkgBox.innerHTML = 'No packages yet. <a href="advertise.html">Browse business packages</a> — private sellers post free, no package needed.';
+            return;
+          }
+          var ids = orders.map(function (o) { return o.id; }).filter(Boolean);
+          client.from('listings').select('id,order_id').in('order_id', ids)
+            .then(function (lr) {
+              var used = {};
+              (lr && lr.data || []).forEach(function (r) { if (r.order_id) used[r.order_id] = (used[r.order_id] || 0) + 1; });
+              renderPkgList(orders, used);
+            }, function () { renderPkgList(orders, {}); });
+          function quotaOf(label) {
+            var l = String(label || '');
+            if (l.indexOf('Unlimited') !== -1) return '∞';
+            if (l.indexOf('5-Pack') !== -1) return '5';
+            if (l.indexOf('Lot Pack') !== -1) return '25';
+            return '1';
+          }
+          function renderPkgList(list, usedMap) {
+            var now = Date.now();
+            list.sort(function (a, b) {
+              var aAct = a.status === 'Active' && a.expires_at && new Date(a.expires_at).getTime() > now ? 0 : 1;
+              var bAct = b.status === 'Active' && b.expires_at && new Date(b.expires_at).getTime() > now ? 0 : 1;
+              return aAct - bAct;
+            });
+            pkgBox.innerHTML = '';
+            list.forEach(function (o) {
+              var row = document.createElement('div');
+              row.className = 'cf-acct-row';
+              var k = document.createElement('span');
+              var exp = o.expires_at ? new Date(o.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+              var q = quotaOf(o.package);
+              var u = usedMap[o.id];
+              var useTxt = (typeof u === 'number') ? ' · ' + u + '/' + q + ' ads' : '';
+              k.textContent = o.package + ' — ' + o.status + (exp ? ' · until ' + exp : '') + useTxt;
+              var v = document.createElement('span');
+              v.textContent = (o.amount != null) ? '$' + o.amount : '';
+              row.appendChild(k);
+              row.appendChild(v);
+              pkgBox.appendChild(row);
+            });
+            var links = document.createElement('div');
+            links.className = 'cf-acct-sub';
+            links.innerHTML = '<a href="advertise.html">Upgrade / renew</a> · <a href="dashboard.html">View all orders</a>';
+            pkgBox.appendChild(links);
+          }
+        })
+        .catch(function () {
+          pkgBox.innerHTML = 'Could not load packages — see <a href="dashboard.html">Dashboard → My orders</a> for the full list.';
+        });
+    })();
   }
 
   function openSettingsPanel() {

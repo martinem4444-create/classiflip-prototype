@@ -474,8 +474,16 @@
     var listings = [], orders = [], threads = [], myBoosts = [];
     try {
       var lr = await client.from('listings')
-        .select('id,title,price,category,condition,location,status,created_at,photo_url')
+        .select('id,title,price,category,condition,location,status,created_at,photo_url,rejection_reason')
         .eq('seller_id', user.id).order('created_at', { ascending: false }).limit(100);
+      /* Fail-soft: if the reject-reason SQL has not run yet, the
+         column does not exist and this select errors — retry
+         without it so My ads still loads, just without reasons. */
+      if (lr && lr.error) {
+        lr = await client.from('listings')
+          .select('id,title,price,category,condition,location,status,created_at,photo_url')
+          .eq('seller_id', user.id).order('created_at', { ascending: false }).limit(100);
+      }
       if (lr && lr.data) listings = lr.data;
     } catch (e) {}
     try {
@@ -602,12 +610,15 @@
           var editBtn = (x.status === 'active' || x.status === 'pending' || x.status === 'rejected')
             ? '<button class="btn gho" data-cf-edit="' + esc(x.id) + '">Edit</button>' : '';
           var delBtn = '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button>';
+          var rejNote = (x.status === 'rejected' && x.rejection_reason)
+            ? '<div class="s">Admin note: ' + esc(x.rejection_reason) + '</div>' : '';
           if (dashView === 'grid') {
             return '<div class="gtile"><div class="gph">' +
               (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '&#128722;') + '</div>' +
               '<div class="gb"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
               '<div class="p">' + money(x.price) + '</div>' +
               '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div>' +
+              rejNote +
               '<div class="s">' + statsLine(x.id) + '</div>' +
               '<div class="acts">' + viewBtn + boostBtn + editBtn + delBtn + '</div></div></div>';
           }
@@ -616,6 +627,7 @@
             '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
             '<div class="p">' + money(x.price) + '</div>' +
             '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div>' +
+            rejNote +
             '<div class="s">' + statsLine(x.id) + '</div></div>' +
             '<div class="acts">' + viewBtn + boostBtn + editBtn + delBtn + '</div>' +
             '</div>';
@@ -794,7 +806,14 @@
           strip +
           (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
                 : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + '</div>' +
-          '<div class="acts"><button class="btn pri" data-cf-approve="' + esc(x.id) + '">Approve</button>' +
+          '<div class="acts"><div style="margin-bottom:6px"><select data-cf-reject-reason="' + esc(x.id) + '" aria-label="Reject reason" style="width:100%;margin-bottom:4px;padding:6px;border:1px solid var(--line);border-radius:8px">' +
+          '<option value="Wrong category — please post a new ad under Services">Wrong category — post a new ad under Services</option>' +
+          '<option value="Wrong category — please post a new ad in the correct category">Wrong category — correct category</option>' +
+          '<option value="Photos or description missing or unclear">Photos / description unclear</option>' +
+          '<option value="Prohibited item">Prohibited item</option>' +
+          '<option value="Duplicate ad">Duplicate ad</option></select>' +
+          '<input data-cf-reject-custom="' + esc(x.id) + '" placeholder="Or type a custom reason…" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:8px"></div>' +
+          '<button class="btn pri" data-cf-approve="' + esc(x.id) + '">Approve</button>' +
           '<button class="btn gho danger" data-cf-reject="' + esc(x.id) + '">Reject</button></div></div>';
       }).join('');
     } else {
@@ -1146,13 +1165,33 @@
       if (ok) refresh();
     };
     if (approve) {
-      client.from('listings').update({ status: 'active' }).eq('id', approve.dataset.cfApprove).then(function (res) {
+      /* Approve clears any old reject reason — but if the
+         reject-reason SQL has not run yet, that column write fails,
+         so retry as a plain status update rather than blocking an
+         approval on a migration. */
+      client.from('listings').update({ status: 'active', rejection_reason: null }).eq('id', approve.dataset.cfApprove).then(function (res) {
+        if (res.error && res.error.message && res.error.message.indexOf('rejection_reason') !== -1) {
+          return client.from('listings').update({ status: 'active' }).eq('id', approve.dataset.cfApprove);
+        }
+        return res;
+      }).then(function (res) {
         if (!res.error) notifyBuyer('notify-buyer-ad-live', { listing_id: approve.dataset.cfApprove });
         done(!res.error, res.error ? 'Approve failed: ' + res.error.message + ' — run the step-4 SQL first?' : 'Ad approved — it is live now');
       });
     } else if (reject) {
-      client.from('listings').update({ status: 'rejected' }).eq('id', reject.dataset.cfReject).then(function (res) {
-        done(!res.error, res.error ? 'Reject failed: ' + res.error.message : 'Ad rejected — it stays hidden');
+      /* Reject reason (Oct 29, option 1): custom text wins, else the
+         picked preset. The seller sees it on My ads next to
+         Rejected. Category is locked in the editor, so the wrong-
+         category presets say "post a NEW ad" — editing this one
+         cannot fix the category. */
+      var rId = reject.dataset.cfReject, rReason = '';
+      try {
+        var rSel = document.querySelector('[data-cf-reject-reason="' + rId + '"]');
+        var rCus = document.querySelector('[data-cf-reject-custom="' + rId + '"]');
+        rReason = (rCus && rCus.value.trim()) || (rSel && rSel.value) || '';
+      } catch (e) {}
+      client.from('listings').update({ status: 'rejected', rejection_reason: rReason || null }).eq('id', rId).then(function (res) {
+        done(!res.error, res.error ? 'Reject failed: ' + res.error.message + ' — run supabase/cf-reject-reason-migration.sql first?' : 'Ad rejected — reason sent to seller: ' + (rReason || 'none'));
       });
     } else if (act) {
       var exp30 = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();

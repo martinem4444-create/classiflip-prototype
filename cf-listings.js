@@ -1086,6 +1086,36 @@
      Kept beside the guard on purpose: both render through the
      page's own helpers, so the two paths can never drift apart in
      markup — only the entry point differs (click vs. deep link). */
+  /* More from this seller (Oct 29): real detail only. After the
+     detail renders, fetch up to 4 other ACTIVE ads from the same
+     seller (never the current ad, never pending) and inject them
+     into #cfMoreSeller. Clicking a card re-opens that ad via the
+     same detail guard (data-view UUID). Empty = section stays
+     hidden. No new table, no RLS change — listings read policy
+     already covers active rows. */
+  async function loadMoreFromSeller(x) {
+    try {
+      var box = document.getElementById('cfMoreSeller');
+      if (!box || !x || !x.seller_id) return;
+      var client = getClient();
+      if (!client) return;
+      var res = await client.from('listings')
+        .select('id,title,price,photo_url,category,location')
+        .eq('seller_id', x.seller_id).eq('status', 'active')
+        .neq('id', x.id).order('created_at', { ascending: false }).limit(4);
+      var rows = (res && res.data) || [];
+      if (!rows.length) return;
+      var cards = rows.map(function (r) {
+        return '<button type="button" data-view="' + String(r.id) + '" style="text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;cursor:pointer;overflow:hidden">' +
+          (r.photo_url ? '<img src="' + escAttr(r.photo_url) + '" alt="" style="width:100%;height:110px;object-fit:cover;display:block">' : '<div style="height:110px;background:#E9EDF4;display:grid;place-items:center;font-size:28px">🛒</div>') +
+          '<div style="padding:10px"><div style="font-weight:700;font-size:14px;line-height:1.3">' + safe(r.title) + '</div>' +
+          '<div style="color:var(--orange);font-weight:800;margin-top:4px">' + displayPrice({ price: r.price }) + '</div>' +
+          '<div style="color:var(--muted);font-size:12px;margin-top:2px">' + safe(r.location || '') + '</div></div></button>';
+      }).join('');
+      box.innerHTML = '<h3 style="margin:22px 0 10px">More from this seller</h3><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">' + cards + '</div>' +
+        (window.__cfStorefronts && window.__cfStorefronts[String(x.seller_id)] ? '<p style="margin-top:12px"><a href="seller.html?id=' + encodeURIComponent(String(x.seller_id)) + '">Visit seller\'s page →</a></p>' : '');
+    } catch (e) {}
+  }
   function openRealDetail(x) {
     try {
       activeListingId = x.id;
@@ -1101,9 +1131,11 @@
         tagsMarkup(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
+        '<div id="cfMoreSeller"></div>' +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
+      try { loadMoreFromSeller(x); } catch (e) {}
     } catch (err) { /* Never crash the page from a deep link. */ }
   }
 
@@ -1162,9 +1194,11 @@
         tagsMarkup(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
+        '<div id="cfMoreSeller"></div>' +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
+      try { loadMoreFromSeller(x); } catch (e) {}
     } catch (err) {
       /* Never crash the page from this guard. */
     }

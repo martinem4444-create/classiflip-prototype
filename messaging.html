@@ -16,14 +16,6 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .top .ttl{font-weight:700}
 .safe{background:#FFF8E7;border-bottom:1px solid #F0DFAE;color:#8A6D1B;font-size:12.5px;padding:8px 18px;flex:none;text-align:center}
 .main{flex:1;display:flex;min-height:0;max-width:1100px;width:100%;margin:0 auto}
-/* sponsor rail: desktop only (>=1280px) */
-.spon{display:none;width:300px;flex:none;padding:16px 18px 16px 0;overflow-y:auto}
-.spon .spn-lb{font-size:11px;letter-spacing:1.5px;color:var(--mu);text-transform:uppercase;margin:2px 4px 10px}
-.spon .spn-card{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:var(--sh)}
-.spon .spn-card h4{margin:0 0 8px;font-size:15px;color:var(--navy)}
-.spon .spn-card p{margin:0 0 12px;font-size:13px;color:var(--mu);line-height:1.55}
-.spon .spn-card a{display:inline-block;background:var(--orange);color:#fff;font-weight:700;font-size:13px;padding:9px 16px;border-radius:999px;text-decoration:none}
-@media(min-width:1280px){.main{max-width:1460px}.spon{display:block}}
 /* threads */
 .threads{width:340px;flex:none;background:var(--card);border-right:1px solid var(--ln);overflow-y:auto}
 .th{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--ln);cursor:pointer;align-items:center}
@@ -74,7 +66,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .chat.show{display:flex}
 .backbtn{display:block}
 }
-html[data-theme="dark"]{--bg:#07090D;--card:#12161F;--ink:#EDF2F9;--mu:#B9C6DA;--ln:#232B3A;--tint:#2B1A12;--sh:0 10px 30px rgba(0,0,0,.6);color-scheme:dark}html[data-theme="dark"] .mcard{background:#12161F;color:var(--ink)}html[data-theme="dark"] .chat{background:#0B0F16}html[data-theme="dark"] .comp input{background:#1A212E;color:#EDF2F9}.chat.noopen .adbar,.chat.noopen .msgs,.chat.noopen .qr,.chat.noopen .comp{display:none}.emptychat{display:none}.chat.noopen .emptychat{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px}.emptychat .ec-ic{font-size:40px}.emptychat .ec-t{font:800 19px Manrope,sans-serif;color:var(--ink)}.emptychat .ec-s{font-size:13.5px;color:var(--mu);max-width:260px}html[data-theme="dark"] .spon .spn-card{background:#12161F}html[data-theme="dark"] .bub.offer{background:#12161F}html[data-theme="dark"] .bub.them{background:#1C2635}html[data-theme="dark"] .qr button{background:#12161F;color:var(--ink)}html[data-theme="dark"] .iconbtn{background:#12161F;color:var(--ink)}.tbtn{display:flex;align-items:center;justify-content:center;color:var(--ink);margin-left:12px;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ln);background:var(--card);font-size:16px;cursor:pointer;padding:0;flex:0 0 auto}@media(max-width:700px){.top>.tbtn{margin-left:auto}}</style>
+html[data-theme="dark"]{--bg:#07090D;--card:#12161F;--ink:#EDF2F9;--mu:#B9C6DA;--ln:#232B3A;--tint:#2B1A12;--sh:0 10px 30px rgba(0,0,0,.6);color-scheme:dark}html[data-theme="dark"] .mcard{background:#12161F;color:var(--ink)}html[data-theme="dark"] .chat{background:#0B0F16}html[data-theme="dark"] .comp input{background:#1A212E;color:#EDF2F9}.chat.noopen .adbar,.chat.noopen .msgs,.chat.noopen .qr,.chat.noopen .comp{display:none}.emptychat{display:none}.chat.noopen .emptychat{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px}.emptychat .ec-ic{font-size:40px}.emptychat .ec-t{font:800 19px Manrope,sans-serif;color:var(--ink)}.emptychat .ec-s{font-size:13.5px;color:var(--mu);max-width:260px}html[data-theme="dark"] .bub.offer{background:#12161F}html[data-theme="dark"] .bub.them{background:#1C2635}html[data-theme="dark"] .qr button{background:#12161F;color:var(--ink)}html[data-theme="dark"] .iconbtn{background:#12161F;color:var(--ink)}.tbtn{display:flex;align-items:center;justify-content:center;color:var(--ink);margin-left:12px;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ln);background:var(--card);font-size:16px;cursor:pointer;padding:0;flex:0 0 auto}@media(max-width:700px){.top>.tbtn{margin-left:auto}}</style>
 
 <style>
 /* ClassiFlip mobile bottom tab bar */
@@ -117,18 +109,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <button class="send" onclick="sendMsg()" title="Send">&#10148;</button>
 </div>
 </div>
-<div class="spon">
-<div class="spn-lb">Sponsored</div>
-<div class="spn-card">
-<h4>Your business here</h4>
-<p>This rail is reserved for ClassiFlip founding advertisers — seen on every desktop chat.</p>
-<a href="waitlist.html">Claim your spot</a>
-</div>
-<div class="spn-card">
-<h4>Dixie Auto Mall</h4>
-<p>Sample sponsor card. Real local ads appear here on desktop; hidden on mobile.</p>
-</div>
-</div>
+<!-- Messages stay clean (Oct 29, Martin): no sponsor rail in chat — ads live on browsing pages, not in private conversations. -->
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

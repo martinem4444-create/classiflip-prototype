@@ -802,34 +802,51 @@
     l.textContent = text;
     f.hidden = false;
   }
-  /* Dealer-choice gate (v1.12, Martin's ruling Oct 27): the Cars
-     form's 'Car seller' select is baked HTML with a dealer option
-     anyone could pick, with no role check. The real postAd never
-     stored the choice, so it was label-only — but the option must
-     not be offered to non-holders at all. Rule: the 'Automotive
-     dealer' option exists ONLY while an Active dealer package is
-     defaulted for Cars (window.__cfPkgDefault.orderId set with
-     category 'Cars' — the same state the package-default feature
-     already maintains: Active + unexpired + under quota). Everyone
-     else sees 'Private seller' only. If the dealer option was
-     selected when the gate closes, the value falls back to
+  /* Dealer/business-choice gate (v1.18, Martin's ruling Oct 29 — supersedes
+     v1.12's keep-both behaviour): the Cars form's 'Car seller'
+     select is baked HTML with a dealer option anyone could pick,
+     with no role check, and it DEFAULTS to 'Private seller' — so
+     a package holder opening the top 'Post an ad' button saw the
+     pink 'Posting under Dealer Unlimited' banner AND 'Private
+     seller' at once. Rule, for every entry path (top Post button
+     AND dealer quick-post): while an Active dealer package is
+     defaulted for Cars, the select shows 'Automotive dealer' ONLY
+     — the Private option is removed and the value is forced to
+     'dealer'. Everyone else sees 'Private seller' only (dealer
+     option removed; if it was selected, value falls back to
      'private' and the function returns true so the caller can
-     re-run the page's updater and refresh the plan options.
-     Never throws; a missing select is a no-op. Logged-out users
-     have no package, so the dealer option is hidden for them too
-     (their posts are demo previews only). */
+     re-run the page's updater). Restores the Private option when
+     the category leaves Cars, so a later non-holder Cars visit
+     is never left dealer-only. Never throws; a missing select
+     is a no-op. Logged-out users have no package, so they see
+     'Private seller' only (their posts are demo previews only).
+     v1.18: same rule for 'Posting as' on Rentals/Homes/Services —
+     a package defaulted for the CURRENT category forces Business
+     only, so a two-package client sees the dropdown change as
+     they switch categories. */
   function _gateDealerChoice() {
     try {
       var sel = document.getElementById('carSellerType');
       if (!sel) return false;
       var catEl = document.getElementById('adCategory');
-      if (!catEl || catEl.value !== 'Cars') return false;
+      if (!catEl) return false;
+      var privOpt = null, dealerOpt = null;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === 'private') privOpt = sel.options[i];
+        if (sel.options[i].value === 'dealer') dealerOpt = sel.options[i];
+      }
+      if (catEl.value !== 'Cars') {
+        /* Field is hidden off-Cars anyway; restore Private so a
+           later Cars visit never inherits a dealer-only select. */
+        if (!privOpt) {
+          var rp = document.createElement('option');
+          rp.value = 'private'; rp.textContent = 'Private seller';
+          sel.insertBefore(rp, sel.firstChild);
+        }
+        return false;
+      }
       var st = window.__cfPkgDefault;
       var hasDealerPkg = !!(st && st.orderId && st.category === 'Cars');
-      var dealerOpt = null;
-      for (var i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].value === 'dealer') { dealerOpt = sel.options[i]; break; }
-      }
       if (hasDealerPkg) {
         if (!dealerOpt) {
           var o = document.createElement('option');
@@ -837,15 +854,63 @@
           o.textContent = 'Automotive dealer';
           sel.appendChild(o);
         }
-        return false;
+        var changed = false;
+        if (privOpt) { sel.removeChild(privOpt); changed = true; }
+        if (sel.value !== 'dealer') { sel.value = 'dealer'; changed = true; }
+        return changed;
       }
+      if (!privOpt) {
+        var np = document.createElement('option');
+        np.value = 'private'; np.textContent = 'Private seller';
+        sel.insertBefore(np, sel.firstChild);
+      }
+      var carChanged = false;
       if (dealerOpt) {
         var wasDealer = (sel.value === 'dealer');
         if (wasDealer) sel.value = 'private';
         sel.removeChild(dealerOpt);
-        return wasDealer;
+        carChanged = wasDealer;
       }
-      return false;
+      /* Business gate (v1.18): same rule, generalised. A client
+         can hold TWO different category packages (e.g. Dealer for
+         Cars + Services Pro for Services, or Agent for Homes +
+         Dealer for Cars) — pkgRefresh already defaults to the
+         package matching the CURRENT category, so the dropdown
+         must follow the category, not the account. When a package
+         is defaulted for Rentals/Homes/Services, 'Posting as'
+         shows Business only (Private removed, value forced
+         'business'); when no package matches this category,
+         Private is restored and Business stays offered (that
+         path is today's Advertise redirect for non-holders).
+         Off paid families the field is hidden anyway; restore
+         Private so a later paid-category visit is never stuck. */
+      var bizSel = document.getElementById('bizType');
+      var bizChanged = false;
+      if (bizSel) {
+        var bPriv = null, bBiz = null;
+        for (var j = 0; j < bizSel.options.length; j++) {
+          if (bizSel.options[j].value === 'private') bPriv = bizSel.options[j];
+          if (bizSel.options[j].value === 'business') bBiz = bizSel.options[j];
+        }
+        var paidBiz = (catEl.value === 'Rentals' || catEl.value === 'Homes' || catEl.value === 'Services');
+        var hasBizPkg = !!(st && st.orderId && st.category === catEl.value);
+        if (paidBiz && hasBizPkg) {
+          if (!bBiz) {
+            var bo = document.createElement('option');
+            bo.value = 'business'; bo.textContent = 'Business / professional';
+            bizSel.appendChild(bo);
+          }
+          if (bPriv) { bizSel.removeChild(bPriv); bizChanged = true; }
+          if (bizSel.value !== 'business') { bizSel.value = 'business'; bizChanged = true; }
+        } else {
+          if (!bPriv) {
+            var bp = document.createElement('option');
+            bp.value = 'private'; bp.textContent = 'Private — my own listing';
+            bizSel.insertBefore(bp, bizSel.firstChild);
+          }
+        }
+      }
+      return carChanged || bizChanged;
     } catch (e) { return false; }
   }
   var pkgFetch = null; /* in-flight orders fetch, deduped */

@@ -802,7 +802,7 @@
     l.textContent = text;
     f.hidden = false;
   }
-  /* Dealer/business-choice gate (v1.18, Martin's ruling Oct 29 — supersedes
+  /* Dealer/business-choice gate (v1.20, Martin's ruling Oct 29 — supersedes
      v1.12's keep-both behaviour): the Cars form's 'Car seller'
      select is baked HTML with a dealer option anyone could pick,
      with no role check, and it DEFAULTS to 'Private seller' — so
@@ -894,7 +894,29 @@
         }
         var paidBiz = (catEl.value === 'Rentals' || catEl.value === 'Homes' || catEl.value === 'Services');
         var hasBizPkg = !!(st && st.orderId && st.category === catEl.value);
-        if (paidBiz && hasBizPkg) {
+        /* v1.19 (Martin: change for ALL categories): a business
+           account is a business account in every paid family, not
+           just the one it bought. An Agent holder posting Services
+           has no Services package, so no banner — but they are
+           NOT a private poster either: Business only, and the
+           existing business-without-package redirect sends them
+           to Advertise to buy the Services package. Cars stays
+           dealer-specific (see car gate above): an Agent holder
+           posting a car is not a car dealer, so Cars still uses
+           the matching-package rule only. Non-paid categories
+           have no Posting-as dropdown at all and businesses are
+           free there (Oct 29 decision), so nothing changes there. */
+        var hasAnyPkg = !!(window.__cfAnyPkg) || (typeof pkgCache !== 'undefined' && pkgCache && pkgCache.orders && pkgCache.orders.length > 0);
+        /* v1.20 (Martin Oct 29): Services is the ONE paid family
+           with no legitimate free private path — Cars has private
+           sellers free, Rentals has private landlords free, Homes
+           has private homeowners free, but every Services ad is
+           by definition a pro/business ad ($29 single / $99 Pro).
+           So Services is Business only ALWAYS, even for a user
+           with zero packages: no Services package => the existing
+           submit redirect sends them to Advertise to buy one.
+           Rentals/Homes keep the v1.19 any-package rule. */
+        if (paidBiz && (catEl.value === 'Services' || hasBizPkg || hasAnyPkg)) {
           if (!bBiz) {
             var bo = document.createElement('option');
             bo.value = 'business'; bo.textContent = 'Business / professional';
@@ -950,11 +972,18 @@
       var fam = PKG_FAMILY[cat];
       if (!fam) { pkgClearState(); return; }
       var client = getClient();
-      if (!client || !isLoggedIn()) { pkgClearState(); return; }
+      if (!client || !isLoggedIn()) { window.__cfAnyPkg = false; pkgClearState(); return; }
       var userRes = await client.auth.getUser();
       var user = userRes && userRes.data && userRes.data.user;
-      if (!user) { pkgClearState(); return; }
+      if (!user) { window.__cfAnyPkg = false; pkgClearState(); return; }
       var orders = await pkgFetchOrders(client, user.id);
+      /* v1.19: any-package flag — a client holding ANY Active
+         package (any family) is a business account, even when
+         the current category has no matching package. This is
+         what the business gate below reads; pkgClearState must
+         NOT wipe it on a no-match, or the Services-with-an-Agent-
+         package case falls back to Private again. */
+      window.__cfAnyPkg = !!(orders && orders.length);
       var match = null;
       for (var i = 0; i < orders.length; i++) {
         if (pkgFamilyOf(orders[i].package) === fam) { match = orders[i]; break; }

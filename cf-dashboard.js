@@ -610,6 +610,19 @@
           var editBtn = (x.status === 'active' || x.status === 'pending' || x.status === 'rejected')
             ? '<button class="btn gho" data-cf-edit="' + esc(x.id) + '">Edit</button>' : '';
           var delBtn = '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button>';
+          /* Mark sold (Oct 29, Martin): a dealer/agent sells a car or
+             a home, they tap Mark sold — status -> 'sold', ad leaves
+             the public grid (public fetch is active-only), the card
+             wears the existing Sold pill, and the slot frees up for
+             a replacement (quota counts active+pending only, see
+             cf-listings.js). No admin approval needed: owners may
+             mark sold/hidden under the step-4 RLS policy, and the
+             self-approve trigger only blocks transitions INTO
+             'active'. Two-tap, same pattern as Delete, so a stray
+             tap can't sell a live ad. Active ads only — sold ads
+             already lost Edit/Boost/View by the existing gates. */
+          var soldBtn = x.status === 'active'
+            ? '<button class="btn gho" data-cf-sold="' + esc(x.id) + '">Mark sold</button>' : '';
           /* Rejected red-box alert (Oct 29, Martin's call): a rejected
              ad must be impossible to miss, so the seller sees what
              to fix. Same box in list + grid — rejNote is shared.
@@ -631,7 +644,7 @@
               '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div>' +
               rejNote +
               '<div class="s">' + statsLine(x.id) + '</div>' +
-              '<div class="acts">' + viewBtn + boostBtn + editBtn + delBtn + '</div></div></div>';
+              '<div class="acts">' + viewBtn + boostBtn + editBtn + soldBtn + delBtn + '</div></div></div>';
           }
           return '<div class="lcard">' +
             (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
@@ -640,7 +653,7 @@
             '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div>' +
             rejNote +
             '<div class="s">' + statsLine(x.id) + '</div></div>' +
-            '<div class="acts">' + viewBtn + boostBtn + editBtn + delBtn + '</div>' +
+            '<div class="acts">' + viewBtn + boostBtn + editBtn + soldBtn + delBtn + '</div>' +
             '</div>';
         }).join('');
         listSeller.innerHTML = viewBar + (dashView === 'grid' ? '<div class="adgrid">' + cardsHtml + '</div>' : cardsHtml);
@@ -1006,6 +1019,19 @@
         if (updT.error) { say('Could not remove tag: ' + updT.error.message); return; }
         say('Tag removed'); refresh();
       } catch (errT) { say('Could not remove tag.'); }
+      return;
+    }
+    var sold = e.target.closest ? e.target.closest('[data-cf-sold]') : null;
+    if (sold) {
+      if (!sold.dataset.armed) {
+        sold.dataset.armed = '1'; sold.textContent = 'Sold? Confirm';
+        setTimeout(function () { if (sold.isConnected) { delete sold.dataset.armed; sold.textContent = 'Mark sold'; } }, 3000);
+        return;
+      }
+      client.from('listings').update({ status: 'sold' }).eq('id', sold.dataset.cfSold).then(function (res) {
+        if (res.error) { say('Could not mark sold: ' + res.error.message); return; }
+        say('Marked as sold'); refresh();
+      });
       return;
     }
     var del = e.target.closest ? e.target.closest('[data-cf-del]') : null;

@@ -967,9 +967,14 @@
       if (!match) { pkgClearState(); return; }
       /* Quota read — also the migration probe. If order_id does
          not exist yet this errors and the feature stays off. */
+      /* Quota (Oct 29, Mark sold): only live-or-awaiting ads count.
+         A sold car must free its slot for a replacement, and a
+         rejected ad never went live — counting either would block
+         a Lot Pack dealer at 25 sold cars with an empty lot. */
       var cnt = await client.from('listings')
         .select('id', { count: 'exact', head: true })
-        .eq('order_id', match.id);
+        .eq('order_id', match.id)
+        .in('status', ['active', 'pending']);
       if (cnt.error) throw cnt.error;
       var used = (typeof cnt.count === 'number') ? cnt.count : 0;
       var limit = pkgQuotaOf(match.package);

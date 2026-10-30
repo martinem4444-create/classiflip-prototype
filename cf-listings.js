@@ -802,7 +802,7 @@
     l.textContent = text;
     f.hidden = false;
   }
-  /* Dealer/business-choice gate (v1.20, Martin's ruling Oct 29 — supersedes
+  /* Dealer/business-choice gate (v1.21, Martin's ruling Oct 29 — supersedes
      v1.12's keep-both behaviour): the Cars form's 'Car seller'
      select is baked HTML with a dealer option anyone could pick,
      with no role check, and it DEFAULTS to 'Private seller' — so
@@ -820,110 +820,86 @@
      is never left dealer-only. Never throws; a missing select
      is a no-op. Logged-out users have no package, so they see
      'Private seller' only (their posts are demo previews only).
+     v1.21 BUG FIX: v1.18-v1.20's business code sat after the
+     Cars-only branch, so it NEVER ran for Services/Rentals/Homes
+     — Martin caught Services still showing Private. The business
+     part now runs for every category, car part only for Cars.
      v1.18: same rule for 'Posting as' on Rentals/Homes/Services —
      a package defaulted for the CURRENT category forces Business
      only, so a two-package client sees the dropdown change as
      they switch categories. */
   function _gateDealerChoice() {
     try {
-      var sel = document.getElementById('carSellerType');
-      if (!sel) return false;
       var catEl = document.getElementById('adCategory');
       if (!catEl) return false;
-      var privOpt = null, dealerOpt = null;
-      for (var i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].value === 'private') privOpt = sel.options[i];
-        if (sel.options[i].value === 'dealer') dealerOpt = sel.options[i];
-      }
-      if (catEl.value !== 'Cars') {
-        /* Field is hidden off-Cars anyway; restore Private so a
-           later Cars visit never inherits a dealer-only select. */
-        if (!privOpt) {
-          var rp = document.createElement('option');
-          rp.value = 'private'; rp.textContent = 'Private seller';
-          sel.insertBefore(rp, sel.firstChild);
-        }
-        return false;
-      }
+      var cat = catEl.value;
       var st = window.__cfPkgDefault;
-      var hasDealerPkg = !!(st && st.orderId && st.category === 'Cars');
-      if (hasDealerPkg) {
-        if (!dealerOpt) {
-          var o = document.createElement('option');
-          o.value = 'dealer';
-          o.textContent = 'Automotive dealer';
-          sel.appendChild(o);
+      var hasAnyPkg = !!(window.__cfAnyPkg) || (typeof pkgCache !== 'undefined' && pkgCache && pkgCache.orders && pkgCache.orders.length > 0);
+      var changed = false;
+      /* CAR part — only when category is Cars. Off-Cars, restore
+         Private so a later Cars visit never inherits dealer-only. */
+      var sel = document.getElementById('carSellerType');
+      if (sel) {
+        var privOpt = null, dealerOpt = null;
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === 'private') privOpt = sel.options[i];
+          if (sel.options[i].value === 'dealer') dealerOpt = sel.options[i];
         }
-        var changed = false;
-        if (privOpt) { sel.removeChild(privOpt); changed = true; }
-        if (sel.value !== 'dealer') { sel.value = 'dealer'; changed = true; }
-        return changed;
+        if (cat !== 'Cars') {
+          if (!privOpt) {
+            var rp = document.createElement('option');
+            rp.value = 'private'; rp.textContent = 'Private seller';
+            sel.insertBefore(rp, sel.firstChild);
+          }
+        } else if (!!(st && st.orderId && st.category === 'Cars')) {
+          if (!dealerOpt) {
+            var o = document.createElement('option');
+            o.value = 'dealer'; o.textContent = 'Automotive dealer';
+            sel.appendChild(o);
+          }
+          if (privOpt) { sel.removeChild(privOpt); changed = true; }
+          if (sel.value !== 'dealer') { sel.value = 'dealer'; changed = true; }
+        } else {
+          if (!privOpt) {
+            var np = document.createElement('option');
+            np.value = 'private'; np.textContent = 'Private seller';
+            sel.insertBefore(np, sel.firstChild);
+          }
+          if (dealerOpt) {
+            var wasDealer = (sel.value === 'dealer');
+            if (wasDealer) { sel.value = 'private'; changed = true; }
+            sel.removeChild(dealerOpt);
+          }
+        }
       }
-      if (!privOpt) {
-        var np = document.createElement('option');
-        np.value = 'private'; np.textContent = 'Private seller';
-        sel.insertBefore(np, sel.firstChild);
-      }
-      var carChanged = false;
-      if (dealerOpt) {
-        var wasDealer = (sel.value === 'dealer');
-        if (wasDealer) sel.value = 'private';
-        sel.removeChild(dealerOpt);
-        carChanged = wasDealer;
-      }
-      /* Business gate (v1.18): same rule, generalised. A client
-         can hold TWO different category packages (e.g. Dealer for
-         Cars + Services Pro for Services, or Agent for Homes +
-         Dealer for Cars) — pkgRefresh already defaults to the
-         package matching the CURRENT category, so the dropdown
-         must follow the category, not the account. When a package
-         is defaulted for Rentals/Homes/Services, 'Posting as'
-         shows Business only (Private removed, value forced
-         'business'); when no package matches this category,
-         Private is restored and Business stays offered (that
-         path is today's Advertise redirect for non-holders).
-         Off paid families the field is hidden anyway; restore
-         Private so a later paid-category visit is never stuck. */
+      /* BUSINESS part — runs for EVERY category (v1.21 fix: v1.18-
+         v1.20 put this code after the Cars-only branch, so it
+         never ran for Rentals/Homes/Services at all — the early
+         'not Cars' return skipped it, which is exactly the bug
+         Martin just caught: Services still showed Private).
+         Services = Business only ALWAYS (no free private path).
+         Rentals/Homes = Business only when a matching package
+         OR any package is held; otherwise Private restored and
+         Business stays offered (Advertise redirect path).
+         Off paid families the field is hidden; restore Private
+         so a later paid visit is never stuck business-only. */
       var bizSel = document.getElementById('bizType');
-      var bizChanged = false;
       if (bizSel) {
         var bPriv = null, bBiz = null;
         for (var j = 0; j < bizSel.options.length; j++) {
           if (bizSel.options[j].value === 'private') bPriv = bizSel.options[j];
           if (bizSel.options[j].value === 'business') bBiz = bizSel.options[j];
         }
-        var paidBiz = (catEl.value === 'Rentals' || catEl.value === 'Homes' || catEl.value === 'Services');
-        var hasBizPkg = !!(st && st.orderId && st.category === catEl.value);
-        /* v1.19 (Martin: change for ALL categories): a business
-           account is a business account in every paid family, not
-           just the one it bought. An Agent holder posting Services
-           has no Services package, so no banner — but they are
-           NOT a private poster either: Business only, and the
-           existing business-without-package redirect sends them
-           to Advertise to buy the Services package. Cars stays
-           dealer-specific (see car gate above): an Agent holder
-           posting a car is not a car dealer, so Cars still uses
-           the matching-package rule only. Non-paid categories
-           have no Posting-as dropdown at all and businesses are
-           free there (Oct 29 decision), so nothing changes there. */
-        var hasAnyPkg = !!(window.__cfAnyPkg) || (typeof pkgCache !== 'undefined' && pkgCache && pkgCache.orders && pkgCache.orders.length > 0);
-        /* v1.20 (Martin Oct 29): Services is the ONE paid family
-           with no legitimate free private path — Cars has private
-           sellers free, Rentals has private landlords free, Homes
-           has private homeowners free, but every Services ad is
-           by definition a pro/business ad ($29 single / $99 Pro).
-           So Services is Business only ALWAYS, even for a user
-           with zero packages: no Services package => the existing
-           submit redirect sends them to Advertise to buy one.
-           Rentals/Homes keep the v1.19 any-package rule. */
-        if (paidBiz && (catEl.value === 'Services' || hasBizPkg || hasAnyPkg)) {
+        var paidBiz = (cat === 'Rentals' || cat === 'Homes' || cat === 'Services');
+        var hasBizPkg = !!(st && st.orderId && st.category === cat);
+        if (paidBiz && (cat === 'Services' || hasBizPkg || hasAnyPkg)) {
           if (!bBiz) {
             var bo = document.createElement('option');
             bo.value = 'business'; bo.textContent = 'Business / professional';
             bizSel.appendChild(bo);
           }
-          if (bPriv) { bizSel.removeChild(bPriv); bizChanged = true; }
-          if (bizSel.value !== 'business') { bizSel.value = 'business'; bizChanged = true; }
+          if (bPriv) { bizSel.removeChild(bPriv); changed = true; }
+          if (bizSel.value !== 'business') { bizSel.value = 'business'; changed = true; }
         } else {
           if (!bPriv) {
             var bp = document.createElement('option');
@@ -932,7 +908,7 @@
           }
         }
       }
-      return carChanged || bizChanged;
+      return changed;
     } catch (e) { return false; }
   }
   var pkgFetch = null; /* in-flight orders fetch, deduped */

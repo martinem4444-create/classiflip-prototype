@@ -31,6 +31,15 @@
     } catch (e) { return ''; }
   }
 
+  /* Privacy (Martin, Oct 30, 2026): chat shows FIRST NAME ONLY —
+     never a last name. Trims the profile display_name to its
+     first word at display time; the stored name is untouched. */
+  function firstName(dn) {
+    var t = (dn || '').trim();
+    if (!t) return '';
+    return t.split(/\s+/)[0];
+  }
+
   function clockTime(iso) {
     try {
       var d = new Date(iso);
@@ -91,7 +100,7 @@
         return {
           id: 'live:' + g.listingId + ':' + g.otherId,
           live: true, listingId: g.listingId, otherId: g.otherId,
-          name: p.display_name || 'Seller',
+          name: firstName(p.display_name) || 'Seller',
           ad: l.title || 'Listing',
           price: (l.price === undefined || l.price === null) ? '' : money(l.price),
           img: l.photo_url || '',

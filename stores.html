@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>ClassiFlip — Stores</title>
+<script>
+  /* Same theme rule as the rest of the site: light by default,
+     remembered choice in localStorage. Runs before paint. */
+  try { document.documentElement.dataset.theme = localStorage.getItem('cf-theme') || 'light'; } catch (e) {}
+</script>
+<style>
+  :root{--bg:#0f1722;--surface:#172231;--surface-2:#202e3f;--ink:#f5f8fc;--muted:#b4bfce;--line:#33445a;--navy:#A9CDF5;--navy-2:#BCD9F7;--orange:#ff7448;--orange-2:#ff8b67;--green:#75d5a9;--shadow:0 18px 48px rgba(0,0,0,.3)}
+  html[data-theme="light"]{--bg:#EDF1F7;--surface:#FFFFFF;--surface-2:#E7EDF5;--ink:#152A45;--muted:#5A6B82;--line:#D5DFEC;--navy:#18365F;--navy-2:#0F2547;--shadow:0 18px 48px rgba(21,42,69,.14);color-scheme:light}
+  html[data-theme="dark"]{--bg:#07090D;--surface:#12161F;--surface-2:#1A212E;--ink:#EDF2F9;--muted:#C3CEDF;--line:#232B3A;--navy:#A9CDF5;--shadow:0 18px 48px rgba(0,0,0,.55)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--orange)}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;max-width:1100px;margin:0 auto}
+  .brand{font-weight:800;font-size:20px;color:var(--ink);text-decoration:none}
+  .brand span{color:var(--orange)}
+  .back{color:var(--navy);font-weight:700;font-size:14px;text-decoration:none}
+  main{max-width:1100px;margin:0 auto;padding:8px 20px 60px}
+  .page-head h1{font:800 30px/1.15 'Manrope',system-ui,sans-serif;margin:10px 0 6px}
+  .page-head p{color:var(--muted);margin:0 0 18px;max-width:640px}
+  .search-row{display:flex;gap:10px;margin:0 0 22px}
+  .search-row input{flex:1;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:15px;background:var(--surface);color:var(--ink);outline:none}
+  .search-row input:focus{border-color:var(--orange)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .store{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;text-decoration:none;color:inherit;display:flex;gap:14px;align-items:flex-start;box-shadow:var(--shadow)}
+  .store:hover{border-color:var(--orange)}
+  .store-logo{width:64px;height:64px;flex:none;border-radius:14px;object-fit:cover;background:var(--surface-2);display:grid;place-items:center;font-size:30px;overflow:hidden}
+  .store-logo img{width:100%;height:100%;object-fit:cover;display:block}
+  .store-body{min-width:0;flex:1}
+  .store-body h2{margin:0 0 2px;font-size:17.5px;line-height:1.3}
+  .store-tag{color:var(--muted);font-size:13.5px;margin:0 0 6px}
+  .store-meta{font-size:13px;color:var(--muted)}
+  .store-stats{margin-top:8px;font-size:13px;font-weight:700;color:var(--navy)}
+  .store-stats .sold{color:var(--green)}
+  .empty{padding:44px;text-align:center;border:1px dashed var(--line);border-radius:16px;color:var(--muted)}
+  .state{padding:60px 20px;text-align:center;color:var(--muted)}
+  @media(max-width:560px){.page-head h1{font-size:24px}.topbar{padding:12px 14px}main{padding:8px 14px 48px}}
+
+.site-footer{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:24px;margin-top:28px;padding:24px 20px 40px;border-top:1px solid var(--line,var(--ln,#D5DFEC))}
+.site-footer h3{margin:0 0 10px;font:800 14px/1.2 'Manrope',sans-serif;color:var(--navy,var(--ink,#18365F))}
+.site-footer p{margin:0;color:var(--muted,var(--mu,#68788F));font-size:13px;line-height:1.5}
+.site-footer ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.site-footer a{color:var(--muted,var(--mu,#68788F));font-size:13px;text-decoration:none;font-weight:600}
+.site-footer a:hover{color:var(--orange,var(--rose,#F4511E))}
+.site-footer .soon{color:var(--muted,var(--mu,#68788F));font-size:13px;font-weight:600}
+.site-footer .foot-bottom{grid-column:1/-1;border-top:1px solid var(--line,var(--ln,#D5DFEC));padding-top:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;color:var(--muted,var(--mu,#68788F));font-size:12px}
+@media(max-width:700px){.site-footer{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){.site-footer{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="brand" href="index.html">Classi<span>Flip</span></a>
+  <span><a class="back" href="index.html">← Back to marketplace</a><a href="waitlist.html" style="margin-left:16px;font-weight:700">Waitlist</a></span>
+</div>
+<main>
+  <div class="page-head">
+    <h1>Stores on ClassiFlip</h1>
+    <p>Every local business with a storefront — including stores whose latest listing just sold. Tap a store to see what they have, and what they've sold.</p>
+  </div>
+  <div class="search-row">
+    <input id="storeSearch" type="search" placeholder="Search stores by name…" aria-label="Search stores by name">
+  </div>
+  <div id="storesState" class="state">Loading stores…</div>
+  <div class="grid" id="storesGrid" hidden></div>
+  <div class="empty" id="storesEmpty" hidden>No stores match that search.</div>
+  <div class="empty" id="storesNone" hidden>No stores yet — the first local businesses are getting set up.</div>
+</main>
+<footer class="site-footer"><div><h3>ClassiFlip</h3><p>Classified Marketplace | Local Buy &amp; Sell.</p></div><div><h3>Marketplace</h3><ul><li><a href="index.html">Browse all</a></li><li><a href="stores.html">Stores</a></li><li><a href="index.html">Cars &amp; vehicles</a></li><li><a href="index.html">Jobs</a></li><li><a href="index.html">Services</a></li><li><a href="index.html">Homes for sale</a></li></ul></div><div><h3>For businesses</h3><ul><li><a href="advertise.html">Advertise</a></li><li><a href="advertise.html">Business packages</a></li><li><a href="advertise.html">Boost an ad — $2.99</a></li><li><a href="advertise.html">Founding advertiser offer</a></li></ul></div><div><h3>Support &amp; legal</h3><ul><li><a href="about.html">About us</a></li><li><span class="soon">Contact us — at launch</span></li><li><span class="soon">Help — at launch</span></li><li><span class="soon">Safety tips — at launch</span></li><li><span class="soon">Posting rules — at launch</span></li><li><a href="privacy.html">Privacy</a></li><li><span class="soon">Terms of service — at launch</span></li></ul></div><div class="foot-bottom"><span>© 2026 ClassiFlip · Mississauga, Ontario</span><span>Prototype listings are illustrative and not real offers.</span></div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  /* Stubs for cf-auth.js globals this page doesn't define (same
+     pattern as seller.html): on session restore cf-auth.js sets
+     loggedIn and calls updateAccountUI() unguarded. */
+  var loggedIn = false;
+  function updateAccountUI() {}
+  function closeModals() {}
+</script>
+<script src="cf-auth.js"></script>
+<script src="cf-stores.js"></script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClassiFlip — Business Packages & Prices</title>
+<meta name="description" content="ClassiFlip business package prices for dealers, agents, rentals, services and jobs. Founding advertisers save 50%, locked for 12 months. Launching January 1, 2027 — join the waitlist for first access.">
+<link rel="icon" type="image/png" href="images/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  WAITLIST-ERA PACKAGES PAGE (built Oct 30, 2026, Martin's ruling):
+  This page lives beside the waitlist on classiflip.com from waitlist day
+  (mid-Dec 2026) until launch. It shows ALL package prices and what every
+  package includes — and NOTHING ELSE. No buy / pay / reserve links, no
+  links into the marketplace, dashboard, or messages. The only calls to
+  action point back to the waitlist signup. At Jan 1, 2027 launch this
+  page is replaced by the real Advertise page.
+  PHONE (pending Martin's decision, due print week of Nov 9, 2026):
+  if he rules yes on a phone number for the postcards, the SAME number
+  goes in the CTA band below as: Questions? Call Martin — <NUMBER>,
+  during business hours.
+-->
+<style>
+:root{--bg:#F7F6F2;--sf:#FFFFFF;--ink:#18365F;--mu:#5E6078;--ln:#E6E4EF;--rose:#F4511E;--rt:#F4511E;--tint:#FFECE1;--lav:#E2EBF8;--nv:#18365F;--ok:#1E9E6A;--sh:0 12px 32px rgba(17,20,43,.10);color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0D1526;--sf:#152238;--ink:#F2F2FA;--mu:#A9ABC6;--ln:#24344E;--rt:#FF9E5E;--tint:#3A2617;--lav:#1C2B45;--nv:#CFDEF5;--sh:0 12px 32px rgba(0,0,0,.4);color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 'Plus Jakarta Sans',system-ui,sans-serif}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.03em}
+a{color:var(--rt)}
+.mu{color:var(--mu)}
+:focus-visible{outline:3px solid var(--rt);outline-offset:2px}
+.w{max-width:1120px;margin:0 auto;padding:0 24px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+.lg{display:flex;align-items:center;gap:10px;text-decoration:none}
+.lg img{width:38px;height:38px;object-fit:contain;background:#fff;border-radius:8px;padding:3px}
+.wm{font-weight:800;font-size:24px;color:var(--ink);letter-spacing:-.5px}
+.wm span{color:var(--rose)}
+.back{font-weight:700;font-size:14px;text-decoration:none}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:18px;background:var(--tint);color:var(--rt);font-size:13px;font-weight:700;margin-bottom:18px}
+.hero{padding:18px 0 6px;max-width:720px}
+h1{font-size:clamp(34px,5.4vw,52px);line-height:1.06}
+h1 span{color:var(--rt)}
+.lead{font-size:18px;color:var(--mu);margin:16px 0 0;max-width:620px}
+.found{margin:28px 0 8px;background:var(--sf);border:1px solid var(--ln);border-left:5px solid var(--rose);border-radius:16px;padding:20px 22px;box-shadow:var(--sh)}
+.found .t{color:var(--rt);font-size:13px;letter-spacing:.06em}
+.found ul{margin:10px 0 0;padding-left:20px}
+.found li{margin:5px 0}
+.sect{margin:44px 0 0}
+.sect h2{font-size:27px}
+.sect>p{color:var(--mu);margin:8px 0 18px}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.plan{position:relative;background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:22px;box-shadow:var(--sh)}
+.plan.hl{border-color:var(--rose)}
+.chip{position:absolute;top:-11px;left:18px;background:var(--rose);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.05em;padding:4px 10px;border-radius:999px}
+.price{font-size:32px;font-weight:800;letter-spacing:-.02em}
+.price small{font-size:14px;color:var(--mu);font-weight:600}
+.nm{font-weight:800;font-size:17px;margin:4px 0 6px}
+.ds{color:var(--mu);font-size:14.5px;min-height:44px}
+.frow{margin-top:14px}
+.fnd{display:inline-block;background:var(--tint);color:var(--rt);font-size:13.5px;font-weight:700;padding:6px 12px;border-radius:999px}
+.boost{margin-top:14px;background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:20px 22px;box-shadow:var(--sh);display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.boost .n{font-weight:800;font-size:17px}
+.boost .n small{display:block;font-weight:600;color:var(--mu);font-size:13.5px;margin-top:3px}
+.boost .p{font-size:28px;font-weight:800}
+.inc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:18px}
+.inc{background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:20px;box-shadow:var(--sh)}
+.inc .ic{width:40px;height:40px;border-radius:12px;background:var(--lav);display:grid;place-items:center;color:var(--nv);margin-bottom:12px}
+.inc .t{font-weight:800;font-size:16px;margin-bottom:6px}
+.inc .d{color:var(--mu);font-size:14px}
+.soon{display:inline-block;background:var(--rose);color:#fff;font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 8px;border-radius:999px;vertical-align:2px;margin-left:6px}
+.cta{margin:52px 0 0;background:var(--nv);border-radius:22px;padding:36px 28px;text-align:center;box-shadow:var(--sh)}
+.cta h2{color:#fff;font-size:29px}
+.cta p{color:#C9D6EE;max-width:540px;margin:12px auto 22px}
+.cta .btn{display:inline-block;background:var(--rose);color:#fff;font-weight:800;font-size:16px;text-decoration:none;padding:15px 34px;border-radius:999px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.cta .fine{color:#8FA5C8;font-size:12.5px;margin-top:16px}
+footer{margin:44px 0 0;padding:22px 0 40px;border-top:1px solid var(--ln);font-size:13.5px;color:var(--mu);display:flex;flex-wrap:wrap;gap:10px 26px;align-items:center;justify-content:space-between}
+footer .fl{display:flex;gap:20px;flex-wrap:wrap}
+footer a{color:var(--mu);font-weight:600;text-decoration:none}
+footer a:hover{color:var(--rt)}
+</style>
+</head>
+<body>
+<div class="w">
+
+<div class="top">
+<a class="lg" href="waitlist.html"><img src="images/logo.png" alt="ClassiFlip logo"><span class="wm">CLASSI<span>FLIP</span></span></a>
+<a class="back" href="waitlist.html">← Back to the waitlist</a>
+</div>
+
+<div class="hero">
+<span class="badge">Launching January 1, 2027 · GTA</span>
+<h1>Business packages, <span>priced for the neighbourhood.</span></h1>
+<p class="lead">Every rate, up front — no sales calls, no surprises. Packages open for reservation to <b>waitlist members first</b>, ahead of launch day.</p>
+<div class="found">
+<b class="t">FOUNDING ADVERTISERS — FIRST 10 PER CATEGORY</b>
+<ul>
+<li><b>50% off</b> all rates below, locked for 12 months</li>
+<li><b>First month FREE</b> with any 3-month commitment</li>
+<li>Free placement during pre-launch — billing starts on launch day</li>
+</ul>
+</div>
+</div>
+
+<div class="sect">
+<h2>Auto — for dealers</h2>
+<p>Your whole lot, in front of local buyers, for less than half of AutoTrader's cheapest tier.</p>
+<div class="plans">
+<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single vehicle</div><div class="ds">One vehicle, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$24.50</b></span></div></div>
+<div class="plan"><div class="price">$149 <small>/ 30 days</small></div><div class="nm">Lot pack — 25 vehicles</div><div class="ds">Twenty-five listings for the price of three.</div><div class="frow"><span class="fnd">Founding: <b>$74.50</b></span></div></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$249 <small>/ mo</small></div><div class="nm">Dealer Unlimited</div><div class="ds">Your entire inventory, all month. AutoTrader charges $450–$2,000+ for this.</div><div class="frow"><span class="fnd">Founding: <b>$124.50/mo</b></span></div></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Real estate — for agents &amp; brokers</h2>
+<p>Homes, condos and townhomes for sale. Every eyeball local.</p>
+<div class="plans">
+<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single listing</div><div class="ds">One property, live for 30 days with full photo gallery.</div><div class="frow"><span class="fnd">Founding: <b>$19.50</b></span></div></div>
+<div class="plan"><div class="price">$129 <small>/ 30 days</small></div><div class="nm">5-pack</div><div class="ds">Five listings for the price of three. Great for active agents.</div><div class="frow"><span class="fnd">Founding: <b>$64.50</b></span></div></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$199 <small>/ mo</small></div><div class="nm">Agent Unlimited</div><div class="ds">Unlimited listings, all month. Less than half of AutoTrader's cheapest dealer tier.</div><div class="frow"><span class="fnd">Founding: <b>$99.50/mo</b></span></div></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Rentals — for landlords &amp; managers</h2>
+<p>One filled vacancy pays for years of listings.</p>
+<div class="plans">
+<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single rental listing</div><div class="ds">One property, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$19.50</b></span></div></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$129 <small>/ mo</small></div><div class="nm">Landlord Unlimited</div><div class="ds">Every unit you manage, all month long.</div><div class="frow"><span class="fnd">Founding: <b>$64.50/mo</b></span></div></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Services — for pros &amp; local shops</h2>
+<p>Plumbers, electricians, cleaners, barbers, salons — get found by neighbours.</p>
+<div class="plans">
+<div class="plan"><div class="price">$29 <small>/ 30 days</small></div><div class="nm">Single service ad</div><div class="ds">One service, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$14.50</b></span></div></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$99 <small>/ mo</small></div><div class="nm">Pro Unlimited</div><div class="ds">Every service you offer, all month. One invoice.</div><div class="frow"><span class="fnd">Founding: <b>$49.50/mo</b></span></div></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Jobs — for employers</h2>
+<p>Reach local talent without the $20-a-post job-board markup.</p>
+<div class="plans">
+<div class="plan"><div class="price">$49 <small>/ 30 days</small></div><div class="nm">Single job post</div><div class="ds">One opening, live for 30 days. Half the single-post price of the big boards.</div><div class="frow"><span class="fnd">Founding: <b>$24.50</b></span></div></div>
+<div class="plan hl"><span class="chip">BEST FOR FREQUENT HIRING</span><div class="price">$179 <small>/ mo</small></div><div class="nm">Employer Unlimited</div><div class="ds">Post as many openings as you need, all month. One simple subscription.</div><div class="frow"><span class="fnd">Founding: <b>$89.50/mo</b></span></div></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Listing Boost</h2>
+<p>Extra visibility for any listing, once we're live.</p>
+<div class="boost">
+<div class="n">Listing Boost — 7 days<small>Pinned to the top of its category + rotates through the homepage carousel &amp; boosted strip. An optional add-on, open to every seller.</small></div>
+<span class="p">$2.99</span>
+</div>
+</div>
+
+<div class="sect">
+<h2>What every package includes</h2>
+<p>The steak comes with the full plate — every package, every tier:</p>
+<div class="inc-grid">
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5L5.2 4h13.6l1.7 5.5"/><path d="M3.5 9.5h17"/><path d="M5.2 9.5V20h13.6V9.5"/><path d="M9.6 20v-5.2h4.8V20"/></svg></div><div class="t">Your own storefront page</div><div class="d">A business profile that's yours alone — logo, tagline, phone, hours and your story — and every ad you post links buyers back to it.</div></div>
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></div><div class="t">SOLD badges that prove you sell</div><div class="d">When a sale closes, your storefront wears a green SOLD badge for 14 days — public proof your listings move, the kind of trust money can't fake.</div></div>
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div><div class="t">Boost any ad — $2.99</div><div class="d">Optional add-on, open to every seller: pin any listing ahead of regular ads for 7 days with a BOOSTED badge, a spot in the homepage boosted strip, and rotation through the top carousel, whenever an ad needs the extra push.</div></div>
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="t">Posting in one flow</div><div class="d">Your active package is picked automatically when you post — no plan dropdowns, no checkout detours. Write the ad, add photos, publish.</div></div>
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 17H2a5 5 0 0 0 5-5V9a5 5 0 0 1 10 0v3a5 5 0 0 0 5 5z"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><div class="t">Price-drop alerts<span class="soon">COMING SOON</span></div><div class="d">Soon after launch, when a seller drops a price on an item you've saved, you'll hear about it first — savings, delivered.</div></div>
+</div>
+</div>
+
+<div class="cta">
+<h2>Founding spots are claimed through the waitlist.</h2>
+<p>Ten spots per category, at half price, locked for a year. When the doors open, waitlist members reserve first — before the public hears a thing.</p>
+<a class="btn" href="waitlist.html">Join the waitlist</a>
+<div class="fine">No payment is taken on this page. Prices in CAD. Billing starts on launch day, January 1, 2027.</div>
+</div>
+
+<footer>
+<span>© 2026 ClassiFlip · Mississauga, Ontario · Don't just sell it. Flip it.</span>
+<span class="fl"><a href="about.html">About us</a><a href="privacy.html">Privacy</a><a href="mailto:hello@classiflip.com">hello@classiflip.com</a></span>
+</footer>
+
+</div>
+</body>
+</html>

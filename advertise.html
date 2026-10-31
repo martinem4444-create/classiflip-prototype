@@ -51,6 +51,13 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .cta button{background:var(--orange);color:#fff;border:0;border-radius:999px;padding:15px 42px;font-weight:800;font-size:16px;cursor:pointer}
 .cta button:hover{background:var(--orange2)}
 .cta small{display:block;margin-top:14px;color:#BCD;font-size:12.5px}
+.incl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.inc{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:18px 16px;box-shadow:var(--sh)}
+.inc .ic{width:38px;height:38px;border-radius:50%;background:#FFF1EA;color:var(--orange);display:grid;place-items:center}
+.inc .t{font-weight:800;color:var(--navy);font-size:15px;margin:11px 0 5px}
+.inc .d{font-size:13px;color:var(--mu);line-height:1.55}
+.inc .tag{display:inline-block;background:var(--orange);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:999px;margin-left:8px;vertical-align:2px}
+html[data-theme="dark"] .inc .t{color:#fff}html[data-theme="dark"] .inc .ic{background:#2B1A12}
 /* CF checkout gateway: Pay lives behind Advertise */
 .plan .buy{display:block;margin-top:10px;text-align:center;font-weight:800;color:#fff;border:1.5px solid var(--orange);border-radius:999px;padding:11px;text-decoration:none;font-size:14px}
 .boost .row .buy{margin-left:auto;font-weight:800;color:var(--orange);text-decoration:none;font-size:14px;white-space:nowrap}
@@ -93,7 +100,7 @@ html[data-theme="dark"]{--bg:#07090D;--card:#12161F;--ink:#EDF2F9;--mu:#B9C6DA;-
 .site-footer .foot-bottom{grid-column:1/-1;border-top:1px solid var(--line,var(--ln,#D5DFEC));padding-top:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;color:var(--muted,var(--mu,#68788F));font-size:12px}
 @media(max-width:700px){.site-footer{grid-template-columns:1fr 1fr}}
 @media(max-width:420px){.site-footer{grid-template-columns:1fr}}
-</style>
+.logo{color:#a9cdf5}.logo .flip{color:var(--orange)}.logo img.nl{background:#fff;border-radius:7px;padding:3px;box-sizing:border-box}</style>
 
 <style>
 /* ClassiFlip mobile bottom tab bar */
@@ -118,7 +125,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 </head>
 <body>
 <div class="top">
-<a class="logo" href="index.html"><img class="nl" src="images/logo.png" alt="ClassiFlip logo">CLASSIFLIP</a>
+<a class="logo" href="index.html"><img class="nl" src="images/logo.png" alt="ClassiFlip logo">CLASSI<span class="flip">FLIP</span></a>
 
 <nav><a href="index.html">Marketplace</a><a href="waitlist.html">Waitlist</a><a href="dashboard.html">Dashboard</a><a href="messaging.html">Messages</a><a href="advertise.html" class="act" style="font-weight:700">Advertise</a></nav><button class="tbtn" id="themeBtn" onclick="cfTheme()" aria-label="Switch theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
 </div>
@@ -204,6 +211,18 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="boost">
 <div class="row"><div class="n">Listing Boost — 7 days<small>Pinned to the top of its category + homepage featured strip</small></div><span class="p">$2.99</span><a class="buy" href="advertise-pay.html">Buy →</a></div>
 <!-- Display offerings parked Oct 29, 2026 (Martin): Featured placement, Homepage spotlight, Category takeover are on the side stove for a post-launch prototype test — not offered at launch. -->
+</div>
+</div>
+
+<div class="sect">
+<h2>What every package includes</h2>
+<p>Whichever tier you pick — a single post or Unlimited — you get the same seller toolkit working behind your ads.</p>
+<div class="incl">
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5L5.2 4h13.6l1.7 5.5"/><path d="M3.5 9.5h17"/><path d="M5.2 9.5V20h13.6V9.5"/><path d="M9.6 20v-5.2h4.8V20"/></svg></div><div class="t">Your own storefront page</div><div class="d">A business profile that's yours alone — logo, tagline, phone, hours and your story — and every ad you post links buyers back to it.</div></div>
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></svg></div><div class="t">SOLD badges that prove you sell</div><div class="d">Mark an ad sold and it wears a green ✓ SOLD badge on your storefront for 14 days — visible proof your business actually moves product.</div></div>
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div><div class="t">Boost any ad — $2.99</div><div class="d">Pin any listing ahead of regular ads for 7 days with a BOOSTED badge and a spot on the homepage featured strip, whenever an ad needs the extra push.</div></div>
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="t">Posting in one flow</div><div class="d">Your active package is selected automatically when you post — no dropdown hunting, no forms asking what you already paid for. Just post.</div></div>
+<div class="inc"><div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg></div><div class="t">Price-drop alerts<span class="tag">COMING SOON</span></div><div class="d">Coming soon: when you drop a price, buyers who saved your ad will get an email alert — turning a price cut into a second wave of attention.</div></div>
 </div>
 </div>
 

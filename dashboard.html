@@ -224,6 +224,14 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="stat"><div class="n">318</div><div class="l">Ad clicks</div></div>
 <div class="stat hot"><div class="n">5</div><div class="l">Unread messages</div></div>
 </div>
+<div class="atabs" id="dashTabs">
+<button type="button" class="atab on" data-cf-dtab="ads">My Ads<span class="n" id="dtabNAds" hidden></span></button>
+<button type="button" class="atab" data-cf-dtab="messages">Messages<span class="n" id="dtabNMsg" hidden></span></button>
+<button type="button" class="atab" data-cf-dtab="orders">My Orders<span class="n" id="dtabNOrders" hidden></span></button>
+<button type="button" class="atab" data-cf-dtab="boosts">My Boosts<span class="n" id="dtabNBoosts" hidden></span></button>
+<button type="button" class="atab" data-cf-dtab="business" id="dtabBiz" hidden>Business Profile</button>
+</div>
+<div data-cf-dpanel="ads">
 <!-- stats: business -->
 <div class="stats hidden" id="statsBiz">
 <div class="stat"><div class="n">12,480</div><div class="l">Impressions · 30 days</div></div>
@@ -283,6 +291,8 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 </div>
 </div>
 
+</div>
+<div data-cf-dpanel="business" hidden>
 <!-- business profile: business only -->
 <div class="sect hidden" id="profileBiz">
 <h2>Business profile</h2>
@@ -312,6 +322,8 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 </div>
 </div>
 
+</div>
+<div data-cf-dpanel="messages" hidden>
 <div class="sect" id="msgSect"><h2>Messages</h2>
 <div class="msgrow" onclick="location.href='messaging.html?thread=sarah'" style="cursor:pointer"><div class="av">S</div><div class="b"><div class="u">Sarah K.</div><div class="x">Hi! Is the bike still available? Could I see it Saturday?</div></div><div class="t">2h</div><div class="unread"></div></div>
 <div class="msgrow" onclick="location.href='messaging.html?thread=dev'" style="cursor:pointer"><div class="av">D</div><div class="b"><div class="u">Dev P.</div><div class="x">Would you take $400 for the laptop?</div></div><div class="t">6h</div><div class="unread"></div></div>
@@ -319,6 +331,8 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <button class="btn gho" style="width:100%;margin-top:8px" onclick="location.href='messaging.html'">Open all messages</button>
 </div>
 
+</div>
+<div data-cf-dpanel="orders" hidden>
 <!-- orders: signed-in users (filled by cf-dashboard.js; hidden when logged out) -->
 <div class="sect hidden" id="ordersSect">
 <h2>My orders</h2>
@@ -326,6 +340,8 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div id="ordersList"></div>
 </div>
 
+</div>
+<div data-cf-dpanel="boosts" hidden>
 <!-- boosts: signed-in users (filled by cf-dashboard.js; hidden when logged out) -->
 <div class="sect hidden" id="boostsSect">
 <h2>My boosts</h2>
@@ -333,6 +349,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div id="boostsList"></div>
 </div>
 
+</div>
 <!-- admin: is_admin users only (filled by cf-dashboard.js) -->
 <div class="sect hidden" id="adminSect">
 <h2>Admin — control centre</h2>
@@ -500,6 +517,7 @@ $('roleSeller').classList.toggle('on',!biz);
 $('roleBiz').classList.toggle('on',biz);
 ['statsBiz','planBiz','listBiz','profileBiz'].forEach(id=>$(id).classList.toggle('hidden',!biz));
 ['statsSeller','upgradeSeller','listSeller'].forEach(id=>$(id).classList.toggle('hidden',biz));
+const dtb=$('dtabBiz');if(dtb)dtb.classList.toggle('hidden',!biz);
 $('dashTitle').textContent=biz?'Advertiser dashboard':'My listings';
 $('dashSub').textContent=biz?'Dixie Auto Mall · Dealer account':'3 active · Mississauga, ON';
 $('postBtn').textContent=biz?'+ New ad':'+ Post new ad';

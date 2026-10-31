@@ -595,6 +595,8 @@
     if (role === 'advertiser') {
       var pb = el('profileBiz');
       if (pb) pb.classList.remove('hidden');
+      var dtb = el('dtabBiz');
+      if (dtb) dtb.hidden = false;
       window.__cfBizUserId = user.id;
       cfBizLoad();
     }
@@ -607,6 +609,13 @@
         '<div class="stat' + (nUnread ? ' hot' : '') + '"><div class="n">' + nUnread + '</div><div class="l">Unread messages</div></div>' +
         '<div class="stat"><div class="n">' + orders.length + '</div><div class="l">My orders</div></div>';
     }
+
+    /* Personal tab badges: ads total, unread messages, orders
+       total, live boosts — the at-a-glance counts on the tab bar. */
+    setTabBadge('dtabNAds', listings.length, false);
+    setTabBadge('dtabNMsg', nUnread, false);
+    setTabBadge('dtabNOrders', orders.length, false);
+    setTabBadge('dtabNBoosts', myBoosts.filter(function (b) { return b.status === 'Active'; }).length, false);
 
     /* Real listing cards (ad manager v1.3): List/Grid toggle above the
        list; Edit is real (title/price/description/location/photos,
@@ -1822,6 +1831,26 @@
     document.querySelectorAll('[data-cf-atab]').forEach(function (b) { b.classList.toggle('on', b === t); });
     document.querySelectorAll('[data-cf-apanel]').forEach(function (p) {
       var show = p.dataset.cfApanel === name;
+      p.hidden = !show;
+      p.style.display = show ? '' : 'none';
+    });
+  });
+
+  /* Personal dashboard tabs (Oct 31, 2026): same folding as the
+     admin tabs, one level up — My Ads / Messages / My Orders /
+     My Boosts / Business Profile, one panel at a time, so the
+     dashboard reads clean even when the founder account carries
+     its own services ads + personal listings + orders + boosts.
+     Pure show/hide; every section renders as before. The Business
+     tab button stays hidden until the account is an advertiser
+     (renderUser unhides it with the Business profile section). */
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-cf-dtab]') : null;
+    if (!t) return;
+    var name = t.dataset.cfDtab;
+    document.querySelectorAll('[data-cf-dtab]').forEach(function (b) { b.classList.toggle('on', b === t); });
+    document.querySelectorAll('[data-cf-dpanel]').forEach(function (p) {
+      var show = p.dataset.cfDpanel === name;
       p.hidden = !show;
       p.style.display = show ? '' : 'none';
     });

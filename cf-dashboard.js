@@ -885,6 +885,99 @@
     }).join('');
   }
 
+  /* Reported ads (Oct 31, 2026): open reports grouped by ad, with
+     who reported it, why, and when. Martin's ruling: a report only
+     flags; at 3 open reports from different users the database
+     trigger auto-pauses the ad (status 'hidden'). From here the
+     admin restores (ad live again + reports closed as actioned),
+     dismisses (reports closed, ad untouched), or deletes the ad
+     (the existing two-tap handler; its reports cascade away).
+     Needs supabase/cf-reports-migration.sql — until it runs, this
+     reads as unavailable and the tab badge stays empty. */
+  async function renderAdminReports(client) {
+    var box = el('adminReportsList');
+    if (!box) return;
+    box.innerHTML = '<div class="notice">Loading reports…</div>';
+    var reps = [];
+    try {
+      var rr = await client.from('listing_reports')
+        .select('id,listing_id,reporter_id,reason,details,created_at')
+        .eq('status', 'open').order('created_at', { ascending: false }).limit(200);
+      if (rr && rr.data) reps = rr.data;
+      if (rr && rr.error) throw rr.error;
+    } catch (e) {
+      box.innerHTML = '<div class="notice">Reports unavailable — run supabase/cf-reports-migration.sql in the SQL Editor first.</div>';
+      setTabBadge('atabNReports', 0, false);
+      return;
+    }
+    if (!reps.length) {
+      box.innerHTML = '<div class="notice">No open reports. Clean streets.</div>';
+      setTabBadge('atabNReports', 0, false);
+      return;
+    }
+    var byListing = {}, order = [];
+    reps.forEach(function (r) {
+      if (!byListing[r.listing_id]) { byListing[r.listing_id] = []; order.push(r.listing_id); }
+      byListing[r.listing_id].push(r);
+    });
+    setTabBadge('atabNReports', order.length, false);
+    var adsById = {}, usersById = {};
+    try {
+      var ar = await client.from('listings').select('id,title,price,status,seller_id').in('id', order);
+      (ar.data || []).forEach(function (a) { adsById[a.id] = a; });
+      var uids = reps.map(function (r) { return r.reporter_id; }).filter(Boolean);
+      if (uids.length) {
+        var ur = await client.from('profiles').select('id,display_name,email').in('id', uids);
+        (ur.data || []).forEach(function (u) { usersById[u.id] = u; });
+      }
+    } catch (e) {}
+    box.innerHTML = order.map(function (lid) {
+      var a = adsById[lid] || {};
+      var list = byListing[lid];
+      var lines = list.map(function (r) {
+        var u = usersById[r.reporter_id] || {};
+        return '<div class="s">' + esc(r.reason || 'Other') + ' — ' + esc(u.display_name || u.email || 'user') + ' · ' + shortDate(r.created_at) +
+          (r.details ? '<br>' + esc(r.details) : '') + '</div>';
+      }).join('');
+      var paused = a.status === 'hidden';
+      return '<div class="lcard"><div class="inf"><div class="t">' + esc(a.title || 'Ad') + ' ' + (a.status ? pillFor(a.status) : '') +
+        ' <span class="pill rej">' + list.length + ' report' + (list.length === 1 ? '' : 's') + '</span></div>' +
+        '<div class="p">' + (typeof a.price === 'number' ? money(a.price) : '') + (paused ? ' · auto-paused at 3 reports' : '') + '</div>' + lines + '</div>' +
+        '<div class="acts">' +
+        (paused ? '<button class="btn pri" data-cf-report-restore="' + esc(lid) + '">Restore ad</button>' : '') +
+        '<button class="btn gho" data-cf-report-dismiss="' + esc(lid) + '">Dismiss reports</button>' +
+        '<button class="btn gho danger" data-cf-del="' + esc(lid) + '">Delete ad</button></div></div>';
+    }).join('');
+  }
+
+  /* Report actions: restore (ad back live + reports closed as
+     actioned) and dismiss (reports closed, ad untouched). Delete
+     reuses the existing two-tap data-cf-del handler. */
+  document.addEventListener('click', async function (e) {
+    var rs = e.target && e.target.closest ? e.target.closest('[data-cf-report-restore]') : null;
+    var ds = e.target && e.target.closest ? e.target.closest('[data-cf-report-dismiss]') : null;
+    if (!rs && !ds) return;
+    var client = getClient();
+    if (!client) return;
+    var lid = (rs || ds).dataset.cfReportRestore || (rs || ds).dataset.cfReportDismiss;
+    try {
+      if (rs) {
+        var up = await client.from('listings').update({ status: 'active' }).eq('id', lid);
+        if (up.error) throw up.error;
+        var cl = await client.from('listing_reports').update({ status: 'actioned' }).eq('listing_id', lid).eq('status', 'open');
+        if (cl.error) throw cl.error;
+        try { if (typeof toast === 'function') toast('Ad restored — live again, reports closed'); } catch (e2) {}
+      } else {
+        var cl2 = await client.from('listing_reports').update({ status: 'dismissed' }).eq('listing_id', lid).eq('status', 'open');
+        if (cl2.error) throw cl2.error;
+        try { if (typeof toast === 'function') toast('Reports dismissed — ad left as-is'); } catch (e3) {}
+      }
+      refresh();
+    } catch (err) {
+      try { if (typeof toast === 'function') toast('Report action failed: ' + (err.message || err)); } catch (e4) {}
+    }
+  });
+
   async function renderAdmin(client) {
     /* Site pause switch (admin only): read the single site_settings
        row, show its state, and let the admin flip it. Until the
@@ -927,6 +1020,7 @@
     } catch (e) {}
 
     try { await renderAdminUsers(client); } catch (e) {}
+    try { await renderAdminReports(client); } catch (e) {}
 
     var adsList = el('adminAdsList'), ordersList = el('adminOrdersList'), expList = el('adminExpiringList');
     if (adsList) adsList.innerHTML = '<div class="notice">Loading pending ads…</div>';

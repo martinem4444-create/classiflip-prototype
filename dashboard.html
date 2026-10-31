@@ -363,6 +363,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <button type="button" class="atab" data-cf-atab="users">Users<span class="n" id="atabNUsers" hidden></span></button>
 <button type="button" class="atab" data-cf-atab="orders">Orders<span class="n" id="atabNOrders" hidden></span></button>
 <button type="button" class="atab" data-cf-atab="boosts">Boosts<span class="n" id="atabNBoosts" hidden></span></button>
+<button type="button" class="atab" data-cf-atab="reports">Reports<span class="n" id="atabNReports" hidden></span></button>
 <button type="button" class="atab" data-cf-atab="allads">All Ads</button>
 </div>
 <div data-cf-apanel="approvals">
@@ -388,6 +389,11 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div id="adminBoostsActiveList"></div>
 <h3 style="margin:16px 0 8px">Boosts expiring within 3 days</h3>
 <div id="adminBoostsExpiringList"></div>
+</div>
+<div data-cf-apanel="reports" hidden>
+<h3 style="margin:16px 0 8px">Reported ads</h3>
+<p class="hint">Ads buyers flagged from the ad page. One report only flags — at 3 reports from different users the ad auto-pauses off the marketplace (status Hidden) until you rule. Restore puts it back live and closes its reports; Dismiss closes the reports and leaves the ad as-is; Delete removes the ad for good (its reports go with it).</p>
+<div id="adminReportsList"></div>
 </div>
 <div data-cf-apanel="allads" hidden>
 <h3 style="margin:16px 0 8px">All ads (newest first)</h3>

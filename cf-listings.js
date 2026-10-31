@@ -1202,6 +1202,7 @@
         '<div class="detail-price">' + displayPrice(x) + '</div>' +
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         listingContactMarkup(x) +
+        reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
         '<p>' + safe(x.desc) + '</p>' +
@@ -1265,6 +1266,7 @@
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         /* Messages move-up (Oct 26, 2026): contact (Message seller + Share) sits under the price, mirroring the v1.10 Boost move — the bottom of a tall modal hides behind the mobile tab bar. */
         listingContactMarkup(x) +
+        reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
         '<p>' + safe(x.desc) + '</p>' +
@@ -1278,6 +1280,71 @@
       /* Never crash the page from this guard. */
     }
   }, true);
+
+  /* Report this ad (Oct 31, 2026): a small text button under the
+     contact row on real ad details (never on your own ads). One
+     report flags the ad in the admin cockpit; at 3 open reports
+     from different users the DATABASE auto-pauses it (trigger in
+     supabase/cf-reports-migration.sql) until the admin rules.
+     Signed-in only — the RLS insert policy requires reporter =
+     the signed-in user, and a unique index stops double reports. */
+  function reportMarkup(x) {
+    if (!x || !x.id) return '';
+    if (String(x.seller_id || '') === String(window.__cfMyId || '')) return '';
+    return '<div style="margin-top:12px"><button type="button" data-cf-report="' + escAttr(x.id) + '" style="background:none;border:none;color:#B3261E;cursor:pointer;font-size:13px;padding:4px 0;text-decoration:underline">Report this ad</button><div id="cfReportBox"></div></div>';
+  }
+  document.addEventListener('click', async function (e) {
+    var open = e.target && e.target.closest ? e.target.closest('[data-cf-report]') : null;
+    var cancel = e.target && e.target.closest ? e.target.closest('[data-cf-report-cancel]') : null;
+    var submit = e.target && e.target.closest ? e.target.closest('[data-cf-report-submit]') : null;
+    var box = document.getElementById('cfReportBox');
+    if (cancel) { if (box) { box.innerHTML = ''; } return; }
+    if (open) {
+      if (!box) return;
+      if (!isLoggedIn()) {
+        box.innerHTML = '<div style="margin-top:8px;font-size:13.5px;color:var(--mu)">Please sign in to report an ad — signed-in reports keep the system honest.</div>';
+        return;
+      }
+      box.innerHTML =
+        '<div style="margin-top:10px;border:1px solid var(--ln);border-radius:12px;padding:12px">' +
+        '<div style="font-weight:700;font-size:14px;margin-bottom:8px">Report this ad</div>' +
+        '<select id="cfReportReason" style="width:100%;padding:8px;border:1px solid var(--ln);border-radius:8px;margin-bottom:8px">' +
+        '<option>Scam or fraud</option><option>Prohibited item</option><option>Wrong category</option><option>Already sold</option><option>Offensive content</option><option>Other</option></select>' +
+        '<textarea id="cfReportDetails" rows="2" placeholder="Anything the admin should know? (optional)" style="width:100%;padding:8px;border:1px solid var(--ln);border-radius:8px;margin-bottom:8px"></textarea>' +
+        '<div style="display:flex;gap:8px"><button type="button" class="primary" data-cf-report-submit="' + escAttr(open.dataset.cfReport) + '">Send report</button>' +
+        '<button type="button" data-cf-report-cancel style="background:none;border:1px solid var(--ln);border-radius:8px;padding:8px 12px;cursor:pointer">Cancel</button></div></div>';
+      return;
+    }
+    if (submit) {
+      var client = getClient();
+      if (!client || !box) return;
+      var reasonEl = document.getElementById('cfReportReason');
+      var detEl = document.getElementById('cfReportDetails');
+      submit.disabled = true; submit.textContent = 'Sending…';
+      try {
+        var uRes = await client.auth.getUser();
+        var uid = uRes && uRes.data && uRes.data.user ? uRes.data.user.id : null;
+        var ins = await client.from('listing_reports').insert([{
+          listing_id: submit.dataset.cfReportSubmit,
+          reporter_id: uid,
+          reason: reasonEl ? reasonEl.value : 'Other',
+          details: detEl && detEl.value.trim() ? detEl.value.trim() : null
+        }]);
+        if (ins.error) throw ins.error;
+        box.innerHTML = '<div style="margin-top:10px;font-size:13.5px;color:#137333;font-weight:600">Thanks — reported. The admin will review this ad.</div>';
+      } catch (err) {
+        submit.disabled = false; submit.textContent = 'Send report';
+        var msg = (err && err.message) || '';
+        if ((err && err.code === '23505') || /duplicate|unique/i.test(msg)) {
+          box.innerHTML = '<div style="margin-top:10px;font-size:13.5px;color:var(--mu)">You have already reported this ad — it is in the review queue.</div>';
+        } else if (/listing_reports|relation|schema cache/i.test(msg)) {
+          box.innerHTML = '<div style="margin-top:10px;font-size:13.5px;color:#B3261E">Reporting is not switched on yet — please try again soon.</div>';
+        } else {
+          box.innerHTML = '<div style="margin-top:10px;font-size:13.5px;color:#B3261E">Could not send the report: ' + safe(msg || 'unknown error') + '</div>';
+        }
+      }
+    }
+  });
 
   /* Tag click (Oct 29): clicking a #tag chip on an ad detail puts
      that tag in the single search bar and filters the marketplace

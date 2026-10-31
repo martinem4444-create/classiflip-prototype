@@ -780,6 +780,81 @@
     return '<span class="pill ' + (map[status] || 'pause') + '">' + esc(status || '') + '</span>';
   }
 
+  /* Admin -> Users roster (Oct 31, 2026): every account with its ad
+     counts and current package, plus a permanent Delete that calls
+     the cf-admin-delete-user Edge Function (admin is verified there
+     and the service key never reaches the browser). Own account and
+     other admins render WITHOUT a Delete button; the function
+     refuses those deletes server-side too. Fails soft: any fetch
+     error shows a hint in place of the roster. */
+  async function renderAdminUsers(client) {
+    var box = el('adminUsersList');
+    if (!box) return;
+    box.innerHTML = '<div class="notice">Loading users…</div>';
+    var me = await getUser(client);
+    var profiles = null;
+    try {
+      var pr = await client.from('profiles').select('id,display_name,email,role,is_admin,created_at').order('created_at', { ascending: false }).limit(500);
+      if (pr.error) throw pr.error;
+      profiles = pr.data || [];
+    } catch (e1) {
+      try {
+        var pr2 = await client.from('profiles').select('id,display_name,email,role,is_admin').limit(500);
+        profiles = (pr2 && pr2.data) || null;
+      } catch (e2) { profiles = null; }
+    }
+    if (!profiles) { box.innerHTML = '<div class="notice">Users unavailable right now.</div>'; return; }
+    if (!profiles.length) { box.innerHTML = '<div class="notice">No user accounts yet.</div>'; return; }
+
+    /* Ad counts per seller, all statuses, one light query. */
+    var counts = {};
+    try {
+      var lr = await client.from('listings').select('seller_id,status').limit(5000);
+      (lr.data || []).forEach(function (r) {
+        if (!r.seller_id) return;
+        var c = counts[r.seller_id] || (counts[r.seller_id] = { total: 0, live: 0, pending: 0, sold: 0 });
+        c.total++;
+        if (r.status === 'active') c.live++;
+        else if (r.status === 'pending') c.pending++;
+        else if (r.status === 'sold') c.sold++;
+      });
+    } catch (e) {}
+
+    /* Current package per buyer: best status wins (Active >
+       Expiring soon > Pending > Expired); latest date breaks ties. */
+    var rank = { Active: 0, 'Expiring soon': 1, Pending: 2, Expired: 3 };
+    var pkgBy = {}, pkgCount = {};
+    try {
+      var or2 = await client.from('orders').select('buyer_id,package,status,expires_at,created_at').not('buyer_id', 'is', null).limit(1000);
+      (or2.data || []).forEach(function (o) {
+        if (!o.buyer_id) return;
+        pkgCount[o.buyer_id] = (pkgCount[o.buyer_id] || 0) + 1;
+        var cur = pkgBy[o.buyer_id];
+        if (!cur) { pkgBy[o.buyer_id] = o; return; }
+        var ro = (rank[o.status] != null ? rank[o.status] : 9), rc = (rank[cur.status] != null ? rank[cur.status] : 9);
+        if (ro < rc || (ro === rc && String(o.expires_at || o.created_at || '') > String(cur.expires_at || cur.created_at || ''))) pkgBy[o.buyer_id] = o;
+      });
+    } catch (e) {}
+
+    box.innerHTML = profiles.map(function (p) {
+      var c = counts[p.id] || { total: 0, live: 0, pending: 0, sold: 0 };
+      var pk = pkgBy[p.id];
+      var pkgLine = pk
+        ? esc(pk.package || 'Package') + ' ' + pillForOrder(pk.status) + (pk.expires_at ? ' · expires ' + fullDate(pk.expires_at) : '') + ((pkgCount[p.id] || 0) > 1 ? ' · +' + (pkgCount[p.id] - 1) + ' more' : '')
+        : 'No package';
+      var isSelf = !!(me && me.id === p.id);
+      var delBtn = (isSelf || p.is_admin)
+        ? ''
+        : '<div class="acts"><button class="btn gho danger" data-cf-user-del="' + esc(p.id) + '">Delete</button></div>';
+      return '<div class="lcard"><div class="inf"><div class="t">' + esc(p.display_name || p.email || p.id) +
+        ' <span class="pill ' + (p.role === 'advertiser' ? 'live' : 'pause') + '">' + esc(p.role === 'advertiser' ? 'Advertiser' : 'Private') + '</span>' +
+        (p.is_admin ? ' <span class="pill pend">Admin</span>' : '') + (isSelf ? ' <span class="pill pend">You</span>' : '') + '</div>' +
+        '<div class="s">' + esc(p.email || '') + (p.created_at ? ' · joined ' + fullDate(p.created_at) : '') + '</div>' +
+        '<div class="s">Ads: <b>' + c.total + '</b> posted · ' + c.live + ' live · ' + c.pending + ' pending · ' + c.sold + ' sold</div>' +
+        '<div class="s">Package: ' + pkgLine + '</div></div>' + delBtn + '</div>';
+    }).join('');
+  }
+
   async function renderAdmin(client) {
     /* Site pause switch (admin only): read the single site_settings
        row, show its state, and let the admin flip it. Until the
@@ -807,6 +882,8 @@
       var uc2 = el('adminUserCount');
       if (uc2) uc2.textContent = 'Unavailable';
     }
+
+    try { await renderAdminUsers(client); } catch (e) {}
 
     var adsList = el('adminAdsList'), ordersList = el('adminOrdersList'), expList = el('adminExpiringList');
     if (adsList) adsList.innerHTML = '<div class="notice">Loading pending ads…</div>';
@@ -1123,6 +1200,38 @@
         }
         say('Ad deleted'); refresh();
       });
+      return;
+    }
+    /* Admin -> Users: permanent account delete. Two-tap Confirm,
+       same arming pattern as the ad delete. The real deletion runs
+       in the cf-admin-delete-user Edge Function — it verifies the
+       caller is an admin server-side and holds the service key;
+       this handler only passes the target id + session token. */
+    var uDel = e.target.closest ? e.target.closest('[data-cf-user-del]') : null;
+    if (uDel) {
+      if (!uDel.dataset.armed) {
+        uDel.dataset.armed = '1'; uDel.textContent = 'Confirm?';
+        setTimeout(function () { if (uDel.isConnected) { delete uDel.dataset.armed; uDel.textContent = 'Delete'; } }, 3000);
+        return;
+      }
+      var uid = uDel.dataset.cfUserDel;
+      uDel.disabled = true; uDel.textContent = 'Deleting…';
+      try {
+        var sess = await client.auth.getSession();
+        var tok = sess && sess.data && sess.data.session && sess.data.session.access_token;
+        if (!tok) throw new Error('no session');
+        var resp = await fetch('https://dbgmyvjaavpmernaxnav.functions.supabase.co/cf-admin-delete-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+          body: JSON.stringify({ user_id: uid })
+        });
+        var out = await resp.json().catch(function () { return {}; });
+        if (!resp.ok || !out.ok) throw new Error(out.error || ('HTTP ' + resp.status));
+        say('Account deleted'); refresh();
+      } catch (err) {
+        say('Could not delete account: ' + (err && err.message ? err.message : 'unknown error'));
+        uDel.disabled = false; uDel.textContent = 'Delete'; delete uDel.dataset.armed;
+      }
       return;
     }
     /* My orders / My boosts — Pending-only delete, own rows only.

@@ -336,6 +336,9 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <p class="hint">Only visible to admins. Approving an ad makes it public immediately; rejecting keeps it hidden.</p>
 <div class="notice">Admin actions need the step-4 SQL run in Supabase first (file: supabase/cf-step4-admin-rls.sql). If Approve / Reject / Activate errors, that SQL is the missing step.</div>
 <div class="adminsearch"><div style="font-weight:800;margin-bottom:8px">Find a business</div><div class="row"><input id="adminSearchInput" placeholder="Business name, email, or phone (last 4 digits work too)"><button class="btn pri" data-cf-admin-search>Search</button></div><div class="hint">For phone-requested takedowns: find the account, then Delete the ad (same Confirm step). Deleting an ad never touches the order — no refund moves automatically.</div><div id="adminSearchResults" style="margin-top:12px"></div></div>
+<h3 style="margin:16px 0 8px">Users</h3>
+<p class="hint">Every account: ads posted, current package, and a permanent Delete (two-tap Confirm). Deleting removes the login, profile, storefront, ads and messages for good. Orders stay on the books with the account detached. Your own account and other admins can't be deleted here. Needs the cf-admin-delete-user function deployed — until then Delete reports an error and nothing is removed.</p>
+<div id="adminUsersList"></div>
 <h3 style="margin:16px 0 8px">Ads awaiting approval</h3>
 <div id="adminAdsList"></div>
 <h3 style="margin:16px 0 8px">All ads (newest first)</h3>

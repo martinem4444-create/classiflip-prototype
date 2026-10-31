@@ -203,7 +203,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
       </div>
       <div class="hero-art"><div class="hero-side">
 <div class="hero-logo-small"><img src="images/logo.png" alt="ClassiFlip"></div>
-<div class="hcar" id="heroCarousel" aria-label="Featured listings">
+<div class="hcar" id="heroCarousel" aria-label="Boosted listings">
 <div class="hcar-track" id="hcarTrack"></div>
 <button class="hcar-btn prev" id="hcarPrev" aria-label="Previous">&#8249;</button>
 <button class="hcar-btn next" id="hcarNext" aria-label="Next">&#8250;</button>
@@ -219,7 +219,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
     </section>
 
     <section aria-labelledby="featuredTitle">
-      <div class="section-head"><div><h2 id="featuredTitle">Featured listings</h2><p>Premium placement puts paid listings in front of buyers first.</p></div><button class="link-btn" data-category="All">Browse all</button></div>
+      <div class="section-head"><div><h2 id="featuredTitle">Boosted listings</h2><p>Sellers boosted these ads to the front of the line — $2.99 for 7 days.</p></div><button class="link-btn" data-category="All">Browse all</button></div>
       <div class="featured-row" id="featuredRow"></div>
     </section>
 
@@ -252,7 +252,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
       <div class="marketplace-shell" id="marketplaceShell">
         <div class="marketplace-content">
           <aside class="safety-strip" aria-label="Marketplace safety tips"><h3>Buy and sell safely</h3><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Meet in a busy public place.</span></div><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Inspect the item before paying.</span></div><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Pay in person and report suspicious ads.</span></div></aside>
-          <div class="filters"><select id="conditionFilter" aria-label="Condition"><option value="All">Any condition</option><option>New</option><option>Like new</option><option>Good</option><option>Used</option></select><select id="sortFilter" aria-label="Sort listings"><option value="featured">Featured</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select><span class="results-note" id="resultsNote">6 prototype listings</span></div>
+          <div class="filters"><select id="conditionFilter" aria-label="Condition"><option value="All">Any condition</option><option>New</option><option>Like new</option><option>Good</option><option>Used</option></select><select id="sortFilter" aria-label="Sort listings"><option value="featured">Boosted first</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select><span class="results-note" id="resultsNote">6 prototype listings</span></div>
           <div class="listing-grid" id="listingGrid"></div><div class="pagination" id="pagination" style="display:none"></div>
           <div class="map-wrap" id="mapWrap" hidden>
             <div class="map-stage" id="mapStage" role="img" aria-label="Map of Mississauga with property pins">
@@ -758,7 +758,7 @@ openModal('detailModal');
   const track=document.getElementById('hcarTrack'),dots=document.getElementById('hcarDots');
   if(!track)return;
   const feats=listings.filter(x=>x.featured).slice(0,4);
-  track.innerHTML=feats.map(x=>`<div class="hcar-slide" data-view="${x.id}"><span class="hcar-tag">FEATURED</span><img src="${x.photo||''}" alt="" loading="eager"><div class="hcar-cap"><div class="t">${safe(x.title)}</div><div class="p">${money(x.price)}</div></div></div>`).join('');
+  track.innerHTML=feats.map(x=>`<div class="hcar-slide" data-view="${x.id}"><span class="hcar-tag">BOOSTED</span><img src="${x.photo||''}" alt="" loading="eager"><div class="hcar-cap"><div class="t">${safe(x.title)}</div><div class="p">${money(x.price)}</div></div></div>`).join('');
   dots.innerHTML=feats.map((_,i)=>`<button data-dot="${i}" aria-label="Slide ${i+1}" class="${i===0?'on':''}"></button>`).join('');
   let cur=0;const n=feats.length;let timer=null;
   const go=i=>{cur=(i+n)%n;track.style.transform=`translateX(-${cur*100}%)`;dots.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('on',j===cur));};
@@ -774,7 +774,7 @@ function renderFeatured(){
       const boosted=listings.filter(x=>x.boostedEffective).sort(fcfsCompare);
       const samples=listings.filter(x=>x.featured&&!x.boostedEffective);
       const rows=boosted.concat(samples).slice(0,3);
-      document.getElementById('featuredRow').innerHTML=rows.map(x=>`<article class="featured-card"><div class="featured-visual"><span class="featured-label">Featured</span>${x.photo?'<img src="'+x.photo+'" alt="" loading="lazy">':icons[x.icon]}</div><div class="featured-copy"><div class="prototype-tag">${x.live?'LIVE LISTING':'PREMIUM SAMPLE'}</div>${x.boostedEffective?'<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>':''}<h3>${safe(x.title)}</h3><div class="price">${money(x.price)}</div>${x.live&&x.verified?verifiedMark:''}${dealerPageBtn(x)}<button class="view" data-view="${x.id}">View listing →</button></div></article>`).join('');
+      document.getElementById('featuredRow').innerHTML=rows.map(x=>`<article class="featured-card"><div class="featured-visual"><span class="featured-label">Boosted</span>${x.photo?'<img src="'+x.photo+'" alt="" loading="lazy">':icons[x.icon]}</div><div class="featured-copy"><div class="prototype-tag">${x.live?'LIVE LISTING':'PREMIUM SAMPLE'}</div>${x.boostedEffective?'<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>':''}<h3>${safe(x.title)}</h3><div class="price">${money(x.price)}</div>${x.live&&x.verified?verifiedMark:''}${dealerPageBtn(x)}<button class="view" data-view="${x.id}">View listing →</button></div></article>`).join('');
     }
     function renderJobs(){
       const briefcase='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>';

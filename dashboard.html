@@ -68,6 +68,11 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .adminsearch .row{display:flex;gap:8px;flex-wrap:wrap}
 .adminsearch input{flex:1;min-width:200px;border:1.5px solid var(--ln);border-radius:12px;padding:10px 12px;font-size:14.5px}
 .adminsearch .hint{color:var(--mu);font-size:12.5px;margin-top:8px}
+.atabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 4px}
+.atab{border:1.5px solid var(--ln);background:var(--card);color:inherit;border-radius:999px;padding:9px 16px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+.atab.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.atab .n{background:rgba(0,0,0,.12);border-radius:999px;padding:0 7px;margin-left:6px;font-size:12.5px}
+.atab.on .n{background:rgba(255,255,255,.28)}
 .pill.rej{background:#FDE8E8;color:#9B1C1C}
 .lcard .acts{display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
 .btn{border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
@@ -330,24 +335,35 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 
 <!-- admin: is_admin users only (filled by cf-dashboard.js) -->
 <div class="sect hidden" id="adminSect">
-<h2>Admin — approval queue</h2>
+<h2>Admin — control centre</h2>
 <div class="notice" id="sitePauseBox" style="border-color:var(--orange)"><div style="font-weight:800;margin-bottom:6px">Site pause switch — admin only</div><div id="sitePauseStatus">Loading pause status…</div><div class="row" style="margin-top:10px"><button class="btn pri" data-cf-pause-toggle>Pause site</button></div><div class="hint" style="margin-top:8px">When paused: everyone can still browse, but non-admins cannot post ads, reserve boosts, or reserve packages. The homepage shows: “Site is under maintenance — posting ads is disabled at the moment. Feel free to browse.” Admins can still post while paused. Flip it back to unpause.</div></div>
 <div class="notice" id="adminUserCountBox">Total users: <strong id="adminUserCount">Loading…</strong><div class="hint" style="margin-top:4px">Admin only — this number never shows to sellers or visitors.</div></div>
 <p class="hint">Only visible to admins. Approving an ad makes it public immediately; rejecting keeps it hidden.</p>
 <div class="notice">Admin actions need the step-4 SQL run in Supabase first (file: supabase/cf-step4-admin-rls.sql). If Approve / Reject / Activate errors, that SQL is the missing step.</div>
 <div class="adminsearch"><div style="font-weight:800;margin-bottom:8px">Find a business</div><div class="row"><input id="adminSearchInput" placeholder="Business name, email, or phone (last 4 digits work too)"><button class="btn pri" data-cf-admin-search>Search</button></div><div class="hint">For phone-requested takedowns: find the account, then Delete the ad (same Confirm step). Deleting an ad never touches the order — no refund moves automatically.</div><div id="adminSearchResults" style="margin-top:12px"></div></div>
+<div class="atabs">
+<button type="button" class="atab on" data-cf-atab="approvals">Approvals<span class="n" id="atabNApprovals" hidden></span></button>
+<button type="button" class="atab" data-cf-atab="users">Users<span class="n" id="atabNUsers" hidden></span></button>
+<button type="button" class="atab" data-cf-atab="orders">Orders<span class="n" id="atabNOrders" hidden></span></button>
+<button type="button" class="atab" data-cf-atab="boosts">Boosts<span class="n" id="atabNBoosts" hidden></span></button>
+<button type="button" class="atab" data-cf-atab="allads">All Ads</button>
+</div>
+<div data-cf-apanel="approvals">
+<h3 style="margin:16px 0 8px">Ads awaiting approval</h3>
+<div id="adminAdsList"></div>
+</div>
+<div data-cf-apanel="users" hidden>
 <h3 style="margin:16px 0 8px">Users</h3>
 <p class="hint">Every account: ads posted, current package, and a permanent Delete (two-tap Confirm). Deleting removes the login, profile, storefront, ads and messages for good. Orders stay on the books with the account detached. Your own account and other admins can't be deleted here. Needs the cf-admin-delete-user function deployed — until then Delete reports an error and nothing is removed.</p>
 <div id="adminUsersList"></div>
-<h3 style="margin:16px 0 8px">Ads awaiting approval</h3>
-<div id="adminAdsList"></div>
-<h3 style="margin:16px 0 8px">All ads (newest first)</h3>
-<p class="hint">Every seller's ads, all statuses — business and private. Delete uses the same two-tap Confirm, and never touches the order.</p>
-<div id="adminAllAdsList"></div>
+</div>
+<div data-cf-apanel="orders" hidden>
 <h3 style="margin:16px 0 8px">Orders</h3>
 <div id="adminOrdersList"></div>
 <h3 style="margin:16px 0 8px">Expiring within 3 days</h3>
 <div id="adminExpiringList"></div>
+</div>
+<div data-cf-apanel="boosts" hidden>
 <h3 style="margin:16px 0 8px">Boosts awaiting activation</h3>
 <div class="notice">Boost actions need the step-5 SQL run in Supabase first (file: supabase/cf-boost-migration.sql). If Activate / Expire errors, that SQL is the missing step.</div>
 <div id="adminBoostsList"></div>
@@ -355,6 +371,12 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div id="adminBoostsActiveList"></div>
 <h3 style="margin:16px 0 8px">Boosts expiring within 3 days</h3>
 <div id="adminBoostsExpiringList"></div>
+</div>
+<div data-cf-apanel="allads" hidden>
+<h3 style="margin:16px 0 8px">All ads (newest first)</h3>
+<p class="hint">Every seller's ads, all statuses — business and private. Delete uses the same two-tap Confirm, and never touches the order.</p>
+<div id="adminAllAdsList"></div>
+</div>
 </div>
 </div>
 

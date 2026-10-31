@@ -878,6 +878,7 @@
       var cnt = await client.from('profiles').select('id', { count: 'exact', head: true });
       var uc = el('adminUserCount');
       if (uc) uc.textContent = (cnt && !cnt.error && typeof cnt.count === 'number') ? String(cnt.count) : 'Unavailable';
+      if (cnt && !cnt.error && typeof cnt.count === 'number') setTabBadge('atabNUsers', cnt.count, true);
     } catch (e3) {
       var uc2 = el('adminUserCount');
       if (uc2) uc2.textContent = 'Unavailable';
@@ -956,6 +957,8 @@
       adsList.innerHTML = '<div class="notice">No ads awaiting approval. If you know a pending ad exists and this stays empty, the step-4 SQL has not been run yet (see the note below).</div>';
     }
 
+    setTabBadge('atabNApprovals', pending.length, false);
+
     /* All ads (admin takedowns): every seller's ads, all
        statuses, newest first — not just pending, not just own.
        Uses the step-4 admin read policy; Delete reuses the
@@ -1030,6 +1033,8 @@
         : '<div class="notice">Nothing expiring within 3 days.</div>';
     }
 
+    setTabBadge('atabNOrders', allOrders.filter(function (o) { return o.status === 'Pending'; }).length, false);
+
     /* Step 5 Boost admin lists — mirrors the orders queue exactly.
        Pending boosts (Activate · 7 days), active boosts (Expire),
        and boosts expiring within 3 days. Titles + buyer names are
@@ -1075,6 +1080,7 @@
           }).join('')
         : '<div class="notice">No boosts awaiting activation.</div>';
     }
+    setTabBadge('atabNBoosts', pendBoosts.length, false);
     var actBoosts = allBoosts.filter(function (b) { return b.status === 'Active'; });
     if (bActiveList) {
       bActiveList.innerHTML = actBoosts.length
@@ -1795,6 +1801,30 @@
       runAdminSearch();
     }
     if (e.key === 'Escape' && realEdit) { closeRealEditor(); }
+  });
+
+  /* Admin tabs (Oct 31, 2026): the admin section grew into one long
+     scroll (queues + users + orders + boosts). Tabs fold it — one
+     panel at a time, Approvals first — so a flood of ads or packages
+     stays manageable. Pure show/hide: every list still renders
+     exactly as before, into its existing container. Badges show
+     action counts (pending items) on the tab buttons themselves. */
+  function setTabBadge(id, n, always) {
+    var b = el(id);
+    if (!b) return;
+    if (typeof n === 'number' && (always || n > 0)) { b.textContent = String(n); b.hidden = false; }
+    else { b.hidden = true; }
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-cf-atab]') : null;
+    if (!t) return;
+    var name = t.dataset.cfAtab;
+    document.querySelectorAll('[data-cf-atab]').forEach(function (b) { b.classList.toggle('on', b === t); });
+    document.querySelectorAll('[data-cf-apanel]').forEach(function (p) {
+      var show = p.dataset.cfApanel === name;
+      p.hidden = !show;
+      p.style.display = show ? '' : 'none';
+    });
   });
 
   window.CFDashboard = { refresh: refresh };

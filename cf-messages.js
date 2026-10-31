@@ -12,6 +12,44 @@
     return null;
   }
 
+  /* Launch gate (Oct 31, 2026, Martin's call): the Messages PAGE is
+     members-only. This module also loads on index, seller and
+     dashboard pages, so the gate is scoped to messaging.html ONLY.
+     With a live auth client and NO session, bounce to the homepage
+     instead of serving the demo threads. No client yet never bounces
+     — the check polls until the client appears; SIGNED_OUT bounces. */
+  (function gateBoot() {
+    var onMessagesPage = false;
+    try { onMessagesPage = /(^|\/)messaging\.html$/.test(location.pathname); } catch (e) {}
+    if (!onMessagesPage) return;
+    var done = false;
+    function bounce() {
+      if (done) return;
+      done = true;
+      try { location.replace('index.html'); } catch (e) {}
+    }
+    function check() {
+      var client = getClient();
+      if (!client) return false;
+      try {
+        if (!check.subscribed && client.auth.onAuthStateChange) {
+          check.subscribed = true;
+          client.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') bounce(); });
+        }
+      } catch (e) {}
+      client.auth.getSession().then(function (s) {
+        if (!(s && s.data && s.data.session)) bounce();
+      }).catch(function () {});
+      return true;
+    }
+    if (check()) return;
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries++;
+      if (check() || tries > 20) clearInterval(iv);
+    }, 250);
+  })();
+
   async function getUser() {
     var client = getClient();
     if (!client) return null;

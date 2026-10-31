@@ -138,6 +138,40 @@
   var renderedReal = false;
   var inFlight = false;
 
+  /* Launch gate (Oct 31, 2026, Martin's call): the Dashboard is
+     members-only. With a live auth client and NO session, bounce to
+     the homepage instead of serving the demo content. No client yet
+     (script still loading) never bounces — the boot check polls until
+     the client appears, and a SIGNED_OUT event bounces too. */
+  var gateDone = false;
+  function gateBounce() {
+    if (gateDone) return;
+    gateDone = true;
+    try { location.replace('index.html'); } catch (e) {}
+  }
+  function gateCheck() {
+    var client = getClient();
+    if (!client) return false;
+    try {
+      if (!gateCheck.subscribed && client.auth.onAuthStateChange) {
+        gateCheck.subscribed = true;
+        client.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') gateBounce(); });
+      }
+    } catch (e) {}
+    client.auth.getSession().then(function (s) {
+      if (!(s && s.data && s.data.session)) gateBounce();
+    }).catch(function () {});
+    return true;
+  }
+  (function gateBoot() {
+    if (gateCheck()) return;
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries++;
+      if (gateCheck() || tries > 20) clearInterval(iv);
+    }, 250);
+  })();
+
   /* ---- Step 5 Boost (v1.2) ---- */
   var BOOST_PRICE = 2.99;
   var BOOST_DAYS = 7;
@@ -213,8 +247,9 @@
     if (!client) return; /* No live client: keep the demo. */
     var user = await getUser(client);
     if (!user) {
-      /* Signed out after a real render: reload to restore the demo. */
-      if (renderedReal) { try { location.reload(); } catch (e) {} }
+      /* Signed out: the launch gate owns this now — bounce home
+         instead of restoring the demo. */
+      gateBounce();
       return;
     }
     inFlight = true;
@@ -1028,8 +1063,21 @@
         setTimeout(function () { if (sold.isConnected) { delete sold.dataset.armed; sold.textContent = 'Mark sold'; } }, 3000);
         return;
       }
-      client.from('listings').update({ status: 'sold' }).eq('id', sold.dataset.cfSold).then(function (res) {
-        if (res.error) { say('Could not mark sold: ' + res.error.message); return; }
+      /* Sold badge (Oct 29, Martin: 14 days, dealers show off):
+         stamp sold_at so seller.html can expire the public badge
+         after 14 days. If cf-sold-at-migration.sql has not run
+         yet, the column is missing and this update errors — fall
+         back to status-only so Mark sold never breaks, and
+         seller.html treats a sold row with no sold_at as still
+         in-window. Dashboard forever: the row stays in My ads
+         with the Sold pill, whatever the public window does. */
+      client.from('listings').update({ status: 'sold', sold_at: new Date().toISOString() }).eq('id', sold.dataset.cfSold).then(function (res) {
+        if (res.error && /sold_at/i.test(res.error.message || '')) {
+          return client.from('listings').update({ status: 'sold' }).eq('id', sold.dataset.cfSold);
+        }
+        return res;
+      }).then(function (res) {
+        if (res && res.error) { say('Could not mark sold: ' + res.error.message); return; }
         say('Marked as sold'); refresh();
       });
       return;

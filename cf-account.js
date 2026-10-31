@@ -792,7 +792,16 @@
       }
       emBtn.disabled = true;
       emBtn.textContent = 'Updating…';
-      client.auth.updateUser({ email: a }).then(function (res) {
+      /* emailRedirectTo is REQUIRED here (Oct 31, 2026 bug find):
+         without it, Supabase builds the confirmation link with
+         redirect_to set to the bare github.io root — a page that
+         does not exist — so users land on a 404 after confirming
+         (the change itself still completes). Password recovery
+         never hit this because cf-recovery.js always passes its
+         address explicitly. Keep this URL in step with the live
+         site address; at domain launch it becomes the ClassiFlip
+         domain root. */
+      client.auth.updateUser({ email: a }, { emailRedirectTo: 'https://martinem4444-create.github.io/classiflip-prototype/' }).then(function (res) {
         emBtn.disabled = false;
         emBtn.textContent = 'Update email';
         if (res.error) {

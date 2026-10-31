@@ -581,6 +581,14 @@
     var dashTitle = el('dashTitle'); if (dashTitle) dashTitle.textContent = role === 'advertiser' ? 'Advertiser dashboard' : 'My listings';
     var dashSub = el('dashSub');
     if (dashSub) dashSub.textContent = nActive + ' active · ' + nPending + ' pending approval · Mississauga, ON';
+    /* Admins get the founder view (Oct 31, Martin): the top of the
+       dashboard becomes a Site overview — live site totals and the
+       queues waiting on him — instead of his personal numbers.
+       His own ads/orders/boosts still live in the tabs below. */
+    if (isAdmin) {
+      if (dashTitle) dashTitle.textContent = 'Site overview';
+      if (dashSub) dashSub.textContent = 'Live ClassiFlip totals — admin only, never shown to the public.';
+    }
 
     /* Demo-only sections go away for signed-in users (their content is
        hardcoded demo data — showing it for a real account would be fake). */
@@ -603,11 +611,24 @@
     var statsSeller = el('statsSeller');
     if (statsSeller) {
       statsSeller.classList.remove('hidden');
-      statsSeller.innerHTML =
-        '<div class="stat"><div class="n">' + nActive + '</div><div class="l">Active listings</div></div>' +
-        '<div class="stat"><div class="n">' + nPending + '</div><div class="l">Pending approval</div></div>' +
-        '<div class="stat' + (nUnread ? ' hot' : '') + '"><div class="n">' + nUnread + '</div><div class="l">Unread messages</div></div>' +
-        '<div class="stat"><div class="n">' + orders.length + '</div><div class="l">My orders</div></div>';
+      if (isAdmin) {
+        /* Site overview strip (admin only): total users, total ads,
+           pending ads, pending packages. renderAdmin fills the
+           numbers with exact count queries. The two pending cards
+           are buttons — tap one and it opens the matching Admin
+           tab below, so a waiting queue is one tap from handled. */
+        statsSeller.innerHTML =
+          '<div class="stat"><div class="n" id="ovUsers">…</div><div class="l">Total users</div></div>' +
+          '<div class="stat"><div class="n" id="ovAds">…</div><div class="l">Total ads</div></div>' +
+          '<div class="stat" data-cf-ovgo="approvals" style="cursor:pointer"><div class="n" id="ovPendingAds">…</div><div class="l">Pending ads · tap to review</div></div>' +
+          '<div class="stat" data-cf-ovgo="orders" style="cursor:pointer"><div class="n" id="ovPendingOrders">…</div><div class="l">Pending packages · tap to activate</div></div>';
+      } else {
+        statsSeller.innerHTML =
+          '<div class="stat"><div class="n">' + nActive + '</div><div class="l">Active listings</div></div>' +
+          '<div class="stat"><div class="n">' + nPending + '</div><div class="l">Pending approval</div></div>' +
+          '<div class="stat' + (nUnread ? ' hot' : '') + '"><div class="n">' + nUnread + '</div><div class="l">Unread messages</div></div>' +
+          '<div class="stat"><div class="n">' + orders.length + '</div><div class="l">My orders</div></div>';
+      }
     }
 
     /* Personal tab badges: ads total, unread messages, orders
@@ -888,10 +909,22 @@
       var uc = el('adminUserCount');
       if (uc) uc.textContent = (cnt && !cnt.error && typeof cnt.count === 'number') ? String(cnt.count) : 'Unavailable';
       if (cnt && !cnt.error && typeof cnt.count === 'number') setTabBadge('atabNUsers', cnt.count, true);
+      var ovu = el('ovUsers');
+      if (ovu) ovu.textContent = (cnt && !cnt.error && typeof cnt.count === 'number') ? String(cnt.count) : '—';
     } catch (e3) {
       var uc2 = el('adminUserCount');
       if (uc2) uc2.textContent = 'Unavailable';
     }
+
+    /* Site overview counts (admin only): exact totals for the top
+       strip — total ads, pending ads, pending packages (orders in
+       'Pending'). Count-only queries, so the numbers stay exact
+       even where the lists below cap their rows. */
+    try {
+      setOv('ovAds', await client.from('listings').select('id', { count: 'exact', head: true }), false);
+      setOv('ovPendingAds', await client.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending'), true);
+      setOv('ovPendingOrders', await client.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'Pending'), true);
+    } catch (e) {}
 
     try { await renderAdminUsers(client); } catch (e) {}
 
@@ -1824,6 +1857,29 @@
     if (typeof n === 'number' && (always || n > 0)) { b.textContent = String(n); b.hidden = false; }
     else { b.hidden = true; }
   }
+  /* Site overview card filler: takes a Supabase count result and
+     writes the number; pending cards light up 'hot' when their
+     queue is non-zero so work waiting is impossible to miss. */
+  function setOv(id, res, hotWhenPositive) {
+    var n = el(id);
+    if (!n) return;
+    var ok = res && !res.error && typeof res.count === 'number';
+    n.textContent = ok ? String(res.count) : '—';
+    if (hotWhenPositive) {
+      var card = n.closest ? n.closest('.stat') : null;
+      if (card) card.classList.toggle('hot', !!(ok && res.count > 0));
+    }
+  }
+  /* Overview pending cards jump straight to the work: open the
+     matching Admin tab and scroll it into view. */
+  document.addEventListener('click', function (e) {
+    var g = e.target && e.target.closest ? e.target.closest('[data-cf-ovgo]') : null;
+    if (!g) return;
+    var tab = document.querySelector('[data-cf-atab="' + g.dataset.cfOvgo + '"]');
+    if (tab) tab.click();
+    var sect = el('adminSect');
+    if (sect) sect.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   document.addEventListener('click', function (e) {
     var t = e.target && e.target.closest ? e.target.closest('[data-cf-atab]') : null;
     if (!t) return;

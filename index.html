@@ -757,7 +757,10 @@ openModal('detailModal');
     function renderHeroCarousel(){
   const track=document.getElementById('hcarTrack'),dots=document.getElementById('hcarDots');
   if(!track)return;
-  const feats=listings.filter(x=>x.featured).slice(0,4);
+  /* Carousel rule (Martin's call, Oct 30, 2026): EVERY boosted-effective ad rotates through the top carousel, first-come-first-served by boost activation (fcfsCompare), cap 10 slides so the dots stay readable and the page stays light. Demo featured samples fill any gaps until the pre-launch cleanup removes them. When a boost expires, the next boosted ad in line moves up automatically. */
+  const boosted=listings.filter(x=>x.boostedEffective).sort(fcfsCompare);
+  const samples=listings.filter(x=>x.featured&&!x.boostedEffective);
+  const feats=boosted.concat(samples).slice(0,10);
   track.innerHTML=feats.map(x=>`<div class="hcar-slide" data-view="${x.id}"><span class="hcar-tag">BOOSTED</span><img src="${x.photo||''}" alt="" loading="eager"><div class="hcar-cap"><div class="t">${safe(x.title)}</div><div class="p">${money(x.price)}</div></div></div>`).join('');
   dots.innerHTML=feats.map((_,i)=>`<button data-dot="${i}" aria-label="Slide ${i+1}" class="${i===0?'on':''}"></button>`).join('');
   let cur=0;const n=feats.length;let timer=null;

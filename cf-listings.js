@@ -730,6 +730,34 @@
       } else {
         if (rn) rn.textContent = autoApproved ? 'Your ad is live now.' : (boostErr ? 'Your ad is pending approval — it will appear once Martin approves it. (The Boost reservation failed: ' + boostErr + ' — you can still boost the ad once it is live.)' : 'Your ad is pending approval — it will appear once Martin approves it.');
         if (noticeEl) noticeEl.textContent = autoApproved ? 'Your ad is live now.' : (boostErr ? 'Your ad was posted and is awaiting approval. Boost reservation failed — boost it from the ad once live.' : 'Your ad was posted and is awaiting approval.');
+        /* Clear success box (Nov 1, 2026 — Martin's call): the no-boost
+           path used to end on just that small results note, which was
+           easy to miss. Now every real post ends on a proper box: a big
+           PENDING APPROVAL badge for queued ads (green LIVE NOW when a
+           trusted seller auto-approves), what happens next, and the ad
+           title for confirmation. Mirrors the Boost modal's shape. */
+        try {
+          var cfIsLive = !!autoApproved;
+          document.getElementById('detailTitle').textContent = cfIsLive ? 'Your ad is live' : 'Your ad is posted';
+          document.getElementById('detailBody').innerHTML =
+            '<div style="max-width:440px;margin:0 auto;text-align:center">' +
+            '<div style="line-height:1">' + (cfIsLive
+              ? '<svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg>'
+              : '<svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6.5V12l3.5 2"/></svg>') + '</div>' +
+            '<div style="margin:12px 0 6px"><span style="display:inline-block;padding:7px 16px;border-radius:999px;font-weight:800;font-size:13px;letter-spacing:.5px;color:#fff;background:' + (cfIsLive ? 'var(--green)' : '#D97706') + '">' + (cfIsLive ? 'LIVE NOW' : 'PENDING APPROVAL') + '</span></div>' +
+            '<h3 style="margin:8px 0 6px">' + (cfIsLive ? 'Your ad is live now' : 'Posted — now in the approval queue') + '</h3>' +
+            (cfIsLive
+              ? '<p>It is on the marketplace — buyers can find it and message you right away.</p>'
+              : '<p>Every ad gets a quick human check before it goes public — that is how ClassiFlip stays free of spam and scams. Once your ad is approved it appears on the marketplace, and we will email you. There is nothing else you need to do.</p>') +
+            (boostErr ? '<p style="color:var(--muted)">Note: the Boost reservation did not go through — you can boost the ad from your dashboard once it is live.</p>' : '') +
+            '<p>Ad: <b>' + safe(title) + '</b></p>' +
+            '<button class="primary" id="cfPostDoneBtn">Done</button>' +
+            '</div>';
+          if (typeof closeModals === 'function') closeModals();
+          if (typeof openModal === 'function') openModal('detailModal');
+          var _pd = document.getElementById('cfPostDoneBtn');
+          if (_pd && typeof closeModals === 'function') _pd.addEventListener('click', function () { closeModals(); });
+        } catch (e) {}
       }
     } catch (err) {
       fail('Could not post your ad: ' + (err && err.message ? err.message : 'Something went wrong. Please try again.'));

@@ -263,6 +263,59 @@ if(wasOpen&&THREADS.some(function(t){return t.id===wasOpen;})){openThread(wasOpe
 if(!cur){try{var q2=new URLSearchParams(location.search).get('thread');if(q2&&THREADS.some(function(t){return t.id===q2;})){openThread(q2);}}catch(e2){}}
 }catch(e){}})();
 </script>
+<script>
+/* Live messages (Nov 1, 2026): new messages land WITHOUT a refresh.
+   Hooks CFMessages.subscribe (Supabase Realtime on public.messages).
+   Open thread: appends, scrolls, marks read. Closed thread: unread
+   dot. Own sends from another browser/device appear too; the echo of
+   a send made HERE is skipped (pushMine already showed it). A focus
+   merge is the safety net if realtime is ever unavailable: new
+   threads appear and the open thread re-fetches when you return. */
+(function(){
+  if(!window.CFMessages||!window.CFMessages.subscribe)return;
+  var recentMine={}, seen={};
+  var _pm=pushMine;
+  pushMine=function(text,offer){try{recentMine[cur+'|'+text]=Date.now();}catch(e){}_pm(text,offer);};
+  function clockOf(iso){try{var d=new Date(iso);var h=d.getHours(),m=('0'+d.getMinutes()).slice(-2),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap;}catch(e){return nowT();}}
+  function findThread(listingId,otherId){var id='live:'+listingId+':'+otherId;for(var i=0;i<THREADS.length;i++){if(THREADS[i].id===id)return THREADS[i];}return null;}
+  function scrollEnd(){var mm=$('msgs');if(mm)mm.scrollTop=mm.scrollHeight;}
+  function mergeThreads(){
+    if(!window.CFMessages.listThreads)return;
+    window.CFMessages.listThreads().then(function(real){
+      if(!real)return;
+      real.forEach(function(rt){if(!findThread(rt.listingId,rt.otherId))THREADS.unshift(rt);});
+      renderThreads();
+      var t=THREADS.find(function(x){return x.id===cur;});
+      if(t&&t.live&&window.CFMessages.getMessages){
+        window.CFMessages.getMessages(t.listingId,t.otherId).then(function(msgs){
+          if(msgs&&msgs.length!==t.msgs.length){t.msgs=msgs;renderMsgs();scrollEnd();}
+        }).catch(function(){});
+      }
+    }).catch(function(){});
+  }
+  window.CFMessages.subscribe(function(row,isMine){
+    if(!row||!row.id)return;
+    if(seen[row.id])return; seen[row.id]=1;
+    var other=isMine?row.receiver_id:row.sender_id;
+    var t=findThread(row.listing_id,other);
+    if(!t){mergeThreads();return;}
+    if(isMine){
+      if(recentMine[t.id+'|'+row.body]&&(Date.now()-recentMine[t.id+'|'+row.body])<15000)return;
+      if(cur===t.id){t.msgs.push(['me',row.body,clockOf(row.created_at)]);renderMsgs();scrollEnd();}
+      renderThreads();return;
+    }
+    t.msgs.push(['them',row.body,clockOf(row.created_at)]);
+    t.time='now';
+    if(cur===t.id){
+      renderMsgs();scrollEnd();
+      if(window.CFMessages.markRead)window.CFMessages.markRead(t.listingId,t.otherId);
+    }
+    try{ding();}catch(e){}
+    renderThreads();
+  });
+  window.addEventListener('focus',mergeThreads);
+})();
+</script>
 <script>var CF_DARK_DEFAULT=false;var CF_MOON='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';var CF_SUN='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';function cfTheme(){var h=document.documentElement,cur=h.dataset.theme||(CF_DARK_DEFAULT?'dark':'light'),nxt=cur==='dark'?'light':'dark';h.dataset.theme=nxt;try{localStorage.setItem('cf-theme',nxt)}catch(e){}cfThemeBtn()}function cfThemeBtn(){var b=document.getElementById('themeBtn');if(!b)return;var cur=document.documentElement.dataset.theme||(CF_DARK_DEFAULT?'dark':'light');b.innerHTML=cur==='dark'?CF_SUN:CF_MOON;b.setAttribute('aria-label',cur==='dark'?'Switch to light mode':'Switch to dark mode')}document.addEventListener('DOMContentLoaded',cfThemeBtn);</script>
 <nav class="cftabs" aria-label="ClassiFlip mobile navigation"><a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5L5.2 4h13.6l1.7 5.5"/><path d="M3.5 9.5h17"/><path d="M5.2 9.5V20h13.6V9.5"/><path d="M9.6 20v-5.2h4.8V20"/></svg><span>Marketplace</span></a><a href="stores.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10"/><path d="M2 21h20"/><path d="M8.5 7h2M8.5 11h2M8.5 15h2"/><path d="M10 21v-3h3v3"/></svg><span>Stores</span></a><a href="dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg><span>Dashboard</span></a><a href="messaging.html" class="on" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.5-4.9a8.5 8.5 0 1 1 16-4.1z"/></svg><span>Messages</span></a><a href="advertise.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.2v3.6h2.8L19 19V5L6.8 10.2H4z"/><path d="M8.2 15.2L9.7 20h2.1l-1.4-4.6"/><path d="M18.8 9.8a3.6 3.6 0 0 1 0 4.9"/></svg><span>Advertise</span></a></nav>
 </body>

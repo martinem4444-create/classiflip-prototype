@@ -199,6 +199,40 @@
     return { sellerId: sellerId, msgs: await getMessages(listingId, sellerId) };
   }
 
+  async function markRead(listingId, otherId) {
+    var client = getClient();
+    var me = await getUser();
+    if (!client || !me) return;
+    try {
+      await client.from('messages').update({ is_read: true })
+        .eq('listing_id', listingId).eq('sender_id', otherId).eq('receiver_id', me.id).eq('is_read', false);
+    } catch (e) {}
+  }
+
+  /* Realtime (Nov 1, 2026): live incoming messages without a refresh.
+     Requires public.messages in the supabase_realtime publication
+     (one-time SQL: cf-realtime-messages.sql). RLS still applies —
+     each user only receives events for threads they are part of.
+     handler(row, isMine): row is the inserted message; isMine is true
+     when the same account sent it from another browser/device. */
+  var rtChannel = null, rtHandler = null;
+  async function subscribe(handler) {
+    var client = getClient();
+    var me = await getUser();
+    if (!client || !me || typeof client.channel !== 'function') return false;
+    if (rtChannel) { rtHandler = handler; return true; }
+    rtHandler = handler;
+    try {
+      rtChannel = client.channel('cf-inbox-' + me.id)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'receiver_id=eq.' + me.id },
+          function (p) { if (rtHandler && p && p.new) rtHandler(p.new, false); })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'sender_id=eq.' + me.id },
+          function (p) { if (rtHandler && p && p.new) rtHandler(p.new, true); })
+        .subscribe();
+      return true;
+    } catch (e) { rtChannel = null; return false; }
+  }
+
   window.CFMessages = {
     listThreads: listThreads,
     getMessages: getMessages,
@@ -206,6 +240,8 @@
     sendForListing: sendForListing,
     loadThread: loadThread,
     getSellerId: getSellerId,
-    getUser: getUser
+    getUser: getUser,
+    markRead: markRead,
+    subscribe: subscribe
   };
 })();

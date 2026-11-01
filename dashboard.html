@@ -229,6 +229,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <button type="button" class="atab" data-cf-dtab="messages">Messages<span class="n" id="dtabNMsg" hidden></span></button>
 <button type="button" class="atab" data-cf-dtab="orders">My Orders<span class="n" id="dtabNOrders" hidden></span></button>
 <button type="button" class="atab" data-cf-dtab="boosts">My Boosts<span class="n" id="dtabNBoosts" hidden></span></button>
+<button type="button" class="atab" data-cf-dtab="jobapps">Job Applications<span class="n" id="dtabNJobApps" hidden></span></button>
 <button type="button" class="atab" data-cf-dtab="business" id="dtabBiz" hidden>Business Profile</button>
 </div>
 <div data-cf-dpanel="ads">
@@ -349,6 +350,14 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div id="boostsList"></div>
 </div>
 
+</div>
+<div data-cf-dpanel="jobapps" hidden>
+<!-- job applications: filled by cf-jobs-inbox.js -->
+<div class="sect" id="jobAppsSect">
+<h2>Job applications</h2>
+<p class="hint">Your job posts, the applications you've received, and the jobs you've applied to.</p>
+<div id="cfJobAppsPanel"><p class="hint">Loading…</p></div>
+</div>
 </div>
 <!-- admin: is_admin users only (filled by cf-dashboard.js) -->
 <div class="sect hidden" id="adminSect">
@@ -706,5 +715,6 @@ openM('mAdPrev');
 <script src="cf-pweye.js"></script>
 <script src="cf-messages.js"></script>
 <script src="cf-dashboard.js"></script>
+<script src="cf-jobs-inbox.js"></script>
 </body>
 </html>

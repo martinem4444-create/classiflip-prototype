@@ -349,7 +349,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
     </section>
 
     <section id="jobs" aria-labelledby="jobsTitle" hidden>
-      <div class="section-head"><div><h2 id="jobsTitle">Jobs</h2><p>Sample job ads show featured and sponsored placement costs at a glance.</p></div><button class="link-btn" onclick="location.href='advertise.html'">Post a job</button></div>
+      <div class="section-head"><div><h2 id="jobsTitle">Jobs</h2><p>Local employers hiring now — apply right here on ClassiFlip.</p></div><button class="link-btn" onclick="location.href='advertise.html'">Post a job</button></div>
       <div class="jobs-shell">
         <div class="jobs-content">
           <div class="job-subcategories" aria-label="Filter jobs by category">
@@ -544,7 +544,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
       openModal('detailModal');
     }
     const appliedJobs=new Set();
-function jobById(id){return jobs.find(y=>y.id===Number(id));}
+function jobById(id){return jobs.find(y=>String(y.id)===String(id));}
 function applySteps(n){return '<div class="apply-steps"><span class="'+(n===1?'on':'')+'">1. Your details</span><span class="'+(n===2?'on':'')+'">2. Review</span><span class="'+(n===3?'on':'')+'">3. Sent</span></div>';}
 function jobHead(x){return '<div class="notice" style="margin-top:0"><strong>'+safe(x.title)+'</strong><br>'+safe(x.company)+' \u00B7 '+safe(x.pay)+' \u00B7 '+safe(x.location)+'</div>';}
 function openJobDetail(x){
@@ -793,8 +793,8 @@ function renderFeatured(){
       const filtered=activeJobCategory!=='All',filters=document.querySelector('.job-subcategories'),status=document.getElementById('jobFilterStatus'),filterView=document.getElementById('jobFilterView');
       document.querySelectorAll('[data-job-category]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.jobCategory===activeJobCategory)));
       filters.hidden=filtered;status.hidden=filtered;filterView.hidden=!filtered;
-      if(filtered){document.getElementById('jobFilterTitle').textContent=`${activeJobCategory} jobs`;document.getElementById('jobFilterCount').textContent=`${rows.length} sample job${rows.length===1?'':'s'} in this category.`}
-      document.getElementById('jobList').innerHTML=rows.length?rows.map(x=>`<article class="job-card"><div class="job-mark">${briefcase}</div><div><div class="job-card-tags"><span class="prototype-tag">SAMPLE JOB</span><span class="job-category-label">${safe(x.category)}</span>${x.promotion?`<span class="job-promo">${safe(x.promotion)}</span>`:''}</div><h3>${safe(x.title)}</h3><div class="job-company">${safe(x.company)}</div><div class="job-meta"><span>${safe(x.type)}</span><span>•</span><span>${safe(x.location)}</span></div></div><div class="job-action"><strong>${safe(x.pay)}</strong><button class="ghost" data-job="${x.id}">View job</button></div></article>`).join(''):'<div class="empty">No sample jobs in this category yet. Employers can choose it when posting a job.</div>';
+      if(filtered){document.getElementById('jobFilterTitle').textContent=`${activeJobCategory} jobs`;document.getElementById('jobFilterCount').textContent=`${rows.length} job${rows.length===1?'':'s'} in this category.`}
+      document.getElementById('jobList').innerHTML=rows.length?rows.map(x=>`<article class="job-card"><div class="job-mark">${briefcase}</div><div><div class="job-card-tags"><span class="prototype-tag">${x.live?'LIVE JOB':'SAMPLE JOB'}</span><span class="job-category-label">${safe(x.category)}</span>${x.promotion?`<span class="job-promo">${safe(x.promotion)}</span>`:''}</div><h3>${safe(x.title)}</h3><div class="job-company">${safe(x.company)}</div><div class="job-meta"><span>${safe(x.type)}</span><span>•</span><span>${safe(x.location)}</span></div></div><div class="job-action"><strong>${safe(x.pay)}</strong><button class="ghost" data-job="${x.id}">View job</button></div></article>`).join(''):'<div class="empty">No jobs in this category yet. Employers can choose it when posting a job.</div>';
     }
     function updateCarPostingFields(){
 const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCategory').value),_bz=document.getElementById('bizType').value;document.getElementById('bizTypeField').classList.toggle('show',_pb);document.getElementById('bizPitchField').classList.toggle('show',_pb&&_bz==='business');const _sb=document.querySelector('#postForm .form-actions .primary');if(_sb)_sb.textContent=(_pb&&_bz==='business')?'See business packages':'Preview listing';
@@ -953,6 +953,7 @@ const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCat
 <script src="cf-pweye.js"></script>
 <script src="cf-auto-moderate.js"></script>
 <script src="cf-listings.js"></script>
+<script src="cf-jobs.js"></script>
 <script src="cf-messages.js"></script>
 <script src="cf-sold-strip.js"></script>
 <script>

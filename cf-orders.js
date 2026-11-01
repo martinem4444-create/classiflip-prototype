@@ -93,13 +93,25 @@
     if (sel && amt && PACKAGES[sel.value]) amt.textContent = money(PACKAGES[sel.value][1]);
   }
 
+  /* Founding cap (Oct 31, 2026): founding spots are capped at 10 per
+     category, so a founding reserve must name its category — it is
+     stored on orders.category and the database trigger refuses an
+     11th founding order in a category. The category row in the form
+     only shows while a founding tier is selected. */
+  function isFounding(key) { return typeof key === 'string' && key.indexOf('founding-') === 0; }
+
+  function updateCategoryRow() {
+    var row = el('orderCategoryRow'), sel = el('orderPackage');
+    if (row && sel) row.style.display = isFounding(sel.value) ? 'block' : 'none';
+  }
+
   document.addEventListener('click', function (e) {
     var r = e.target.closest ? e.target.closest('[data-order-package]') : null;
     if (!r) return;
     e.preventDefault();
     var key = CARD_TO_OPTION[r.dataset.orderPackage] || r.dataset.orderPackage;
     var sel = el('orderPackage');
-    if (sel && PACKAGES[key]) { sel.value = key; updateAmount(); }
+    if (sel && PACKAGES[key]) { sel.value = key; updateAmount(); updateCategoryRow(); }
     var form = el('orderForm');
     if (form) form.scrollIntoView({ behavior: 'smooth' });
     var biz = el('orderBusiness');
@@ -107,8 +119,9 @@
   });
 
   var sel0 = el('orderPackage');
-  if (sel0) sel0.addEventListener('change', updateAmount);
+  if (sel0) sel0.addEventListener('change', function () { updateAmount(); updateCategoryRow(); });
   updateAmount();
+  updateCategoryRow();
 
   var submit = el('orderSubmit');
   if (submit) submit.addEventListener('click', async function () {
@@ -120,6 +133,19 @@
     if (!business || !name || !email || !PACKAGES[pkgKey]) {
       notice('Please fill in business name, your name, email, and a package.');
       return;
+    }
+    var category = null;
+    if (isFounding(pkgKey)) {
+      var catEl = el('orderCategory');
+      category = catEl ? catEl.value : '';
+      if (!category) {
+        notice('Pick your business category — founding spots are held per category (10 each).');
+        return;
+      }
+      if (window.CFFounding && window.CFFounding.isSoldOut(category)) {
+        notice('Founding spots for that category just sold out — pick another category, or choose a standard package.');
+        return;
+      }
     }
     var client = getClient();
     if (!client) {
@@ -154,7 +180,8 @@
         buyer_email: email,
         buyer_phone: phone || null,
         buyer_id: buyerId,
-        payment_method: 'etransfer'
+        payment_method: 'etransfer',
+        category: category
       };
       var res = await client.from('orders').insert([row]).select('order_number').single();
       if (res.error) throw res.error;

@@ -1243,6 +1243,10 @@
   document.addEventListener('click', function (e) {
     var v = e.target && e.target.closest ? e.target.closest('[data-view]') : null;
     if (!v) return;
+    /* Save hearts sit INSIDE the photo's [data-view] area: a heart
+       click is a save, never a view (fix Nov 1, 2026 — hearts on
+       live ads were opening the ad instead of saving). */
+    if (e.target && e.target.closest && e.target.closest('[data-save]')) return;
     var raw = v.dataset.view;
     if (!raw || !isNaN(Number(raw))) return;
     var x = null;

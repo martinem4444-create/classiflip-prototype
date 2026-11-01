@@ -25,6 +25,7 @@
   var myJobs = [];       // job_postings rows (mine)
   var received = [];     // applications to my jobs (+ job title/company)
   var sent = [];         // my applications (+ job title/company)
+  var appFilter = 'all'; // received-inbox filter: 'all' or one job id
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -148,7 +149,22 @@
     if (!received.length) {
       html += '<p class="hint">No applications yet. When a job seeker applies to one of your live job posts, it lands here (and you get an email).</p>';
     } else {
-      html += received.map(function (a) {
+      if (appFilter !== 'all' && !myJobs.some(function (j) { return String(j.id) === appFilter; })) appFilter = 'all';
+      if (myJobs.length >= 2) {
+        html += '<div style="margin:0 0 10px"><label class="hint" for="cfJobAppFilter" style="margin-right:6px">Show applications for:</label>' +
+          '<select id="cfJobAppFilter" style="border:1.5px solid var(--ln);border-radius:10px;padding:8px 10px;font-size:14px;max-width:100%">' +
+          '<option value="all"' + (appFilter === 'all' ? ' selected' : '') + '>All my jobs (' + received.length + ')</option>' +
+          myJobs.map(function (j) {
+            var c = counts[j.id] || 0;
+            return '<option value="' + esc(j.id) + '"' + (appFilter === String(j.id) ? ' selected' : '') + '>' + esc(j.title) + ' (' + c + ')</option>';
+          }).join('') +
+          '</select></div>';
+      }
+      var shown = appFilter === 'all' ? received : received.filter(function (a) { return String(a.job_id) === appFilter; });
+      if (!shown.length) {
+        html += '<p class="hint">No applications for this job yet.</p>';
+      } else {
+      html += shown.map(function (a) {
         return '<div class="lcard"><div class="inf">' +
           '<div class="t">' + esc(a.name) + ' ' + pill(a.status) + '</div>' +
           '<div class="s">Applied to <b>' + esc(a.jobTitle) + '</b>' + (a.jobCompany ? ' · ' + esc(a.jobCompany) : '') + ' · ' + fmtDate(a.created_at) + '</div>' +
@@ -159,6 +175,7 @@
           (a.status === 'new' ? '<button class="btn pri" data-cf-viewed="' + esc(a.id) + '">Mark viewed</button>' : '') +
           '</div></div>';
       }).join('');
+      }
     }
 
     html += '<h3 style="margin:22px 0 8px">My job posts</h3>';
@@ -305,6 +322,13 @@
         } else { rejectConfirm.disabled = false; rejectConfirm.textContent = 'Confirm reject'; }
       } catch (err) { rejectConfirm.disabled = false; rejectConfirm.textContent = 'Confirm reject'; }
       return;
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.id === 'cfJobAppFilter') {
+      appFilter = e.target.value;
+      renderPanel();
     }
   });
 

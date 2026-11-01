@@ -15,6 +15,13 @@
  *     Sample jobs keep the demo apply flow untouched.
  *   - Fixes the demo copy ("prototype job", "demo only") when the
  *     open detail/form belongs to a real job.
+ *   - Package coverage: an employer with an Active jobs package
+ *     ('jobs-single' / 'jobs-unlimited' order) never sees the plan
+ *     picker — the post is covered and linked to the order. A Single
+ *     covers one post (posts since the order began, rejected posts
+ *     excluded); once spent, the form says so and shows the picker
+ *     for the next post. Signed-in posters also lose the "prototype"
+ *     wording on the plan notice, and the button reads "Post job".
  *
  * Uses window.CFAuth.client (cf-auth.js). No keys in this file.
  */
@@ -26,6 +33,8 @@
   var realIds = {};            // String(job_postings.id) -> true
   var pendingResume = null;    // { jobId, file } stashed at form submit
   var posting = false;
+  var jobPkg = null;           // active jobs package: {kind, orderId, covered}
+  var SINGLE_USED_NOTE = 'Your Single job-post credit is already used, so this post needs its own plan. ';
 
   function getClient() {
     try {
@@ -68,6 +77,104 @@
       myId = (r && r.data && r.data.user) ? r.data.user.id : null;
     } catch (e) { myId = null; }
     return myId;
+  }
+
+  /* ------------------------------------------- jobs package coverage */
+  /* An employer holding an Active jobs package (orders rows
+     'jobs-single' / 'jobs-unlimited') should never be asked to pick a
+     plan again: the picker hides and the post is covered. A Single
+     covers ONE post — counted as posts made since the order began
+     (rejected posts don't burn the credit). */
+  async function loadJobPackage() {
+    jobPkg = null;
+    var client = getClient();
+    if (!client) { applyPackageToForm(); return; }
+    var uid = myId || window.__cfMyId || (await refreshUser());
+    if (!uid) { applyPackageToForm(); return; }
+    try {
+      var res = await client.from('orders')
+        .select('id,package,status,expires_at,created_at')
+        .eq('buyer_id', uid)
+        .in('package', ['jobs-single', 'jobs-unlimited'])
+        .in('status', ['Active', 'Expiring soon'])
+        .order('created_at', { ascending: false });
+      if (!res.error && res.data && res.data.length) {
+        var now = Date.now();
+        var rows = res.data.filter(function (o) {
+          return !o.expires_at || new Date(o.expires_at).getTime() > now;
+        });
+        var unl = null, sgl = null;
+        rows.forEach(function (o) {
+          if (o.package === 'jobs-unlimited' && !unl) unl = o;
+          if (o.package === 'jobs-single' && !sgl) sgl = o;
+        });
+        if (unl) {
+          jobPkg = { kind: 'unlimited', orderId: unl.id, covered: true };
+        } else if (sgl) {
+          var used = 0;
+          try {
+            var cnt = await client.from('job_postings')
+              .select('id', { count: 'exact', head: true })
+              .eq('employer_id', uid)
+              .neq('status', 'rejected')
+              .gte('created_at', sgl.created_at);
+            used = (cnt && typeof cnt.count === 'number') ? cnt.count : 0;
+          } catch (e2) {}
+          jobPkg = { kind: 'single', orderId: sgl.id, covered: used === 0 };
+        }
+      }
+    } catch (e) {}
+    applyPackageToForm();
+  }
+
+  function pkgCovered() {
+    return !!(jobPkg && (jobPkg.kind === 'unlimited' || jobPkg.covered));
+  }
+
+  function applyPackageToForm() {
+    var form = document.getElementById('jobPostForm');
+    if (!form) return;
+    if (!(myId || window.__cfMyId)) return;   // logged out: demo copy stays
+    var submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn && submitBtn.textContent !== 'Posting…') submitBtn.textContent = 'Post job';
+    var fieldset = form.querySelector('fieldset');
+    var tip = null;
+    form.querySelectorAll('p').forEach(function (p) {
+      if (p.textContent.indexOf('Posting 5 jobs') !== -1) tip = p;
+    });
+    var notice = document.getElementById('jobPlanNotice');
+    if (pkgCovered()) {
+      if (fieldset) fieldset.style.display = 'none';
+      if (tip) tip.style.display = 'none';
+      var radio = form.querySelector('input[name="jobPlan"][value="' + jobPkg.kind + '"]');
+      if (radio) radio.checked = true;
+      if (notice) {
+        notice.textContent = jobPkg.kind === 'unlimited'
+          ? '✓ Your Unlimited jobs package is active — post as many jobs as you like. Each post goes to a quick approval, then runs for 30 days.'
+          : '✓ Your Single job post package is active — this post is covered by it. It goes to a quick approval, then runs for 30 days.';
+      }
+    } else {
+      if (fieldset) fieldset.style.display = '';
+      if (tip) tip.style.display = '';
+      scrubNotice();
+    }
+  }
+
+  /* The page rewrites the plan notice (with "prototype" wording) every
+     time the plan radio changes. For signed-in employers, strip that
+     sentence and, when a Single credit is spent, say so up front. */
+  function scrubNotice() {
+    var n = document.getElementById('jobPlanNotice');
+    if (!n) return;
+    if (!(myId || window.__cfMyId)) return;
+    if (pkgCovered()) return;   // applyPackageToForm owns the notice
+    var t = n.textContent || '';
+    var nt = t.split(' No payment is taken in this prototype.').join('')
+              .split('No payment is taken in this prototype.').join('').trim();
+    if (jobPkg && jobPkg.kind === 'single' && !jobPkg.covered && nt.indexOf(SINGLE_USED_NOTE) !== 0) {
+      nt = SINGLE_USED_NOTE + nt;
+    }
+    if (nt && nt !== t) n.textContent = nt;
   }
 
   /* ------------------------------------------------------------ load jobs */
@@ -132,12 +239,13 @@
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Posting…'; }
     function fail(msg) {
       posting = false;
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add preview'; }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Post job'; }
       var n = document.getElementById('jobPlanNotice');
       if (n) { n.textContent = msg; n.style.borderColor = 'var(--orange)'; }
     }
     var val = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
     var planEl = document.querySelector('input[name="jobPlan"]:checked');
+    var covered = pkgCovered();
     var row = {
       employer_id: uid,
       title: val('jobTitleInput'),
@@ -147,7 +255,8 @@
       location: val('jobLocationInput') || 'Mississauga',
       pay: val('jobPayInput'),
       description: val('jobDescriptionInput'),
-      plan: planEl && planEl.value === 'unlimited' ? 'unlimited' : 'single',
+      plan: covered ? jobPkg.kind : (planEl && planEl.value === 'unlimited' ? 'unlimited' : 'single'),
+      order_id: covered ? jobPkg.orderId : null,
       status: 'pending'
     };
     if (!row.title || !row.company) { fail('Please add a job title and company name.'); return; }
@@ -166,6 +275,7 @@
           '<button type="button" class="primary" data-close style="width:100%;min-height:48px">Done</button></div>';
       }
       posting = false;
+      loadJobPackage();   // a Single credit may now be spent
     } catch (e) {
       fail('Could not post the job — please try again.');
     }
@@ -340,10 +450,24 @@
   function init() {
     refreshUser();
     loadRealJobs();
+    loadJobPackage();
     try {
       var client = getClient();
       if (client && client.auth && client.auth.onAuthStateChange) {
-        client.auth.onAuthStateChange(function () { refreshUser(); });
+        client.auth.onAuthStateChange(function () { refreshUser(); loadJobPackage(); });
+      }
+    } catch (e) {}
+    try {
+      var jn = document.getElementById('jobPlanNotice');
+      if (jn && window.MutationObserver) {
+        new MutationObserver(function () { scrubNotice(); })
+          .observe(jn, { childList: true, characterData: true, subtree: true });
+      }
+      var jm = document.getElementById('jobPostModal');
+      if (jm && window.MutationObserver) {
+        new MutationObserver(function () {
+          if (jm.classList.contains('open')) loadJobPackage();
+        }).observe(jm, { attributes: true, attributeFilter: ['class'] });
       }
     } catch (e) {}
   }

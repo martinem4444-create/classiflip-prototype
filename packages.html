@@ -19,6 +19,13 @@
   if he rules yes on a phone number for the postcards, the SAME number
   goes in the CTA band below as: Questions? Call Martin — <NUMBER>,
   during business hours.
+  FOUNDING GATE (added Nov 2, 2026): the five category sections carry
+  data-cat and the page loads cf-auth.js + cf-founding.js (only those
+  two — no cf-account), so a category whose 10 founding spots sell out
+  flips its "Founding: $X" pills to "Founding spots sold out" and, if
+  all five fill, the founding banner flips too — same gate as
+  advertise.html. Counts come from the cf_founding_counts RPC
+  (counts only, no buyer data, no exact remaining counts shown).
 -->
 <style>
 :root{--bg:#F7F6F2;--sf:#FFFFFF;--ink:#18365F;--mu:#5E6078;--ln:#E6E4EF;--rose:#F4511E;--rt:#F4511E;--tint:#FFECE1;--lav:#E2EBF8;--nv:#18365F;--ok:#1E9E6A;--sh:0 12px 32px rgba(17,20,43,.10);color-scheme:light}
@@ -101,7 +108,7 @@ footer a:hover{color:var(--rt)}
 </div>
 </div>
 
-<div class="sect">
+<div class="sect" data-cat="dealers">
 <h2>Auto — for dealers</h2>
 <p>Your whole lot, in front of local buyers, for less than half of AutoTrader's cheapest tier.</p>
 <div class="plans">
@@ -111,7 +118,7 @@ footer a:hover{color:var(--rt)}
 </div>
 </div>
 
-<div class="sect">
+<div class="sect" data-cat="agents">
 <h2>Real estate — for agents &amp; brokers</h2>
 <p>Homes, condos and townhomes for sale. Every eyeball local.</p>
 <div class="plans">
@@ -121,7 +128,7 @@ footer a:hover{color:var(--rt)}
 </div>
 </div>
 
-<div class="sect">
+<div class="sect" data-cat="rentals">
 <h2>Rentals — for landlords &amp; managers</h2>
 <p>One filled vacancy pays for years of listings.</p>
 <div class="plans">
@@ -130,7 +137,7 @@ footer a:hover{color:var(--rt)}
 </div>
 </div>
 
-<div class="sect">
+<div class="sect" data-cat="services">
 <h2>Services — for pros &amp; local shops</h2>
 <p>Plumbers, electricians, cleaners, barbers, salons — get found by neighbours.</p>
 <div class="plans">
@@ -139,7 +146,7 @@ footer a:hover{color:var(--rt)}
 </div>
 </div>
 
-<div class="sect">
+<div class="sect" data-cat="jobs">
 <h2>Jobs — for employers</h2>
 <p>Reach local talent without the $20-a-post job-board markup.</p>
 <div class="plans">
@@ -182,5 +189,8 @@ footer a:hover{color:var(--rt)}
 </footer>
 
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="cf-auth.js"></script>
+<script src="cf-founding.js"></script>
 </body>
 </html>

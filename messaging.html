@@ -64,7 +64,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .threads.hide{display:none}
 .chat{display:none}
 .chat.show{display:flex}
-.backbtn{display:block}
+body.chatting .backbtn{display:block}
 }
 html[data-theme="dark"]{--bg:#07090D;--card:#12161F;--ink:#EDF2F9;--mu:#B9C6DA;--ln:#232B3A;--tint:#2B1A12;--sh:0 10px 30px rgba(0,0,0,.6);color-scheme:dark}html[data-theme="dark"] .mcard{background:#12161F;color:var(--ink)}html[data-theme="dark"] .chat{background:#0B0F16}html[data-theme="dark"] .comp input{background:#1A212E;color:#EDF2F9}.chat.noopen .adbar,.chat.noopen .msgs,.chat.noopen .qr,.chat.noopen .comp{display:none}.emptychat{display:none}.chat.noopen .emptychat{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px}.emptychat .ec-ic{font-size:40px}.emptychat .ec-t{font:800 19px Manrope,sans-serif;color:var(--ink)}.emptychat .ec-s{font-size:13.5px;color:var(--mu);max-width:260px}html[data-theme="dark"] .bub.offer{background:#12161F}html[data-theme="dark"] .bub.them{background:#1C2635}html[data-theme="dark"] .qr button{background:#12161F;color:var(--ink)}html[data-theme="dark"] .iconbtn{background:#12161F;color:var(--ink)}.tbtn{display:flex;align-items:center;justify-content:center;color:var(--ink);margin-left:12px;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ln);background:var(--card);font-size:16px;cursor:pointer;padding:0;flex:0 0 auto}@media(max-width:700px){.top>.tbtn{margin-left:auto}}.logo .flip{color:var(--orange)}html[data-theme="dark"] .logo{color:#a9cdf5}.logo img.nl{background:#fff;border-radius:7px;padding:3px;box-sizing:border-box}</style>
 
@@ -158,7 +158,7 @@ $('adbar').innerHTML=(t.img?'<img src="'+t.img+'" alt="">':'')
 renderMsgs();renderThreads();
 if(t.live&&window.CFMessages){window.CFMessages.getMessages(t.listingId,t.otherId).then(function(msgs){if(msgs&&msgs.length){t.msgs=msgs;renderMsgs();var mm=$('msgs');mm.scrollTop=mm.scrollHeight;}});}
 $('qr').innerHTML=t.qr.map(q=>'<button onclick="quickRe(\''+q.replace(/'/g,"\\'")+'\')">'+q+'</button>').join('');
-if(window.innerWidth<=760){$('threads').classList.add('hide');$('chat').classList.add('show');}
+if(window.innerWidth<=760){$('threads').classList.add('hide');$('chat').classList.add('show');document.body.classList.add('chatting');}
 const m=$('msgs');m.scrollTop=m.scrollHeight;
 }
 function renderMsgs(){
@@ -168,7 +168,7 @@ if(m[0]==='offer')return '<div class="bub offer"><div class="oa">Offer: '+m[1]+'
 return '<div class="bub '+m[0]+'">'+m[1]+'<span class="tm">'+m[2]+'</span></div>';
 }).join('');
 }
-function showThreads(){$('threads').classList.remove('hide');$('chat').classList.remove('show');}
+function showThreads(){$('threads').classList.remove('hide');$('chat').classList.remove('show');document.body.classList.remove('chatting');}
 function nowT(){const d=new Date();let h=d.getHours(),m=('0'+d.getMinutes()).slice(-2),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap;}
 function ding(){try{
 // ClassiFlip bloop: soft pop + ding when a message lands (ours, not a register)

@@ -543,6 +543,30 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
       document.getElementById('detailBody').innerHTML=`<div class="detail">${galleryMarkup(x)}<div><div class="prototype-tag">SAMPLE LISTING · ${safe(x.category).toUpperCase()}${x.postingLabel?' · '+safe(x.postingLabel).toUpperCase():''}</div><h3>${safe(x.title)}</h3><div class="detail-price">${displayPrice(x)}</div><div class="meta"><span>${safe(x.condition)}</span><span>•</span><span>${safe(x.location)}</span></div>${x.live&&x.verified?verifiedMark:''}<p>${safe(x.desc)}</p><div class="notice">This is an interactive prototype listing, not a real item for sale.</div>${(x.category==='Homes'||x.category==='Rentals')?locationCardMarkup(x):''}${listingContactMarkup(x)}</div></div>`;
       openModal('detailModal');
     }
+    /* Dashboard View deep link (Nov 1, 2026): the My ads "View" button
+       links here as index.html?ad=<id> — it used to be a bare link to
+       the homepage, so View just went to the marketplace. Poll until
+       the live listings swap lands, open that ad's detail, and clean
+       the URL so a refresh doesn't reopen it. String id compare —
+       live ids are UUIDs (the Number() trap bit the jobs viewer). */
+    (function(){
+      let adWanted=null;
+      try{adWanted=new URLSearchParams(location.search).get('ad');}catch(e){}
+      if(!adWanted)return;
+      let adTries=0;
+      const adIv=setInterval(function(){
+        adTries++;
+        const hit=listings.find(function(y){return String(y.id)===String(adWanted);});
+        if(hit){
+          clearInterval(adIv);
+          try{history.replaceState(null,'',location.pathname);}catch(e){}
+          openListingDetail(hit);
+        }else if(adTries>24){
+          clearInterval(adIv);
+          try{history.replaceState(null,'',location.pathname);}catch(e){}
+        }
+      },300);
+    })();
     const appliedJobs=new Set();
 function jobById(id){return jobs.find(y=>String(y.id)===String(id));}
 function applySteps(n){return '<div class="apply-steps"><span class="'+(n===1?'on':'')+'">1. Your details</span><span class="'+(n===2?'on':'')+'">2. Review</span><span class="'+(n===3?'on':'')+'">3. Sent</span></div>';}

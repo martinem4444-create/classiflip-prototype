@@ -666,7 +666,7 @@
           '<button class="btn gho' + (dashView === 'grid' ? ' on' : '') + '" data-cf-view="grid">Grid</button></div>';
         var cardsHtml = listings.map(function (x) {
           var viewBtn = x.status === 'active'
-            ? '<a class="btn gho" href="index.html">View</a>'
+            ? '<a class="btn gho" href="index.html?ad=' + esc(x.id) + '">View</a>'
             : '<span class="btn gho" style="opacity:.55">' + (x.status === 'pending' ? 'Awaiting approval' : esc(x.status)) + '</span>';
           var boostPill = liveBoostByListing[x.id]
             ? ' <span class="pill boost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> Boosted until ' + fullDate(new Date(liveBoostByListing[x.id]).toISOString()) + '</span>' : '';

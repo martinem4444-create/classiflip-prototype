@@ -53,11 +53,15 @@
 .site-footer .foot-bottom{grid-column:1/-1;border-top:1px solid var(--line,var(--ln,#D5DFEC));padding-top:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;color:var(--muted,var(--mu,#68788F));font-size:12px}
 @media(max-width:700px){.site-footer{grid-template-columns:1fr 1fr}}
 @media(max-width:420px){.site-footer{grid-template-columns:1fr}}
+.logo{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:800;text-decoration:none}
+.logo img{width:34px;height:34px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:7px;padding:3px;box-sizing:border-box}
+.wm{color:var(--navy);letter-spacing:-.02em}
+.flip{color:#F4511E}
 </style>
 </head>
 <body>
 <div class="topbar">
-  <a class="brand" href="index.html">Classi<span>Flip</span></a>
+  <a class="logo" href="index.html"><img src="images/logo.png" alt="ClassiFlip logo"><span class="wm">CLASSI<span class="flip">FLIP</span></span></a>
   <span><a class="back" href="index.html">← Back to marketplace</a><a href="waitlist.html" style="margin-left:16px;font-weight:700">Waitlist</a></span>
 </div>
 <main>

@@ -92,10 +92,13 @@
     var uid = myId || window.__cfMyId || (await refreshUser());
     if (!uid) { applyPackageToForm(); return; }
     try {
+      /* NOTE (Nov 2 fix): orders.package stores the DISPLAY LABEL
+         (cf-orders.js writes PACKAGES[key][0], e.g. 'Jobs Employer
+         Unlimited'), not the slug — match both or coverage never hits. */
       var res = await client.from('orders')
         .select('id,package,status,expires_at,created_at')
         .eq('buyer_id', uid)
-        .in('package', ['jobs-single', 'jobs-unlimited'])
+        .in('package', ['jobs-single', 'jobs-unlimited', 'Jobs Single Job Post', 'Jobs Employer Unlimited'])
         .in('status', ['Active', 'Expiring soon'])
         .order('created_at', { ascending: false });
       if (!res.error && res.data && res.data.length) {
@@ -105,8 +108,8 @@
         });
         var unl = null, sgl = null;
         rows.forEach(function (o) {
-          if (o.package === 'jobs-unlimited' && !unl) unl = o;
-          if (o.package === 'jobs-single' && !sgl) sgl = o;
+          if ((o.package === 'jobs-unlimited' || o.package === 'Jobs Employer Unlimited') && !unl) unl = o;
+          if ((o.package === 'jobs-single' || o.package === 'Jobs Single Job Post') && !sgl) sgl = o;
         });
         if (unl) {
           jobPkg = { kind: 'unlimited', orderId: unl.id, covered: true };

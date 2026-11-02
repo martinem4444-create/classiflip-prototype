@@ -190,7 +190,7 @@
     try {
       if (ads.length) {
         var ids = ads.map(function (a) { return a.id; });
-        var ph = await client.from('listing_photos').select('listing_id,photo_url').in('listing_id', ids).order('sort_order', { ascending: true });
+        var ph = await client.from('listing_photos').select('listing_id,photo_url,position').in('listing_id', ids).order('position', { ascending: true });
         if (ph && !ph.error && ph.data) {
           var byId = {};
           ph.data.forEach(function (p) { if (!byId[p.listing_id]) byId[p.listing_id] = p.photo_url; });

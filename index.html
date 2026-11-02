@@ -178,6 +178,8 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 @media(min-width:901px) and (max-width:1080px){.nav{grid-template-columns:auto minmax(0,1fr) minmax(0,424px)}.searchbox input{padding-right:74px}.searchbox button{padding:0 10px}}
 </style><style>/* CF search cap v16 (Nov 2): the v15 full-width header let the search box soak up all the leftover room and look stretched on wide screens — cap it and let the header breathe, actions pinned right. */
 @media(min-width:1081px){.nav{grid-template-columns:auto minmax(190px,560px) minmax(0,548px);justify-content:space-between}}
+</style><style>/* CF one-line wide header v17 (Nov 2): on big screens the action row gets room to sit on ONE line again; the v15 wrap still takes over at laptop widths and high zoom, and if a long name ever overflows it wraps instead of clipping. */
+@media(min-width:1501px){.nav{max-width:1600px;grid-template-columns:auto minmax(190px,520px) minmax(0,860px);justify-content:space-between}}
 </style></head>
 <body>
   <header class="topbar">

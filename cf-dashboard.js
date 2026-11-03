@@ -621,7 +621,8 @@
           '<div class="stat"><div class="n" id="ovUsers">…</div><div class="l">Total users</div></div>' +
           '<div class="stat"><div class="n" id="ovAds">…</div><div class="l">Total ads</div></div>' +
           '<div class="stat" data-cf-ovgo="approvals" style="cursor:pointer"><div class="n" id="ovPendingAds">…</div><div class="l">Pending ads · tap to review</div></div>' +
-          '<div class="stat" data-cf-ovgo="orders" style="cursor:pointer"><div class="n" id="ovPendingOrders">…</div><div class="l">Pending packages · tap to activate</div></div>';
+          '<div class="stat" data-cf-ovgo="orders" style="cursor:pointer"><div class="n" id="ovPendingOrders">…</div><div class="l">Pending packages · tap to activate</div></div>' +
+          '<div class="stat"><div class="n" id="ovWaitlist">…</div><div class="l" id="ovWaitlistLabel">Waitlist signups</div></div>';
       } else {
         statsSeller.innerHTML =
           '<div class="stat"><div class="n">' + nActive + '</div><div class="l">Active listings</div></div>' +
@@ -1026,6 +1027,21 @@
       setOv('ovAds', await client.from('listings').select('id', { count: 'exact', head: true }), false);
       setOv('ovPendingAds', await client.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending'), true);
       setOv('ovPendingOrders', await client.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'Pending'), true);
+    } catch (e) {}
+
+    /* Waitlist counter (Nov 3, 2026): today / this week / total from
+       waitlist_signups, Toronto day boundaries (week starts Monday).
+       Admin-only end to end: this runs inside renderAdmin and the
+       table's SELECT policy is is_admin — the numbers never appear
+       anywhere public (standing stats-privacy rule). Fails soft to
+       dashes if the cf-waitlist-signups migration has not run. */
+    try {
+      var wlTotal = await client.from('waitlist_signups').select('id', { count: 'exact', head: true });
+      setOv('ovWaitlist', wlTotal, false);
+      var wlT = await client.from('waitlist_signups').select('id', { count: 'exact', head: true }).gte('created_at', torontoTodayStart());
+      var wlW = await client.from('waitlist_signups').select('id', { count: 'exact', head: true }).gte('created_at', torontoWeekStart());
+      var wlLbl = el('ovWaitlistLabel');
+      if (wlLbl) wlLbl.textContent = 'Waitlist signups · ' + ((wlT && !wlT.error && typeof wlT.count === 'number') ? wlT.count : '—') + ' today · ' + ((wlW && !wlW.error && typeof wlW.count === 'number') ? wlW.count : '—') + ' this week';
     } catch (e) {}
 
     try { await renderAdminUsers(client); } catch (e) {}
@@ -1972,6 +1988,41 @@
       var card = n.closest ? n.closest('.stat') : null;
       if (card) card.classList.toggle('hot', !!(ok && res.count > 0));
     }
+  }
+
+  /* Toronto day/week starts as UTC ISO strings, for created_at
+     range filters (waitlist counter). Intl supplies the real
+     EST/EDT offset — nothing is hardcoded. Week starts Monday. */
+  function torontoParts(d) {
+    var out = {};
+    try {
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' })
+        .formatToParts(d).forEach(function (p) { out[p.type] = p.value; });
+    } catch (e) {}
+    return out;
+  }
+  function torontoMidnightUTC(y, m, d) {
+    var target = Date.UTC(y, m - 1, d, 0, 0, 0);
+    var guess = target;
+    for (var i = 0; i < 2; i++) {
+      var o = {};
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        .formatToParts(new Date(guess)).forEach(function (p) { o[p.type] = p.value; });
+      var asUTC = Date.UTC(+o.year, +o.month - 1, +o.day, (+o.hour) % 24, +o.minute, +o.second);
+      if (asUTC === target) break;
+      guess -= (asUTC - target);
+    }
+    return new Date(guess).toISOString();
+  }
+  function torontoTodayStart() {
+    var p = torontoParts(new Date());
+    return torontoMidnightUTC(+p.year, +p.month, +p.day);
+  }
+  function torontoWeekStart() {
+    var p = torontoParts(new Date());
+    var back = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[p.weekday] || 0;
+    var md = new Date(Date.UTC(+p.year, +p.month - 1, +p.day - back));
+    return torontoMidnightUTC(md.getUTCFullYear(), md.getUTCMonth() + 1, md.getUTCDate());
   }
   /* Overview pending cards jump straight to the work: open the
      matching Admin tab and scroll it into view. */

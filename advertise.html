@@ -258,7 +258,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 </footer>
 
 <script>
-const PKGS=['Jobs — Single post','Jobs — Unlimited','Real estate — Single','Real estate — 5-pack','Real estate — Unlimited','Rentals — Single','Rentals — Unlimited','Services — Single','Services — Unlimited','Dealer — Single','Dealer — Lot pack','Dealer — Unlimited','Boost — $2.99','Display — Featured','Display — Messages rail','Display — Homepage spotlight','Display — Category takeover'];
+const PKGS=['Jobs — Single post','Jobs — Unlimited','Real estate — Single','Real estate — 5-pack','Real estate — Unlimited','Rentals — Single','Rentals — Unlimited','Services — Single','Services — Unlimited','Dealer — Single','Dealer — Lot pack','Dealer — Unlimited','Boost — $2.99'];
 function claim(pkg){
   const sel=document.getElementById('cPkg');
   sel.innerHTML=PKGS.map(p=>'<option'+(p===pkg?' selected':'')+'>'+p+'</option>').join('');

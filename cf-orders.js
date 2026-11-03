@@ -68,6 +68,17 @@
     'jobs-unlimited': 'jobs-unlimited'
   };
 
+  /* Founding lock-in (Nov 3, 2026 — Martin's call): founding reserves
+     carry explicit Founding Member terms — billed monthly, price
+     locked for 12 months, first month free — CHOSEN by the buyer via
+     the lock-in checkbox in the order form (the consent anchor for
+     the early-exit settle-up: cancel early, repay the discounts
+     received). The choice is recorded on orders.term (migration:
+     supabase/cf-orders-term-migration.sql). The package LABEL is
+     deliberately untouched — dashboard package matching keys off it. */
+  var FOUNDING_TERM = 'founding-lock-12-monthly';
+  var FOUNDING_TERM_TEXT = 'Founding Member — 12-month price lock · billed monthly · first month free';
+
   function getClient() {
     try {
       if (window.CFAuth && window.CFAuth.client) return window.CFAuth.client;
@@ -91,6 +102,8 @@
   function updateAmount() {
     var sel = el('orderPackage'), amt = el('orderAmount');
     if (sel && amt && PACKAGES[sel.value]) amt.textContent = money(PACKAGES[sel.value][1]);
+    var lt = el('orderLockinTerms');
+    if (sel && lt && PACKAGES[sel.value]) lt.textContent = money(PACKAGES[sel.value][1]) + '/mo · Billed monthly · Price locked for 12 months · First month free';
   }
 
   /* Founding cap (Oct 31, 2026): founding spots are capped at 10 per
@@ -105,13 +118,20 @@
     if (row && sel) row.style.display = isFounding(sel.value) ? 'block' : 'none';
   }
 
+  /* The Founding Member lock-in panel shows only while a founding
+     tier is selected — standard packages have no lock-in to choose. */
+  function updateLockinRow() {
+    var row = el('orderLockinRow'), sel = el('orderPackage');
+    if (row && sel) row.style.display = isFounding(sel.value) ? 'block' : 'none';
+  }
+
   document.addEventListener('click', function (e) {
     var r = e.target.closest ? e.target.closest('[data-order-package]') : null;
     if (!r) return;
     e.preventDefault();
     var key = CARD_TO_OPTION[r.dataset.orderPackage] || r.dataset.orderPackage;
     var sel = el('orderPackage');
-    if (sel && PACKAGES[key]) { sel.value = key; updateAmount(); updateCategoryRow(); }
+    if (sel && PACKAGES[key]) { sel.value = key; updateAmount(); updateCategoryRow(); updateLockinRow(); }
     var form = el('orderForm');
     if (form) form.scrollIntoView({ behavior: 'smooth' });
     var biz = el('orderBusiness');
@@ -119,9 +139,10 @@
   });
 
   var sel0 = el('orderPackage');
-  if (sel0) sel0.addEventListener('change', function () { updateAmount(); updateCategoryRow(); });
+  if (sel0) sel0.addEventListener('change', function () { updateAmount(); updateCategoryRow(); updateLockinRow(); });
   updateAmount();
   updateCategoryRow();
+  updateLockinRow();
 
   var submit = el('orderSubmit');
   if (submit) submit.addEventListener('click', async function () {
@@ -144,6 +165,11 @@
       }
       if (window.CFFounding && window.CFFounding.isSoldOut(category)) {
         notice('Founding spots for that category just sold out — pick another category, or choose a standard package.');
+        return;
+      }
+      var lockin = el('orderLockin');
+      if (!lockin || !lockin.checked) {
+        notice('Tick the Founding Member lock-in — that checkbox is what locks your price for 12 months.');
         return;
       }
     }
@@ -181,15 +207,22 @@
         buyer_phone: phone || null,
         buyer_id: buyerId,
         payment_method: 'etransfer',
-        category: category
+        category: category,
+        term: isFounding(pkgKey) ? FOUNDING_TERM : null
       };
       var res = await client.from('orders').insert([row]).select('order_number').single();
+      if (res.error && row.term && /term/i.test(res.error.message || '')) {
+        /* The orders.term migration has not been run yet — reserve
+           anyway; the lock-in just isn't recorded until the SQL lands. */
+        delete row.term;
+        res = await client.from('orders').insert([row]).select('order_number').single();
+      }
       if (res.error) throw res.error;
       var num = (res.data && res.data.order_number) ? res.data.order_number : 'CF-????';
       el('orderNumberBig').textContent = num;
       el('orderNumberBig2').textContent = num;
       el('orderAmountBig').textContent = money(PACKAGES[pkgKey][1]) + ' CAD';
-      el('orderSummary').textContent = PACKAGES[pkgKey][0] + ' · ' + business + ' · reserved as ' + num + ' (status: Pending).';
+      el('orderSummary').textContent = PACKAGES[pkgKey][0] + ' · ' + business + ' · reserved as ' + num + ' (status: Pending).' + (isFounding(pkgKey) ? ' ' + FOUNDING_TERM_TEXT + '.' : '');
       el('orderDone').style.display = 'block';
       notice('');
       el('orderDone').scrollIntoView({ behavior: 'smooth' });
@@ -198,7 +231,7 @@
          caller's JWT server-side and emails ONLY mm905media@gmail.com
          via Resend. Silent on failure by design — the reserve stands
          regardless. Logged-out reserves send no email (no token). */
-      notifyAdminNewOrder({ order_number: num, package: PACKAGES[pkgKey][0], amount: PACKAGES[pkgKey][1], business_name: business, buyer_name: name, buyer_email: email, buyer_phone: phone });
+      notifyAdminNewOrder({ order_number: num, package: PACKAGES[pkgKey][0], amount: PACKAGES[pkgKey][1], business_name: business, buyer_name: name, buyer_email: email, buyer_phone: phone, term: isFounding(pkgKey) ? FOUNDING_TERM_TEXT : '' });
     } catch (err) {
       notice('Could not reserve: ' + (err && err.message ? err.message : 'Something went wrong.'));
     }

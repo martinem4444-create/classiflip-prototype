@@ -523,7 +523,7 @@
     } catch (e) {}
     try {
       var orr = await client.from('orders')
-        .select('id,order_number,business_name,package,amount,buyer_name,buyer_email,status,expires_at,created_at')
+        .select('id,order_number,business_name,package,amount,buyer_name,buyer_email,status,expires_at,created_at,term')
         .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(50);
       if (orr && orr.data) orders = orr.data;
     } catch (e) {}
@@ -760,7 +760,7 @@
             return '<div class="lcard"><div class="inf"><div class="t">' + esc(o.order_number) + ' · ' + esc(o.package || '') + ' ' + pillForOrder(o.status) + '</div>' +
               '<div class="p">' + money(o.amount) + '</div>' +
               '<div class="s">' + esc(o.business_name || '') + ' · ordered ' + fullDate(o.created_at) +
-              (o.expires_at ? ' · expires ' + fullDate(o.expires_at) : '') + '</div></div>' + oDel + '</div>';
+              (o.expires_at ? ' · expires ' + fullDate(o.expires_at) : '') + orderTermSuffix(o) + '</div></div>' + oDel + '</div>';
           }).join('');
         }
       }
@@ -808,6 +808,15 @@
   function pillForOrder(status) {
     var map = { Pending: 'pend', Active: 'live', 'Expiring soon': 'pend', Expired: 'pause' };
     return '<span class="pill ' + (map[status] || 'pause') + '">' + esc(status || '') + '</span>';
+  }
+
+  /* Founding lock-in (Nov 3, 2026): orders.term carries the buyer's
+     chosen terms — founding reserves store 'founding-lock-12-monthly'.
+     Anything else (or the column not migrated yet) renders nothing. */
+  function orderTermSuffix(o) {
+    return (o && o.term === 'founding-lock-12-monthly')
+      ? ' · Founding Member: price locked 12 months · billed monthly · first month free'
+      : '';
   }
 
   /* Admin -> Users roster (Oct 31, 2026): every account with its ad
@@ -1134,7 +1143,7 @@
     var allOrders = [];
     try {
       var orr = await client.from('orders')
-        .select('id,order_number,business_name,package,amount,buyer_name,buyer_email,buyer_phone,status,expires_at,created_at')
+        .select('id,order_number,business_name,package,amount,buyer_name,buyer_email,buyer_phone,status,expires_at,created_at,term')
         .order('created_at', { ascending: false }).limit(100);
       if (orr && orr.data) allOrders = orr.data;
     } catch (e) {}
@@ -1146,7 +1155,7 @@
           return '<div class="lcard"><div class="inf"><div class="t">' + esc(o.order_number) + ' · ' + esc(o.business_name || '') + ' ' + pillForOrder(o.status) + '</div>' +
             '<div class="p">' + money(o.amount) + ' · ' + esc(o.package || '') + '</div>' +
             '<div class="s">' + esc(o.buyer_name || '') + (o.buyer_email ? ' · ' + esc(o.buyer_email) : '') + (o.buyer_phone ? ' · ' + esc(o.buyer_phone) : '') +
-            ' · ordered ' + fullDate(o.created_at) + (o.expires_at ? ' · expires ' + fullDate(o.expires_at) : '') + '</div></div>' +
+            ' · ordered ' + fullDate(o.created_at) + (o.expires_at ? ' · expires ' + fullDate(o.expires_at) : '') + orderTermSuffix(o) + '</div></div>' +
             '<div class="acts"><button class="btn pri" data-cf-order-activate="' + esc(o.id) + '">Activate · 30 days</button>' +
             '<button class="btn gho" data-cf-order-soon="' + esc(o.id) + '">Expiring soon</button>' +
             '<button class="btn gho danger" data-cf-order-expire="' + esc(o.id) + '">Expire</button></div></div>';

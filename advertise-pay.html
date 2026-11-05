@@ -104,12 +104,12 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h1>Advertiser Checkout</h1>
 <p>Secure checkout for ClassiFlip ad packages — pick your tier, pay by card, and your ad goes in front of buyers across the GTA, Mississauga-first.</p>
 <div class="found">
-<b class="t">FOUNDING ADVERTISERS — only 10 spots</b>
+<b class="t">FOUNDING ADVERTISERS — only 10 spots per category</b>
 <ul>
 <li><b>50% off</b> launch rates, locked in for 12 months</li>
-<li>Founding tiers: <b>Single $29</b> · <b>Featured $79</b> · <b>Unlimited $149</b></li>
+<li>Founding rate: <b>half the standard price</b> in every category — e.g. Dealer Unlimited <b>$124.50</b> · Agent Unlimited <b>$99.50</b> · Services Single <b>$14.50</b></li>
 <li><b>Founding Member option:</b> billed monthly · price locked for 12 months · first month FREE</li>
-<li>When the 10 spots are gone, standard rates below apply</li>
+<li>When a category's 10 spots are gone, its standard rates below apply</li>
 </ul>
 <!-- TODO: replace with the real Stripe Payment Link for this package -->
 <a class="fpay" data-package="founding-advertiser" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely — claim founding rate</a>
@@ -154,6 +154,21 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <!-- TODO: replace with the real Stripe Payment Link for this package -->
 <a class="pay" data-package="agent-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a>
 <a class="orderlink" data-order-package="agent-unlimited" href="#orderForm" style="display:block;margin-top:10px;text-align:center;font-weight:700;color:#FFFFFF">Reserve with Interac e-Transfer →</a></div>
+</div>
+</div>
+
+<div class="sect">
+<h2>Rentals — for landlords</h2>
+<p>Fill vacancies with local renters — no per-lead fees, ever.</p>
+<div class="plans">
+<div class="plan"><div class="price">$39 <small>/ 30 days</small></div><div class="nm">Single Rental Listing</div><div class="ds">One property, live for 30 days with full photo gallery. Manage it any time from your advertiser dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="rentals-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a>
+<a class="orderlink" data-order-package="rentals-single" href="#orderForm" style="display:block;margin-top:10px;text-align:center;font-weight:700;color:#FFFFFF">Reserve with Interac e-Transfer →</a></div>
+<div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$129 <small>/ mo</small></div><div class="nm">Landlord Unlimited</div><div class="ds">Every unit you manage, all month long. One simple price, managed from one dashboard.</div>
+<!-- TODO: replace with the real Stripe Payment Link for this package -->
+<a class="pay" data-package="rentals-unlimited" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a>
+<a class="orderlink" data-order-package="rentals-unlimited" href="#orderForm" style="display:block;margin-top:10px;text-align:center;font-weight:700;color:#FFFFFF">Reserve with Interac e-Transfer →</a></div>
 </div>
 </div>
 
@@ -230,15 +245,26 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <label style="font-weight:700">Email <input id="orderEmail" required type="email" maxlength="120" placeholder="you@business.com" style="width:100%;padding:11px;border:1.5px solid #ccd3e2;border-radius:10px;margin-top:4px"></label>
 <label style="font-weight:700">Phone (optional) <input id="orderPhone" type="tel" maxlength="40" placeholder="(905) 555-0100" style="width:100%;padding:11px;border:1.5px solid #ccd3e2;border-radius:10px;margin-top:4px"></label>
 <label style="font-weight:700">Package <select id="orderPackage" style="width:100%;padding:11px;border:1.5px solid #ccd3e2;border-radius:10px;margin-top:4px">
-<option value="founding-single">Founding Single — $29</option>
-<option value="founding-featured">Founding Featured — $79</option>
-<option value="founding-unlimited">Founding Unlimited — $149</option>
+<option value="founding-dealer-single">Dealer Founding Single Ad — $24.50</option>
+<option value="founding-dealer-lot-pack">Dealer Founding Lot Pack — $74.50</option>
+<option value="founding-dealer-unlimited">Dealer Founding Unlimited — $124.50</option>
+<option value="founding-agent-single">Agent Founding Single Listing — $19.50</option>
+<option value="founding-agent-5-pack">Agent Founding 5-Pack — $64.50</option>
+<option value="founding-agent-unlimited">Agent Founding Unlimited — $99.50</option>
+<option value="founding-rentals-single">Rentals Founding Single Listing — $19.50</option>
+<option value="founding-rentals-unlimited">Rentals Founding Landlord Unlimited — $64.50</option>
+<option value="founding-services-single">Services Founding Single Service Ad — $14.50</option>
+<option value="founding-services-unlimited">Services Founding Pro Unlimited — $49.50</option>
+<option value="founding-jobs-single">Jobs Founding Single Job Post — $24.50</option>
+<option value="founding-jobs-unlimited">Jobs Founding Employer Unlimited — $89.50</option>
 <option value="dealer-single">Dealer Single Ad — $49</option>
 <option value="dealer-lot-pack">Dealer Lot Pack — $149</option>
 <option value="dealer-unlimited">Dealer Unlimited — $249</option>
 <option value="agent-single">Agent Single Listing — $39</option>
 <option value="agent-5-pack">Agent 5-Pack — $129</option>
 <option value="agent-unlimited">Agent Unlimited — $199</option>
+<option value="rentals-single">Rentals Single Listing — $39</option>
+<option value="rentals-unlimited">Rentals Landlord Unlimited — $129</option>
 <option value="services-single">Services Single Service Ad — $29</option>
 <option value="services-unlimited">Services Pro Unlimited — $99</option>
 <option value="jobs-single">Jobs Single Job Post — $49</option>
@@ -251,12 +277,12 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <option value="rentals">Rentals — landlords &amp; managers</option>
 <option value="services">Services — pros &amp; local shops</option>
 <option value="jobs">Jobs — employers</option>
-</select><span style="display:block;font-weight:600;font-size:12px;color:#7a8499;margin-top:4px">Founding spots are capped at 10 per category — pick yours so we can hold your spot.</span></label>
+</select><span style="display:block;font-weight:600;font-size:12px;color:#7a8499;margin-top:4px">Your category is set by the founding package you picked — founding spots are capped at 10 per category.</span></label>
 <div id="orderLockinRow" style="display:none;border:1.5px solid #F4511E;border-radius:12px;padding:14px;background:#FFF7F3">
-<div style="font-weight:800;color:#203B62">Founding Member — <span id="orderLockinTerms">$29/mo · Billed monthly · Price locked for 12 months · First month free</span></div>
+<div style="font-weight:800;color:#203B62">Founding Member — <span id="orderLockinTerms">$24.50/mo · Billed monthly · Price locked for 12 months · First month free</span></div>
 <label style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-weight:600;font-size:14px;line-height:1.5;cursor:pointer"><input type="checkbox" id="orderLockin" style="margin-top:3px;width:18px;height:18px;flex:0 0 auto"><span>Yes — lock in my founding price for 12 months, billed monthly from launch. I understand my first month is free, and that if I cancel early I'll repay the discounts I've received.</span></label>
 </div>
-<div>Amount: <b id="orderAmount">$29</b> CAD</div>
+<div>Amount: <b id="orderAmount">$24.50</b> CAD</div>
 <button id="orderSubmit" style="background:#203B62;color:#fff;border:0;border-radius:10px;padding:13px;font-size:16px;font-weight:700;cursor:pointer">Reserve this package</button>
 <div id="orderNotice" style="color:#7a8499;font-size:13px"></div>
 </div>

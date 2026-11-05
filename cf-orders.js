@@ -36,15 +36,26 @@
      boost Interac reserve lives in its own section below and writes
      to public.boosts, not public.orders. */
   var PACKAGES = {
-    'founding-single': ['Founding Single', 29],
-    'founding-featured': ['Founding Featured', 79],
-    'founding-unlimited': ['Founding Unlimited', 149],
+    'founding-dealer-single': ['Dealer Founding Single Ad', 24.50],
+    'founding-dealer-lot-pack': ['Dealer Founding Lot Pack', 74.50],
+    'founding-dealer-unlimited': ['Dealer Founding Unlimited', 124.50],
+    'founding-agent-single': ['Agent Founding Single Listing', 19.50],
+    'founding-agent-5-pack': ['Agent Founding 5-Pack', 64.50],
+    'founding-agent-unlimited': ['Agent Founding Unlimited', 99.50],
+    'founding-rentals-single': ['Rentals Founding Single Listing', 19.50],
+    'founding-rentals-unlimited': ['Rentals Founding Landlord Unlimited', 64.50],
+    'founding-services-single': ['Services Founding Single Service Ad', 14.50],
+    'founding-services-unlimited': ['Services Founding Pro Unlimited', 49.50],
+    'founding-jobs-single': ['Jobs Founding Single Job Post', 24.50],
+    'founding-jobs-unlimited': ['Jobs Founding Employer Unlimited', 89.50],
     'dealer-single': ['Dealer Single Ad', 49],
     'dealer-lot-pack': ['Dealer Lot Pack', 149],
     'dealer-unlimited': ['Dealer Unlimited', 249],
     'agent-single': ['Agent Single Listing', 39],
     'agent-5-pack': ['Agent 5-Pack', 129],
     'agent-unlimited': ['Agent Unlimited', 199],
+    'rentals-single': ['Rentals Single Listing', 39],
+    'rentals-unlimited': ['Rentals Landlord Unlimited', 129],
     'services-single': ['Services Single Service Ad', 29],
     'services-unlimited': ['Services Pro Unlimited', 99],
     'jobs-single': ['Jobs Single Job Post', 49],
@@ -55,13 +66,15 @@
      button for three tiers, so it preselects the entry tier; the buyer
      can switch tiers in the dropdown). */
   var CARD_TO_OPTION = {
-    'founding-advertiser': 'founding-single',
+    'founding-advertiser': 'founding-dealer-single',
     'dealer-single': 'dealer-single',
     'dealer-lot-pack': 'dealer-lot-pack',
     'dealer-unlimited': 'dealer-unlimited',
     'agent-single': 'agent-single',
     'agent-5-pack': 'agent-5-pack',
     'agent-unlimited': 'agent-unlimited',
+    'rentals-single': 'rentals-single',
+    'rentals-unlimited': 'rentals-unlimited',
     'services-single': 'services-single',
     'services-unlimited': 'services-unlimited',
     'jobs-single': 'jobs-single',
@@ -90,7 +103,9 @@
 
   function money(n) {
     try {
-      return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
+      /* Whole dollars print as $29; founding halves print as $24.50. */
+      var frac = (Math.round(n * 100) % 100 === 0) ? 0 : 2;
+      return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: frac, maximumFractionDigits: 2 }).format(n);
     } catch (e) { return '$' + n; }
   }
 
@@ -113,9 +128,27 @@
      only shows while a founding tier is selected. */
   function isFounding(key) { return typeof key === 'string' && key.indexOf('founding-') === 0; }
 
+  /* Founding prices are per-category (50% off that category's standard
+     price — Martin's ruling, Nov 5, 2026), so each founding package key
+     carries its category: selecting one sets (and locks) the category
+     picker to match, and the cap counts the right category. */
+  var FOUNDING_CAT = {
+    'founding-dealer-single': 'dealers', 'founding-dealer-lot-pack': 'dealers', 'founding-dealer-unlimited': 'dealers',
+    'founding-agent-single': 'agents', 'founding-agent-5-pack': 'agents', 'founding-agent-unlimited': 'agents',
+    'founding-rentals-single': 'rentals', 'founding-rentals-unlimited': 'rentals',
+    'founding-services-single': 'services', 'founding-services-unlimited': 'services',
+    'founding-jobs-single': 'jobs', 'founding-jobs-unlimited': 'jobs'
+  };
+
   function updateCategoryRow() {
     var row = el('orderCategoryRow'), sel = el('orderPackage');
     if (row && sel) row.style.display = isFounding(sel.value) ? 'block' : 'none';
+    var catSel = el('orderCategory');
+    if (catSel && sel) {
+      var cat = FOUNDING_CAT[sel.value];
+      if (cat) { catSel.value = cat; catSel.disabled = true; }
+      else { catSel.disabled = false; }
+    }
   }
 
   /* The Founding Member lock-in panel shows only while a founding

@@ -646,7 +646,11 @@
        Step 5 Boost: a Boost button on ACTIVE rows only, plus a
        "Boosted until" pill when the ad has a live boost (an Active
        boosts row with expires_at in the future — the latest expiry
-       wins, because re-boost extends). */
+       wins, because re-boost extends). Nov 5 (Martin's catch): while
+       a boost is live the Boost button is NOT rendered at all — a
+       boosted ad wearing a live "Boost · $2.99" button invites an
+       accidental second purchase. The pill carries the state; the
+       button returns on its own once the boost expires. */
     var liveBoostByListing = {};
     (function () {
       var nowMs = Date.now();
@@ -671,7 +675,7 @@
             : '<span class="btn gho" style="opacity:.55">' + (x.status === 'pending' ? 'Awaiting approval' : esc(x.status)) + '</span>';
           var boostPill = liveBoostByListing[x.id]
             ? ' <span class="pill boost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> Boosted until ' + fullDate(new Date(liveBoostByListing[x.id]).toISOString()) + '</span>' : '';
-          var boostBtn = x.status === 'active'
+          var boostBtn = (x.status === 'active' && !liveBoostByListing[x.id])
             ? '<button class="btn pri" data-cf-boost="' + esc(x.id) + '" data-cf-boost-title="' + esc(x.title) + '">Boost · $2.99</button>' : '';
           var editBtn = (x.status === 'active' || x.status === 'pending' || x.status === 'rejected')
             ? '<button class="btn gho" data-cf-edit="' + esc(x.id) + '">Edit</button>' : '';

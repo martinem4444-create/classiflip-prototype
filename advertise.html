@@ -190,7 +190,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h2>Services — for pros &amp; local shops</h2>
 <p>Plumbers, electricians, cleaners, barbers, salons — get found by neighbours.</p>
 <div class="plans">
-<div class="plan"><div class="price">$29 <small>/ 30 days</small></div><div class="nm">Single service ad</div><div class="ds">One service, live for 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$14.50</b></span></div><button onclick="claim('Services — Single')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
+<div class="plan"><div class="price">$29 <small>/ 30 days</small></div><div class="nm">Solo Operator</div><div class="ds">Your trade, one listing — built for one-person operations. Live 30 days.</div><div class="frow"><span class="fnd">Founding: <b>$14.50</b></span></div><button onclick="claim('Services — Solo')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
 <div class="plan hl"><span class="chip">BEST VALUE</span><div class="price">$99 <small>/ mo</small></div><div class="nm">Pro Unlimited</div><div class="ds">Every service you offer, all month. One invoice.</div><div class="frow"><span class="fnd">Founding: <b>$49.50/mo</b></span></div><button onclick="claim('Services — Unlimited')">Claim founding rate</button><a class="buy" href="advertise-pay.html">Buy this package →</a></div>
 </div>
 </div>
@@ -258,7 +258,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 </footer>
 
 <script>
-const PKGS=['Jobs — Single post','Jobs — Unlimited','Real estate — Single','Real estate — 5-pack','Real estate — Unlimited','Rentals — Single','Rentals — Unlimited','Services — Single','Services — Unlimited','Dealer — Single','Dealer — Lot pack','Dealer — Unlimited','Boost — $2.99'];
+const PKGS=['Jobs — Single post','Jobs — Unlimited','Real estate — Single','Real estate — 5-pack','Real estate — Unlimited','Rentals — Single','Rentals — Unlimited','Services — Solo','Services — Unlimited','Dealer — Single','Dealer — Lot pack','Dealer — Unlimited','Boost — $2.99'];
 function claim(pkg){
   const sel=document.getElementById('cPkg');
   sel.innerHTML=PKGS.map(p=>'<option'+(p===pkg?' selected':'')+'>'+p+'</option>').join('');

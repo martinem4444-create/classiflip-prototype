@@ -44,7 +44,7 @@
     'founding-agent-unlimited': ['Agent Founding Unlimited', 99.50],
     'founding-rentals-single': ['Rentals Founding Single Listing', 19.50],
     'founding-rentals-unlimited': ['Rentals Founding Landlord Unlimited', 64.50],
-    'founding-services-single': ['Services Founding Single Service Ad', 14.50],
+    'founding-services-single': ['Services Founding Solo Operator', 14.50],
     'founding-services-unlimited': ['Services Founding Pro Unlimited', 49.50],
     'founding-jobs-single': ['Jobs Founding Single Job Post', 24.50],
     'founding-jobs-unlimited': ['Jobs Founding Employer Unlimited', 89.50],
@@ -56,7 +56,7 @@
     'agent-unlimited': ['Agent Unlimited', 199],
     'rentals-single': ['Rentals Single Listing', 39],
     'rentals-unlimited': ['Rentals Landlord Unlimited', 129],
-    'services-single': ['Services Single Service Ad', 29],
+    'services-single': ['Services Solo Operator', 29],
     'services-unlimited': ['Services Pro Unlimited', 99],
     'jobs-single': ['Jobs Single Job Post', 49],
     'jobs-unlimited': ['Jobs Employer Unlimited', 179]

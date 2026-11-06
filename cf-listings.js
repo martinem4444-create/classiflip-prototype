@@ -1413,10 +1413,16 @@
      state), untouched. Gate, enforced at render AND at click
      time: signed-in + own listing + active listing. The boosts
      table's own-listing-only insert policy is the server-side
-     backstop. cf-dashboard.js is never touched from here. */
+     backstop. cf-dashboard.js is never touched from here.
+     Nov 6 (Martin's catch, same rule as the dashboard): an ad with
+     a LIVE boost never offers this button — canRealBoost refuses
+     boosted ads, so neither the detail view nor the marketplace
+     card can invite an accidental second $2.99. The click handler
+     also re-checks canRealBoost before opening the reserve modal. */
   function canRealBoost(x) {
     try {
       if (!x || !x.live) return false;
+      if (x.boostedEffective) return false;
       if (!window.__cfMyId) return false;
       if (typeof loggedIn !== 'undefined' && !loggedIn) return false;
       return String(x.seller_id || '') !== '' && String(x.seller_id) === String(window.__cfMyId);
@@ -1540,6 +1546,7 @@
       x = null;
     }
     if (!x) return;
+    if (!canRealBoost(x)) return;
     e.preventDefault();
     e.stopPropagation();
     openRealBoostModal(x);

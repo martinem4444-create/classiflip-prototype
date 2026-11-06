@@ -1166,9 +1166,13 @@
      as a thumb. The page's own gallery-thumb handler swaps the main
      image — it reads data-gallery-image / data-gallery-photo off the
      clicked thumb — so no new click wiring is needed; the thumbs
-     below carry exactly the attributes it expects. Single-photo (or
-     no-photo) ads use the page's galleryMarkup exactly as before:
-     byte-identical output, no behaviour change. Note (v1.14): the
+     below carry exactly the attributes it expects. No-photo ads use
+     the page's galleryMarkup exactly as before: byte-identical
+     output, no behaviour change. Single-photo ads (Nov 5 fix,
+     Martin's catch): the galleryMarkup fallback repeated the one
+     photo in all five thumb slots and labelled it "Image 1 of 5" —
+     a single photo now renders on its own with no thumb strip,
+     matching the post-ad preview. Note (v1.14): the
      page's thumb handler now counts the real thumbs for its
      "Image N of M" label (index.html fix); the images were always right. */
   function escAttr(s) {
@@ -1176,7 +1180,10 @@
   }
   function detailGalleryMarkup(x) {
     var photos = (x.photos && x.photos.length) ? x.photos : [];
-    if (photos.length <= 1) return galleryMarkup(x);
+    if (photos.length === 1) {
+      return '<div class="detail-gallery"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of 1"><img src="' + escAttr(photos[0]) + '" alt="" loading="lazy"></div></div>';
+    }
+    if (photos.length === 0) return galleryMarkup(x);
     var thumbs = photos.map(function (p, i) {
       return '<button class="gallery-thumb gallery-tone-' + ((i % 5) + 1) + (i === 0 ? ' active' : '') + '" data-gallery-image="' + (i + 1) + '" data-gallery-icon="' + escAttr(x.icon) + '" data-gallery-photo="' + escAttr(p) + '" aria-label="Show image ' + (i + 1) + ' of ' + photos.length + '"><img src="' + escAttr(p) + '" alt="" loading="lazy"></button>';
     }).join('');

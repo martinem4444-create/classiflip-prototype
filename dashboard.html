@@ -213,16 +213,13 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 </div>
 
 <div class="viewhead">
-<div><h1 id="dashTitle">My listings</h1><p id="dashSub">3 active · Mississauga, ON</p></div>
+<div><h1 id="dashTitle">My listings</h1><p id="dashSub">Loading…</p></div>
 <button class="btn pri" id="postBtn" onclick="openEditor('New ad')">+ Post new ad</button>
 </div>
 
 <!-- stats: seller -->
 <div class="stats" id="statsSeller">
-<div class="stat"><div class="n">3</div><div class="l">Active listings</div></div>
-<div class="stat"><div class="n">2,140</div><div class="l">Impressions · last 7 days</div></div>
-<div class="stat"><div class="n">318</div><div class="l">Ad clicks</div></div>
-<div class="stat hot"><div class="n">5</div><div class="l">Unread messages</div></div>
+<div class="stat"><div class="n">…</div><div class="l">Loading…</div></div>
 </div>
 <div class="atabs" id="dashTabs">
 <button type="button" class="atab on" data-cf-dtab="ads">My Ads<span class="n" id="dtabNAds" hidden></span></button>
@@ -256,24 +253,8 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 
 <!-- listings: seller -->
 <div id="listSeller">
-<div class="lcard">
-<img src="images/listing-6.jpg" alt="City commuter bike">
-<div class="inf"><div class="t">City commuter bike <span class="pill live">Live</span> <span class="pill boost">Boosted · 4d left</span></div>
-<div class="p">$180</div><div class="s">1,020 impressions · 148 clicks · 3 messages · posted Oct 12</div></div>
-<div class="acts"><button class="btn gho" onclick="openEditor('City commuter bike')">Edit</button><button class="btn pri" onclick="openBoost('City commuter bike')">Boost · $2.99</button><button class="btn gho danger" onclick="deleteAd(this)">Delete</button></div>
-</div>
-<div class="lcard">
-<img src="images/listing-1.jpg" alt="13-inch laptop">
-<div class="inf"><div class="t">13&Prime; everyday laptop <span class="pill live">Live</span></div>
-<div class="p">$450</div><div class="s">860 impressions · 132 clicks · 2 messages · posted Oct 10</div></div>
-<div class="acts"><button class="btn gho" onclick="openEditor('13&quot; everyday laptop')">Edit</button><button class="btn pri" onclick="openBoost('13&quot; everyday laptop')">Boost · $2.99</button><button class="btn gho danger" onclick="deleteAd(this)">Delete</button></div>
-</div>
-<div class="lcard">
-<img src="images/listing-34.jpg" alt="">
-<div class="inf"><div class="t">Leather sofa, great shape <span class="pill pause">Paused</span></div>
-<div class="p">$120</div><div class="s">260 impressions · 38 clicks · 0 messages · posted Oct 4</div></div>
-<div class="acts"><button class="btn gho" onclick="openEditor('Leather sofa')">Edit</button><button class="btn dark" onclick="toast('Listing resumed — it is live again')">Resume</button><button class="btn gho danger" onclick="deleteAd(this)">Delete</button></div>
-</div>
+<!-- Nov 6: baked-in demo cards removed (Martin’s flash catch) — cf-dashboard.js paints the real ads over this placeholder. -->
+<div class="notice">Loading your ads…</div>
 </div>
 
 <!-- listings: business -->

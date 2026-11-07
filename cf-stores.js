@@ -38,9 +38,14 @@
   var SOLD_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
   var stores = [];
   var activeCat = 'All';
-  /* Marketplace order, matching the homepage category pills. */
-  var CAT_ORDER = ['Cars', 'Homes', 'Rentals', 'Services', 'Computers',
-    'Electronics', 'Clothes', 'Home', 'Sports', 'Tools', 'Free', 'Jobs'];
+  /* v1.2 (Nov 7, 2026, Martin's call): chips ONLY for the paid
+     package categories — Cars, Homes, Rentals, Services — in
+     that order. Free-category chips (Computers, Electronics,
+     Sports, …) came up live and Martin cut them: the directory
+     filter mirrors the business side of the marketplace. A
+     store whose ads live only in free categories appears under
+     All Stores, same as a store with no current ads. */
+  var CAT_ORDER = ['Cars', 'Homes', 'Rentals', 'Services'];
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -96,9 +101,8 @@
       (s.cats || []).forEach(function (c) { present[c] = true; });
     });
     var list = CAT_ORDER.filter(function (c) { return present[c]; });
-    Object.keys(present).forEach(function (c) {
-      if (CAT_ORDER.indexOf(c) === -1) list.push(c);
-    });
+    /* v1.2: no fallback chips — categories outside CAT_ORDER
+       (the free categories) never get a chip. */
     if (!list.length) { catsEl.hidden = true; return; }
     var html = '<button type="button" class="cat-chip' + (activeCat === 'All' ? ' on' : '') +
       '" data-cat="All">All stores</button>';

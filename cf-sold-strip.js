@@ -1,4 +1,4 @@
-/* ClassiFlip Recently Sold strip v1 (Oct 31, 2026) — homepage
+/* ClassiFlip Recently Sold strip v2 (Nov 6, 2026) — homepage
    only (index.html, #soldSection right under Boosted listings).
    Martin's social-proof call: sold business ads stay OUT of
    live search results (his Oct 30 rule stands), but they get
@@ -9,7 +9,20 @@
    STORE, never to the dead ad. No site-wide totals are printed.
    Fail-soft by design: no qualifying sales (or any error) and
    the section simply stays hidden — never an empty strip.
-   Reuses window.CFAuth.client (no keys of its own). */
+   Reuses window.CFAuth.client (no keys of its own).
+
+   v2 (Nov 6, 2026, Martin's call): read from the
+   public_sold_cards view instead of listings directly. RLS
+   hides sold rows from anonymous visitors, so v1 only ever
+   rendered for signed-in members — the strip is a billboard
+   and billboards face outward. The view exposes ONLY the
+   fields a card displays (title, price, store name, first
+   photo, dates) for store sales inside the 14-day window,
+   which the view itself enforces. Created by
+   ClassiFlip-Public-Sold-Cards-View.sql.
+   (v1 also carried the Nov 2 storefront bug — ordering photos
+   by the non-existent 'sort_order' column; fixed in v1.1
+   earlier on Nov 6, then superseded by this rewrite.) */
 (function () {
   'use strict';
 
@@ -17,7 +30,6 @@
   var rowEl = document.getElementById('soldRow');
   if (!sectionEl || !rowEl) return;
 
-  var SOLD_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
   var MAX_CARDS = 6;
 
   function esc(s) {
@@ -72,39 +84,15 @@
 
     var res;
     try {
-      res = await client.from('listings')
-        .select('id,title,price,seller_id,sold_at,created_at')
-        .eq('status', 'sold')
+      res = await client.from('public_sold_cards')
+        .select('id,title,price,seller_id,store_name,photo_url,sold_at,created_at')
         .order('sold_at', { ascending: false, nullsFirst: false })
         .limit(30);
       if (res && res.error) throw res.error;
     } catch (e) { return; }
     var rows = (res && res.data) ? res.data : [];
 
-    var now = Date.now();
-    rows = rows.filter(function (x) {
-      if (!x || !x.seller_id) return false;
-      if (!x.sold_at) return true; /* same rule as the storefront: no stamp = still in window */
-      return (now - new Date(x.sold_at).getTime()) <= SOLD_WINDOW_MS;
-    });
-    if (!rows.length) return;
-
-    /* Stores only: keep listings whose seller has a storefront,
-       and learn the store's name for the card. */
-    var sellerIds = [];
-    rows.forEach(function (x) { if (sellerIds.indexOf(x.seller_id) === -1) sellerIds.push(x.seller_id); });
-    var storeNames = {};
-    try {
-      var bp = await client.from('business_profiles').select('id,display_name').in('id', sellerIds);
-      if (bp && !bp.error && bp.data) {
-        bp.data.forEach(function (b) { storeNames[b.id] = b.display_name; });
-      }
-    } catch (e) { return; }
-    rows = rows.filter(function (x) {
-      if (!storeNames[x.seller_id]) return false;
-      x._store = storeNames[x.seller_id];
-      return true;
-    });
+    rows = rows.filter(function (x) { return x && x.seller_id && x.store_name; });
     rows.sort(function (a, b) {
       var ta = new Date(a.sold_at || a.created_at || 0).getTime();
       var tb = new Date(b.sold_at || b.created_at || 0).getTime();
@@ -113,24 +101,10 @@
     rows = rows.slice(0, MAX_CARDS);
     if (!rows.length) return;
 
-    /* First photo per listing, same shape as the storefront.
-       Order by 'position' — Nov 6 fix: this query used to order by
-       'sort_order', a column that doesn't exist, so the photo fetch
-       errored silently and every card fell back to the tag icon
-       (same bug the storefront had, fixed there Nov 2). */
-    try {
-      var ids = rows.map(function (x) { return x.id; });
-      var ph = await client.from('listing_photos')
-        .select('listing_id,photo_url').in('listing_id', ids)
-        .order('position', { ascending: true });
-      if (ph && !ph.error && ph.data) {
-        var first = {};
-        ph.data.forEach(function (p) {
-          if (p && p.listing_id && !first[p.listing_id]) first[p.listing_id] = p.photo_url;
-        });
-        rows.forEach(function (x) { x._photo = first[x.id] || null; });
-      }
-    } catch (e) {}
+    rows.forEach(function (x) {
+      x._store = x.store_name;
+      x._photo = x.photo_url || null;
+    });
 
     rowEl.innerHTML = rows.map(card).join('');
     sectionEl.hidden = false;

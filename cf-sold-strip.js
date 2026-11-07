@@ -113,12 +113,16 @@
     rows = rows.slice(0, MAX_CARDS);
     if (!rows.length) return;
 
-    /* First photo per listing, same shape as the storefront. */
+    /* First photo per listing, same shape as the storefront.
+       Order by 'position' — Nov 6 fix: this query used to order by
+       'sort_order', a column that doesn't exist, so the photo fetch
+       errored silently and every card fell back to the tag icon
+       (same bug the storefront had, fixed there Nov 2). */
     try {
       var ids = rows.map(function (x) { return x.id; });
       var ph = await client.from('listing_photos')
         .select('listing_id,photo_url').in('listing_id', ids)
-        .order('sort_order', { ascending: true });
+        .order('position', { ascending: true });
       if (ph && !ph.error && ph.data) {
         var first = {};
         ph.data.forEach(function (p) {

@@ -96,17 +96,15 @@
 
   function renderCats() {
     if (!catsEl) return;
-    var present = {};
-    stores.forEach(function (s) {
-      (s.cats || []).forEach(function (c) { present[c] = true; });
-    });
-    var list = CAT_ORDER.filter(function (c) { return present[c]; });
-    /* v1.2: no fallback chips — categories outside CAT_ORDER
-       (the free categories) never get a chip. */
-    if (!list.length) { catsEl.hidden = true; return; }
+    if (!stores.length) { catsEl.hidden = true; return; }
+    /* v1.3 (Nov 7, 2026, Martin's call): the four paid-category
+       chips are ALWAYS shown, even with no store in them yet —
+       the row is the directory's fixed business taxonomy, not a
+       data-driven subset. An empty category lands on a "no
+       stores yet" state for that category. */
     var html = '<button type="button" class="cat-chip' + (activeCat === 'All' ? ' on' : '') +
       '" data-cat="All">All stores</button>';
-    list.forEach(function (c) {
+    CAT_ORDER.forEach(function (c) {
       html += '<button type="button" class="cat-chip' + (activeCat === c ? ' on' : '') +
         '" data-cat="' + esc(c) + '">' + esc(c) + '</button>';
     });
@@ -132,7 +130,12 @@
     if (noneEl) noneEl.hidden = true;
     if (!rows.length) {
       if (gridEl) gridEl.hidden = true;
-      if (emptyEl) emptyEl.hidden = false;
+      if (emptyEl) {
+        emptyEl.textContent = (!q && activeCat !== 'All')
+          ? 'No ' + activeCat + ' stores yet — the first ones are getting set up.'
+          : 'No stores match that — try a different name or category.';
+        emptyEl.hidden = false;
+      }
       return;
     }
     if (emptyEl) emptyEl.hidden = true;

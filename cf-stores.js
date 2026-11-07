@@ -24,7 +24,16 @@
    and categories derived from package labels could credit
    stores for reserved or expired packages. What a store
    demonstrably sells is public, truthful, and needs no new
-   SQL. (Martin delegated the call Nov 6, 2026.) */
+   SQL. (Martin delegated the call Nov 6, 2026.)
+
+   v1.4 (Nov 7, 2026) — category-name normalisation. Martin's
+   catch: car stores turning up under other chips. Two causes
+   found in the data: (1) test accounts genuinely hold ads in
+   several categories (a store follows its ADS, not its name —
+   by design), and (2) the marketplace taxonomy carries a
+   split name — some home ads are filed 'Home', the chip is
+   'Homes'. normCat() folds known aliases into the chip names
+   so a 'Home' ad counts as Homes. */
 (function () {
   'use strict';
 
@@ -46,6 +55,13 @@
      store whose ads live only in free categories appears under
      All Stores, same as a store with no current ads. */
   var CAT_ORDER = ['Cars', 'Homes', 'Rentals', 'Services'];
+
+  /* v1.4: fold split/legacy category names into chip names. */
+  var CAT_ALIAS = { Home: 'Homes', Car: 'Cars', Rental: 'Rentals', Service: 'Services' };
+  function normCat(c) {
+    var k = String(c || '').trim();
+    return CAT_ALIAS[k] || k;
+  }
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -175,12 +191,12 @@
           if (r.status === 'active') {
             if (!r.expires_at || new Date(r.expires_at).getTime() > now) {
               c.live += 1;
-              if (r.category) c.cats[r.category] = true;
+              if (r.category) c.cats[normCat(r.category)] = true;
             }
           } else if (r.status === 'sold') {
             if (!r.sold_at || (now - new Date(r.sold_at).getTime()) <= SOLD_WINDOW_MS) {
               c.sold += 1;
-              if (r.category) c.cats[r.category] = true;
+              if (r.category) c.cats[normCat(r.category)] = true;
             }
           }
         });

@@ -12,7 +12,19 @@
    anywhere — each store's numbers are its own and already
    public on its storefront. No login needed. Fails soft: any
    error lands on a plain explanatory state, never a blank page.
-   Reuses window.CFAuth.client (no keys of its own). */
+   Reuses window.CFAuth.client (no keys of its own).
+
+   v1.1 (Nov 6, 2026) — category chips. A store belongs to a
+   category when it has a LIVE ad there, or SOLD one there in
+   the last 14 days (the same window as the sold counts), so a
+   dealer keeps its Cars chip through the gap between listings.
+   Chips are built only for categories that hold at least one
+   store, in marketplace order, and combine with the name
+   search. Deliberately NOT package-based: orders are private,
+   and categories derived from package labels could credit
+   stores for reserved or expired packages. What a store
+   demonstrably sells is public, truthful, and needs no new
+   SQL. (Martin delegated the call Nov 6, 2026.) */
 (function () {
   'use strict';
 
@@ -21,9 +33,14 @@
   var emptyEl = document.getElementById('storesEmpty');
   var noneEl = document.getElementById('storesNone');
   var searchEl = document.getElementById('storeSearch');
+  var catsEl = document.getElementById('storeCats');
 
   var SOLD_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
   var stores = [];
+  var activeCat = 'All';
+  /* Marketplace order, matching the homepage category pills. */
+  var CAT_ORDER = ['Cars', 'Homes', 'Rentals', 'Services', 'Computers',
+    'Electronics', 'Clothes', 'Home', 'Sports', 'Tools', 'Free', 'Jobs'];
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -36,6 +53,7 @@
     if (gridEl) gridEl.hidden = true;
     if (emptyEl) emptyEl.hidden = true;
     if (noneEl) noneEl.hidden = true;
+    if (catsEl) catsEl.hidden = true;
   }
 
   function getClient() {
@@ -71,9 +89,31 @@
       '</span></a>';
   }
 
+  function renderCats() {
+    if (!catsEl) return;
+    var present = {};
+    stores.forEach(function (s) {
+      (s.cats || []).forEach(function (c) { present[c] = true; });
+    });
+    var list = CAT_ORDER.filter(function (c) { return present[c]; });
+    Object.keys(present).forEach(function (c) {
+      if (CAT_ORDER.indexOf(c) === -1) list.push(c);
+    });
+    if (!list.length) { catsEl.hidden = true; return; }
+    var html = '<button type="button" class="cat-chip' + (activeCat === 'All' ? ' on' : '') +
+      '" data-cat="All">All stores</button>';
+    list.forEach(function (c) {
+      html += '<button type="button" class="cat-chip' + (activeCat === c ? ' on' : '') +
+        '" data-cat="' + esc(c) + '">' + esc(c) + '</button>';
+    });
+    catsEl.innerHTML = html;
+    catsEl.hidden = false;
+  }
+
   function render() {
     var q = (searchEl && searchEl.value ? searchEl.value : '').trim().toLowerCase();
     var rows = stores.filter(function (s) {
+      if (activeCat !== 'All' && (s.cats || []).indexOf(activeCat) === -1) return false;
       if (!q) return true;
       return (String(s.display_name || '').toLowerCase().indexOf(q) !== -1) ||
              (String(s.tagline || '').toLowerCase().indexOf(q) !== -1);
@@ -112,29 +152,38 @@
     if (!profs || !profs.data) { fail('Stores could not be loaded right now. Please refresh in a moment.'); return; }
 
     /* Light counts query — degrades to zeroes rather than
-       failing the page if it ever errors. */
+       failing the page if it ever errors. Also gathers each
+       store's categories (live ads + sold inside the window)
+       for the v1.1 chips. */
     var counts = {};
     try {
       var lr = await client.from('listings')
-        .select('seller_id,status,sold_at,expires_at')
+        .select('seller_id,status,sold_at,expires_at,category')
         .in('status', ['active', 'sold']);
       if (lr && !lr.error && lr.data) {
         var now = Date.now();
         lr.data.forEach(function (r) {
           if (!r || !r.seller_id) return;
-          var c = counts[r.seller_id] || (counts[r.seller_id] = { live: 0, sold: 0 });
+          var c = counts[r.seller_id] || (counts[r.seller_id] = { live: 0, sold: 0, cats: {} });
           if (r.status === 'active') {
-            if (!r.expires_at || new Date(r.expires_at).getTime() > now) c.live += 1;
+            if (!r.expires_at || new Date(r.expires_at).getTime() > now) {
+              c.live += 1;
+              if (r.category) c.cats[r.category] = true;
+            }
           } else if (r.status === 'sold') {
-            if (!r.sold_at || (now - new Date(r.sold_at).getTime()) <= SOLD_WINDOW_MS) c.sold += 1;
+            if (!r.sold_at || (now - new Date(r.sold_at).getTime()) <= SOLD_WINDOW_MS) {
+              c.sold += 1;
+              if (r.category) c.cats[r.category] = true;
+            }
           }
         });
       }
     } catch (e) {}
 
     stores = profs.data.map(function (p) {
-      var c = counts[p.id] || { live: 0, sold: 0 };
+      var c = counts[p.id] || { live: 0, sold: 0, cats: {} };
       p.live = c.live; p.sold = c.sold;
+      p.cats = Object.keys(c.cats || {});
       return p;
     });
     stores.sort(function (a, b) {
@@ -144,6 +193,14 @@
     });
 
     if (searchEl) searchEl.addEventListener('input', render);
+    if (catsEl) catsEl.addEventListener('click', function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('[data-cat]') : null;
+      if (!b) return;
+      activeCat = b.getAttribute('data-cat') || 'All';
+      renderCats();
+      render();
+    });
+    renderCats();
     render();
   }
 

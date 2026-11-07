@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.15 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard.
+/* ClassiFlip real listings v1.16 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard.
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -431,22 +431,19 @@
           }
         }
       } catch (e) { /* leave the previous set; buttons just stay hidden */ }
-      // v1.5 merge: keep the page's demo filler BELOW the real ads.
-      // Snapshot the demo rows once, before the first replace, so later
-      // refreshes never duplicate them.
-      if (!window.__cfDemoRows) {
-        var looksDemo = listings.length && listings.every(function (x) { return !x.live; });
-        if (looksDemo) window.__cfDemoRows = listings.slice();
-      }
-      var demo = window.__cfDemoRows || [];
+      // v1.16 (Nov 6, 2026): demo merge RETIRED. The v1.5 behaviour
+      // (snapshot the page's prototype samples and re-append them
+      // below the real ads) made the marketplace flash demo ads on
+      // every refresh and kept fake filler parked under the real
+      // listings. Martin caught it on refresh. index.html now ships
+      // with an empty listings array and real rows stand alone.
       listings.length = 0;
       rows.forEach(function (r) { listings.push(r); });
-      demo.forEach(function (r) { listings.push(r); });
       if (typeof render === 'function') render();
       if (typeof renderFeatured === 'function') renderFeatured();
       if (typeof renderHeroCarousel === 'function') renderHeroCarousel();
       var rn = document.getElementById('resultsNote');
-      if (rn) rn.textContent = rows.length + (rows.length === 1 ? ' live listing' : ' live listings') + (demo.length ? ' + ' + demo.length + ' samples' : '');
+      if (rn) rn.textContent = rows.length + (rows.length === 1 ? ' live listing' : ' live listings');
       try { maybeOpenDeepLink(); } catch (e) {}
       return true;
     } catch (e) {

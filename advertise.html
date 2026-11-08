@@ -249,7 +249,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="fld"><label>Anything we should know? (optional)</label><textarea id="cMsg" placeholder="Tell us about your business…"></textarea></div>
 <button class="go" onclick="submitClaim()">Claim my spot</button>
 <div class="msg" id="cMsg2"></div>
-<p class="sub" style="margin-top:12px;font-size:12px">Prototype demo — nothing is submitted or charged. At launch this connects to our signup flow.</p>
+<p class="sub" style="margin-top:12px;font-size:12px">Next step: the secure checkout — reserving is free today, no charge. Your founding rate is locked for 12 months, and your spot is confirmed by email.</p>
 </div></div>
 
 <footer>
@@ -258,10 +258,12 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 </footer>
 
 <script>
-const PKGS=['Jobs — Single post','Jobs — Unlimited','Real estate — Single','Real estate — 5-pack','Real estate — Unlimited','Rentals — Single','Rentals — Unlimited','Services — Solo','Services — Unlimited','Dealer — Single','Dealer — Lot pack','Dealer — Unlimited','Boost — $2.99'];
+const PKGS=[['Jobs — Founding Single','founding-jobs-single'],['Jobs — Founding Unlimited','founding-jobs-unlimited'],['Real estate — Founding Single','founding-agent-single'],['Real estate — Founding 5-Pack','founding-agent-5-pack'],['Real estate — Founding Unlimited','founding-agent-unlimited'],['Rentals — Founding Single','founding-rentals-single'],['Rentals — Founding Unlimited','founding-rentals-unlimited'],['Services — Founding Solo Operator','founding-services-single'],['Services — Founding Pro Unlimited','founding-services-unlimited'],['Dealer — Founding Single','founding-dealer-single'],['Dealer — Founding Lot Pack','founding-dealer-lot-pack'],['Dealer — Founding Unlimited','founding-dealer-unlimited']];
+const CLAIM_MAP={'Jobs — Single post':'founding-jobs-single','Jobs — Unlimited':'founding-jobs-unlimited','Real estate — Single':'founding-agent-single','Real estate — 5-pack':'founding-agent-5-pack','Real estate — Unlimited':'founding-agent-unlimited','Rentals — Single':'founding-rentals-single','Rentals — Unlimited':'founding-rentals-unlimited','Services — Solo':'founding-services-single','Services — Unlimited':'founding-services-unlimited','Dealer — Single':'founding-dealer-single','Dealer — Lot pack':'founding-dealer-lot-pack','Dealer — Unlimited':'founding-dealer-unlimited'};
 function claim(pkg){
   const sel=document.getElementById('cPkg');
-  sel.innerHTML=PKGS.map(p=>'<option'+(p===pkg?' selected':'')+'>'+p+'</option>').join('');
+  const want=CLAIM_MAP[pkg]||'';
+  sel.innerHTML=PKGS.map(p=>'<option value="'+p[1]+'"'+(p[1]===want?' selected':'')+'>'+p[0]+'</option>').join('');
   document.getElementById('cMsg2').className='msg';
   document.getElementById('mClaim').classList.add('on');
   document.body.style.overflow='hidden';
@@ -271,9 +273,15 @@ function submitClaim(){
   const biz=document.getElementById('cBiz').value.trim(),em=document.getElementById('cEmail').value.trim();
   const m=document.getElementById('cMsg2');
   if(!biz||!em||em.indexOf('@')<0){m.textContent='Please add your business name and a valid email.';m.className='msg';m.style.display='block';m.style.color='#B3372A';return;}
-  m.textContent='Spot claimed — we will reach out before launch with your founding rate locked in.';
+  /* Wired Nov 8, 2026 (Martin's call): the claim used to end here —
+     a success message and the lead evaporated. Now the details ride
+     to the real checkout (advertise-pay.html), which prefills the
+     order form and preselects the founding package; the reserve
+     lands as a real order + admin email alert. */
+  try{sessionStorage.setItem('cfClaimLead',JSON.stringify({business:biz,name:document.getElementById('cName').value.trim(),email:em,phone:document.getElementById('cPhone').value.trim(),pkg:document.getElementById('cPkg').value,notes:document.getElementById('cMsg').value.trim()}));}catch(e){}
+  m.textContent='You are in — taking you to the secure checkout to lock your founding spot…';
   m.className='msg ok';m.style.display='block';
-  setTimeout(closeClaim,2600);
+  setTimeout(function(){location.href='advertise-pay.html';},900);
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClaim();});
 </script>

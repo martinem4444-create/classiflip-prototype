@@ -1,4 +1,4 @@
-/* ClassiFlip Interac orders v1 (step 4) — Supabase (marketplace-dev).
+/* ClassiFlip Interac orders v1.1 (step 4) — Supabase (marketplace-dev).
  *
  * WHAT IT DOES:
  * - Wires the "Reserve with Interac e-Transfer" links on advertise-pay.html:
@@ -176,6 +176,30 @@
   updateAmount();
   updateCategoryRow();
   updateLockinRow();
+
+  /* Founding-claim carry-over (Nov 8, 2026): the Advertise page's
+     claim modal stashes the visitor's details + chosen founding
+     package in sessionStorage ('cfClaimLead') and lands here.
+     Prefill the order form and preselect their package so the
+     claim becomes a real reserve (order row + admin email) with
+     no retyping. Consumed once; anything missing is left alone. */
+  try {
+    var leadRaw = sessionStorage.getItem('cfClaimLead');
+    if (leadRaw) {
+      sessionStorage.removeItem('cfClaimLead');
+      var lead = JSON.parse(leadRaw);
+      if (lead) {
+        var lb = el('orderBusiness'); if (lb && lead.business) lb.value = String(lead.business).slice(0, 80);
+        var ln = el('orderName'); if (ln && lead.name) ln.value = String(lead.name).slice(0, 80);
+        var le = el('orderEmail'); if (le && lead.email) le.value = String(lead.email).slice(0, 120);
+        var lp = el('orderPhone'); if (lp && lead.phone) lp.value = String(lead.phone).slice(0, 40);
+        var lsel = el('orderPackage');
+        if (lsel && lead.pkg && PACKAGES[lead.pkg]) { lsel.value = lead.pkg; updateAmount(); updateCategoryRow(); updateLockinRow(); }
+        notice('Your founding claim came with you — check the details and press Reserve to lock your spot.');
+        var lf = el('orderForm'); if (lf) lf.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  } catch (e) {}
 
   var submit = el('orderSubmit');
   if (submit) submit.addEventListener('click', async function () {

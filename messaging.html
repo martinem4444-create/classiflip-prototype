@@ -236,7 +236,15 @@ if(t.live&&window.CFMessages){window.CFMessages.send(t.listingId,t.otherId,txt).
 try{pushMine(txt,true);}catch(e){alert('Offer could not be sent. Please reopen the conversation and try again.');}
 }
 $('box').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
-renderThreads();
+// Demo-flash fix (Nov 8, 2026 - Martin caught it on Android + iPhone): a
+// signed-in device painted the demo threads for a split second before the
+// real ones swapped in. If this browser holds a Supabase session, paint a
+// loading row instead and let the real-messages swap below fill the list.
+// Logged-out visitors still get the demo preview instantly, as before. The
+// 4s timer is a safety net: if the real load ever hangs, fall back to the
+// demo paint rather than an eternal loading row.
+window.__cfSess=false;try{for(var __i=0;__i<localStorage.length;__i++){var __k=localStorage.key(__i);if(__k&&__k.indexOf('sb-')===0&&__k.indexOf('auth-token')>0){window.__cfSess=true;break;}}}catch(e){}
+if(window.__cfSess){$('threads').innerHTML='<div data-cf-loading="1" style="padding:22px 18px;color:#68788F;font-size:14px">Loading your messages\u2026</div>';setTimeout(function(){var __th=$('threads');if(__th&&__th.querySelector('[data-cf-loading]')){renderThreads();}},4000);}else{renderThreads();}
 // Deep link: messaging.html?thread=<id> opens that conversation directly;
 // otherwise auto-open the first thread so the chat box always works
 (function(){try{var q=new URLSearchParams(location.search).get('thread');if(q&&THREADS.some(t=>t.id===q)){openThread(q);}}catch(e){}})();
@@ -245,7 +253,7 @@ renderThreads();
 (async function(){try{
 if(!window.CFMessages)return;
 var real=await window.CFMessages.listThreads();
-if(!real||!real.length)return;
+if(!real||!real.length){if(window.__cfSess){THREADS.length=0;$('threads').innerHTML='<div style="padding:22px 18px;color:#68788F;font-size:14px">No messages yet. When a buyer messages you about an ad, it will show up here.</div>';}return;}
 var wasOpen=cur;
 // Swap-kill fix: remember the open DEMO thread object, not just its id.
 // The swap below removes demo threads from THREADS; without this saved
@@ -261,7 +269,7 @@ if(wasOpen&&THREADS.some(function(t){return t.id===wasOpen;})){openThread(wasOpe
 // demo ids, so a real thread id in ?thread= missed until now. Only when
 // nothing is open, so a user's open thread is never overridden.
 if(!cur){try{var q2=new URLSearchParams(location.search).get('thread');if(q2&&THREADS.some(function(t){return t.id===q2;})){openThread(q2);}}catch(e2){}}
-}catch(e){}})();
+}catch(e){if(window.__cfSess){try{renderThreads();}catch(e3){}}}})();
 </script>
 <script>
 /* Live messages (Nov 1, 2026): new messages land WITHOUT a refresh.

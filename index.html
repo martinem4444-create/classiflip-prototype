@@ -609,6 +609,17 @@ function openMessageThread(x){
       /* Single Google-style search (Oct 29 decision: keep one bar, wait for buyer feedback before any split): the one search term matches title + category + location together. */
       let rows=listings.filter(x=>(currentCategory==='All'||x.category===currentCategory)&&(condition==='All'||x.condition===condition)&&(!q||`${x.title} ${x.category} ${x.location||''} ${(x.tags||[]).join(' ')}`.toLowerCase().includes(q))&&(!savedOnly||saved.has(String(x.id))));
       const sort=document.getElementById('sortFilter').value;if(sort==='low')rows.sort((a,b)=>a.price-b.price);if(sort==='high')rows.sort((a,b)=>b.price-a.price);
+      /* Fair rotation (Nov 8, 2026, Martin's call; applies only to the default "Boosted first" sort — buyer-chosen price sorts skip it): the unboosted group is ordered fresh-first (ads under 24h old, newest first), then a daily rotation — a seeded shuffle keyed by Toronto day + listing id, identical for every visitor that day, so every seller gets time near the top and repost-gaming buys nothing. A round-robin then spreads each seller's ads: everyone's first ad shows before anyone's second. Boosted ads are untouched here; the FCFS pin below lifts them above everything, exactly as before. */
+      if(sort==='featured'){
+        const nowMs=Date.now();
+        const dayKey=new Date(nowMs).toLocaleDateString('en-CA',{timeZone:'America/Toronto'});
+        const hashKey=(str)=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
+        const grp=(x)=>x.boostedEffective?0:((x.created_at&&(nowMs-new Date(x.created_at).getTime())<864e5)?1:2);
+        rows.sort((a,b)=>{const ga=grp(a),gb=grp(b);if(ga!==gb)return ga-gb;if(ga===1)return new Date(b.created_at)-new Date(a.created_at);if(ga===2)return hashKey(dayKey+'|'+a.id)-hashKey(dayKey+'|'+b.id);return 0;});
+        const seenSeller={},tagged=rows.map(x=>{if(x.boostedEffective)return{x:x,occ:-1};const k=String(x.seller_id||'');const o=seenSeller[k]||0;seenSeller[k]=o+1;return{x:x,occ:o};});
+        const rr=tagged.filter(t=>t.occ>=0).sort((p,q)=>p.occ-q.occ);let ri=0;
+        rows=tagged.map(t=>t.occ<0?t.x:rr[ri++].x);
+      }
       /* FCFS boost ordering: boosted-effective real rows pin first within the viewed set, BEFORE pagination slicing, ordered by activation time ASC (oldest live boost on top; BST number breaks same-timestamp ties). Price sort applies ONLY within the unboosted group below (the stable sort above already ordered it). Demo rows are never boosted-effective. */
       rows.sort((a,b)=>{const ab=a.boostedEffective?1:0,bb=b.boostedEffective?1:0;if(ab!==bb)return bb-ab;if(ab)return fcfsCompare(a,b);return 0;});
       const filterKey=currentCategory+'|'+condition+'|'+q+'|'+sort+'|'+savedOnly;if(filterKey!==lastFilterKey){lastFilterKey=filterKey;currentPage=1;}

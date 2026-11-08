@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.16 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard.
+/* ClassiFlip real listings v1.17 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -283,6 +283,7 @@
       verified: false,
       live: true,
       seller_id: r.seller_id || null,
+      created_at: r.created_at || null,
       boostedEffective: !!(boostedIds && boostedIds[r.id]),
       boostExpires: (boostedIds && boostedIds[r.id]) || null,
       boostActivatedMs: (boostSort && boostSort[r.id]) ? boostSort[r.id].ms : null,

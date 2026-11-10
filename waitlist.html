@@ -75,6 +75,12 @@ footer{padding:0 0 40px;font-size:13px;color:var(--mu)}
 .fdeal ul li::before{content:"✓ ";color:var(--rose);font-weight:800}
 .adv .fine{text-align:center}
 .opts{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 4px}
+.seg{display:flex;gap:10px;margin:4px 0 2px}
+.seg label{flex:1;display:flex;align-items:center;gap:8px;border:1.5px solid var(--ln);border-radius:12px;padding:11px 14px;cursor:pointer;font-size:14.5px;font-weight:700;color:var(--ink);background:var(--bg)}
+.seg input{accent-color:var(--rose);width:18px;height:18px;margin:0;flex:none}
+.seg label:has(input:checked){border-color:var(--rose);background:var(--tint)}
+input[type=text].ti,input[type=tel].ti,select.ti{width:100%;height:50px;border:1px solid var(--ln);border-radius:12px;padding:0 14px;font:inherit;background:var(--bg);color:var(--ink)}
+.hint2{font-size:12.5px;color:var(--mu);margin:5px 0 0}
 @media(max-width:720px){.tiers{grid-template-columns:1fr}.tier.hot{transform:none}}
 .mback{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(13,21,38,.62);backdrop-filter:blur(4px);display:none;z-index:60;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .mback.on{display:block}
@@ -139,6 +145,31 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 <div id="fields">
 <label class="t" for="em">Email address</label>
 <input id="em" name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+<div class="t" style="margin-top:14px">I’m joining as</div>
+<div class="seg" role="radiogroup" aria-label="Joining as">
+<label><input type="radio" name="wl_type" value="private" checked onchange="wlFork()"><span>Private seller</span></label>
+<label><input type="radio" name="wl_type" value="business" onchange="wlFork()"><span>Business</span></label>
+</div>
+<div id="wlBiz" style="display:none">
+<label class="t" for="wlBizName" style="margin-top:14px">Business name</label>
+<input class="ti" id="wlBizName" type="text" placeholder="e.g. Penske Auto Sales" autocomplete="organization">
+<label class="t" for="wlCat" style="margin-top:14px">Business category</label>
+<select class="ti" id="wlCat">
+<option value="">Choose one…</option>
+<option>Cars</option>
+<option>Homes</option>
+<option>Rentals</option>
+<option>Services</option>
+<option>Jobs</option>
+</select>
+<label class="t" for="wlPhone" style="margin-top:14px">Phone <span style="font-weight:600;color:var(--mu)">(optional)</span></label>
+<input class="ti" id="wlPhone" type="tel" placeholder="Only if you’d like a call" autocomplete="tel">
+<p class="hint2">Leave your number only if you’d like a quick founder call from Martin before launch — no pressure, and it’s never shared.</p>
+</div>
+<div id="wlPriv">
+<label class="t" for="wlIntent" style="margin-top:14px">What do you plan to sell? <span style="font-weight:600;color:var(--mu)">(optional)</span></label>
+<input class="ti" id="wlIntent" type="text" placeholder="e.g. Furniture, a car, collectibles…">
+</div>
 <div class="t" style="margin-top:14px">I’m interested in</div>
 <div class="opts"><label class="ck"><input type="radio" name="interest" value="buying" checked><span>Buying</span></label>
 <label class="ck"><input type="radio" name="interest" value="selling"><span>Selling</span></label>
@@ -188,6 +219,15 @@ function wlFinish(real){
   if(d.className.indexOf("on")<0) d.className=d.className+" on";
   return false;
 }
+function wlType(){
+  var r=document.querySelector('input[name="wl_type"]:checked');
+  return r?r.value:"private";
+}
+function wlFork(){
+  var biz=wlType()==="business";
+  wlG("wlBiz").style.display=biz?"block":"none";
+  wlG("wlPriv").style.display=biz?"none":"block";
+}
 function wlSubmit(){
   var m=wlG("msg"), b=wlG("go");
   var hp=document.querySelector('input[name="website"]');
@@ -196,6 +236,16 @@ function wlSubmit(){
   if(!/^\S+@\S+\.\S+$/.test(em)){m.textContent="Enter a valid email address.";return false;}
   if(!wlG("age").checked){m.textContent="You must be 18 or older to join \u2014 selling requires 18+.";return false;}
   if(!wlG("ok").checked){m.textContent="Please tick the box to agree to get a launch email.";return false;}
+  var seg=wlType(), bizName="", bizCat="", bizPhone="", intent="";
+  if(seg==="business"){
+    bizName=wlG("wlBizName").value.replace(/^\s+|\s+$/g,"");
+    bizCat=wlG("wlCat").value;
+    bizPhone=wlG("wlPhone").value.replace(/^\s+|\s+$/g,"");
+    if(!bizName){m.textContent="Please enter your business name.";return false;}
+    if(!bizCat){m.textContent="Please choose your business category.";return false;}
+  } else {
+    intent=wlG("wlIntent").value.replace(/^\s+|\s+$/g,"");
+  }
   m.textContent=""; b.disabled=true;
   /* Live storage (Nov 3, 2026): the signup now inserts into
      waitlist_signups (public insert policy; one row per email —
@@ -205,7 +255,8 @@ function wlSubmit(){
   var client=null;
   try{ if(window.CFAuth && window.CFAuth.client) client=window.CFAuth.client; }catch(e){}
   if(!client){ m.textContent="Something went wrong — please try again in a moment."; b.disabled=false; return false; }
-  client.from("waitlist_signups").insert([{email:em.toLowerCase()}]).then(function(res){
+  var row={email:em.toLowerCase(),signup_type:seg,business_name:bizName||null,category:bizCat||null,phone:bizPhone||null,intent:intent||null};
+  client.from("waitlist_signups").insert([row]).then(function(res){
     if(res && res.error && res.error.code!=="23505"){
       m.textContent="Something went wrong — please try again."; b.disabled=false; return;
     }

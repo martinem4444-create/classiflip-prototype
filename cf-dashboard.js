@@ -1048,6 +1048,7 @@
       if (wlLbl) wlLbl.textContent = 'Waitlist signups · ' + ((wlT && !wlT.error && typeof wlT.count === 'number') ? wlT.count : '—') + ' today · ' + ((wlW && !wlW.error && typeof wlW.count === 'number') ? wlW.count : '—') + ' this week';
     } catch (e) {}
 
+    try { await renderAdminWaitlist(client); } catch (e) {}
     try { await renderAdminUsers(client); } catch (e) {}
     try { await renderAdminReports(client); } catch (e) {}
 
@@ -2068,6 +2069,125 @@
       p.hidden = !show;
       p.style.display = show ? '' : 'none';
     });
+  });
+
+  /* Waitlist lead list (Nov 9, 2026): the Site Overview counter
+     grows into the working list — newest first, filter by segment
+     and category, counts per group, and a CSV export whose last
+     three columns are blank tracker columns (Called/Emailed ·
+     Date · Outcome/Notes), so the export IS Martin's call sheet.
+     Admin-only end to end: this runs inside renderAdmin and the
+     waitlist SELECT policy is is_admin. Fails soft with the SQL
+     hint until cf-waitlist-segments-migration.sql has run. */
+  var cfWlRows = null, cfWlSeg = 'all', cfWlCat = 'all';
+  function cfWlFiltered() {
+    if (!cfWlRows) return [];
+    return cfWlRows.filter(function (r) {
+      if (cfWlSeg !== 'all' && (r.signup_type || '') !== cfWlSeg) return false;
+      if (cfWlCat !== 'all' && (r.category || '') !== cfWlCat) return false;
+      return true;
+    });
+  }
+  function cfWlPaint() {
+    var box = el('adminWaitlistBox');
+    if (!box || !cfWlRows) return;
+    var cats = ['Cars', 'Homes', 'Rentals', 'Services', 'Jobs'];
+    var nPriv = 0, nBiz = 0, byCat = {};
+    cfWlRows.forEach(function (r) {
+      if (r.signup_type === 'business') nBiz++; else if (r.signup_type === 'private') nPriv++;
+      if (r.category) byCat[r.category] = (byCat[r.category] || 0) + 1;
+    });
+    var counts = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+      '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px"><b>' + cfWlRows.length + '</b> total</span>' +
+      '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px"><b>' + nBiz + '</b> businesses</span>' +
+      '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px"><b>' + nPriv + '</b> private</span>' +
+      cats.map(function (c) { return '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px">' + c + ' <b>' + (byCat[c] || 0) + '</b></span>'; }).join('') +
+      '</div>';
+    var controls = '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+      '<select id="wlSegFilter" aria-label="Filter by type" style="padding:8px;border:1px solid var(--line);border-radius:8px">' +
+      '<option value="all"' + (cfWlSeg === 'all' ? ' selected' : '') + '>All signups</option>' +
+      '<option value="business"' + (cfWlSeg === 'business' ? ' selected' : '') + '>Businesses</option>' +
+      '<option value="private"' + (cfWlSeg === 'private' ? ' selected' : '') + '>Private sellers</option></select>' +
+      '<select id="wlCatFilter" aria-label="Filter by category" style="padding:8px;border:1px solid var(--line);border-radius:8px">' +
+      '<option value="all"' + (cfWlCat === 'all' ? ' selected' : '') + '>All categories</option>' +
+      cats.map(function (c) { return '<option value="' + c + '"' + (cfWlCat === c ? ' selected' : '') + '>' + c + '</option>'; }).join('') +
+      '</select>' +
+      '<button class="btn pri" type="button" data-cf-wl-export>Export CSV (call sheet)</button></div>';
+    var rows = cfWlFiltered();
+    var list;
+    if (!cfWlRows.length) {
+      list = '<div class="notice">No waitlist signups yet.</div>';
+    } else if (!rows.length) {
+      list = '<div class="notice">No signups match this filter.</div>';
+    } else {
+      list = rows.map(function (r) {
+        var isBiz = r.signup_type === 'business';
+        var pill = r.signup_type
+          ? '<span style="border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:12px;font-weight:700">' + (isBiz ? 'Business' : 'Private') + '</span>'
+          : '<span style="border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:12px">Early signup</span>';
+        var main = isBiz
+          ? '<b>' + esc(r.business_name || '(no business name)') + '</b>' + (r.category ? ' · ' + esc(r.category) : '')
+          : (r.intent ? 'Plans to sell: ' + esc(r.intent) : 'Private seller');
+        var contact = esc(r.email || '') + (r.phone ? ' · <a href="tel:' + esc(r.phone.replace(/[^0-9+]/g, '')) + '">' + esc(r.phone) + '</a>' : '');
+        return '<div class="lcard"><div class="inf"><div class="t">' + main + ' ' + pill + '</div>' +
+          '<div class="s">' + contact + ' · ' + shortDate(r.created_at) + '</div></div></div>';
+      }).join('');
+    }
+    box.innerHTML = counts + controls + list;
+  }
+  async function renderAdminWaitlist(client) {
+    var box = el('adminWaitlistBox');
+    if (!box) return;
+    var res = null;
+    try {
+      res = await client.from('waitlist_signups')
+        .select('id,email,created_at,signup_type,business_name,category,phone,intent')
+        .order('created_at', { ascending: false }).limit(1000);
+    } catch (e) {}
+    if (!res || res.error || !res.data) {
+      box.innerHTML = '<div class="notice">The waitlist list needs the segments SQL first (file: supabase/cf-waitlist-segments-migration.sql). Run it in the Supabase SQL Editor, then refresh.</div>';
+      return;
+    }
+    cfWlRows = res.data;
+    setTabBadge('atabNWaitlist', cfWlRows.length, false);
+    cfWlPaint();
+  }
+  function cfWlCsvCell(v) {
+    v = (v === null || v === undefined) ? '' : String(v);
+    return '"' + v.replace(/"/g, '""') + '"';
+  }
+  function cfWlExport() {
+    var rows = cfWlFiltered();
+    var head = ['Date', 'Type', 'Business', 'Category', 'Email', 'Phone', 'Intent', 'Called/Emailed', 'Date Contacted', 'Outcome/Notes'];
+    var lines = [head.map(cfWlCsvCell).join(',')];
+    rows.forEach(function (r) {
+      lines.push([
+        r.created_at ? String(r.created_at).slice(0, 10) : '',
+        r.signup_type || '',
+        r.business_name || '',
+        r.category || '',
+        r.email || '',
+        r.phone || '',
+        r.intent || '',
+        '', '', ''
+      ].map(cfWlCsvCell).join(','));
+    });
+    var blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'classiflip-waitlist.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+  }
+  document.addEventListener('change', function (e) {
+    if (!e.target) return;
+    if (e.target.id === 'wlSegFilter') { cfWlSeg = e.target.value; cfWlPaint(); }
+    if (e.target.id === 'wlCatFilter') { cfWlCat = e.target.value; cfWlPaint(); }
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-cf-wl-export]') : null;
+    if (b) cfWlExport();
   });
 
   window.CFDashboard = { refresh: refresh };

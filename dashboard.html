@@ -355,6 +355,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <button type="button" class="atab" data-cf-atab="boosts">Boosts<span class="n" id="atabNBoosts" hidden></span></button>
 <button type="button" class="atab" data-cf-atab="reports">Reports<span class="n" id="atabNReports" hidden></span></button>
 <button type="button" class="atab" data-cf-atab="allads">All Ads</button>
+<button type="button" class="atab" data-cf-atab="waitlist">Waitlist<span class="n" id="atabNWaitlist" hidden></span></button>
 </div>
 <div data-cf-apanel="approvals">
 <h3 style="margin:16px 0 8px">Ads awaiting approval</h3>
@@ -389,6 +390,11 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <h3 style="margin:16px 0 8px">All ads (newest first)</h3>
 <p class="hint">Every seller's ads, all statuses — business and private. Delete uses the same two-tap Confirm, and never touches the order.</p>
 <div id="adminAllAdsList"></div>
+</div>
+<div data-cf-apanel="waitlist" hidden>
+<h3 style="margin:16px 0 8px">Waitlist signups — your warm leads</h3>
+<p class="hint">Newest first. A business that left a phone number asked for a founder call; a business without one gets the soft-touch email. Export the CSV and work it like a call sheet — the last three columns are your tracker (Called/Emailed · Date · Outcome).</p>
+<div id="adminWaitlistBox"><div class="notice">Loading waitlist…</div></div>
 </div>
 </div>
 </div>

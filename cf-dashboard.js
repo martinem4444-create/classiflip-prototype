@@ -2078,8 +2078,15 @@
      Date · Outcome/Notes), so the export IS Martin's call sheet.
      Admin-only end to end: this runs inside renderAdmin and the
      waitlist SELECT policy is is_admin. Fails soft with the SQL
-     hint until cf-waitlist-segments-migration.sql has run. */
+     hint until cf-waitlist-segments-migration.sql has run.
+     Export stamp (Nov 10, 2026): the export downloads only rows
+     whose exported_at is still NULL, then stamps them, so a lead
+     lands on exactly one call sheet; the "Include already-
+     exported" checkbox re-downloads the full filtered list.
+     Needs cf-waitlist-export-stamp-migration.sql (column + the
+     admin UPDATE policy). */
   var cfWlRows = null, cfWlSeg = 'all', cfWlCat = 'all';
+  var cfWlInclExported = false, cfWlClient = null;
   function cfWlFiltered() {
     if (!cfWlRows) return [];
     return cfWlRows.filter(function (r) {
@@ -2092,13 +2099,15 @@
     var box = el('adminWaitlistBox');
     if (!box || !cfWlRows) return;
     var cats = ['Cars', 'Homes', 'Rentals', 'Services', 'Jobs'];
-    var nPriv = 0, nBiz = 0, byCat = {};
+    var nPriv = 0, nBiz = 0, nNew = 0, byCat = {};
     cfWlRows.forEach(function (r) {
       if (r.signup_type === 'business') nBiz++; else if (r.signup_type === 'private') nPriv++;
+      if (!r.exported_at) nNew++;
       if (r.category) byCat[r.category] = (byCat[r.category] || 0) + 1;
     });
     var counts = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
       '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px"><b>' + cfWlRows.length + '</b> total</span>' +
+      '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px"><b>' + nNew + '</b> new to export</span>' +
       '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px"><b>' + nBiz + '</b> businesses</span>' +
       '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px"><b>' + nPriv + '</b> private</span>' +
       cats.map(function (c) { return '<span style="border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px">' + c + ' <b>' + (byCat[c] || 0) + '</b></span>'; }).join('') +
@@ -2112,7 +2121,8 @@
       '<option value="all"' + (cfWlCat === 'all' ? ' selected' : '') + '>All categories</option>' +
       cats.map(function (c) { return '<option value="' + c + '"' + (cfWlCat === c ? ' selected' : '') + '>' + c + '</option>'; }).join('') +
       '</select>' +
-      '<button class="btn pri" type="button" data-cf-wl-export>Export CSV (call sheet)</button></div>';
+      '<button class="btn pri" type="button" data-cf-wl-export>Export CSV (call sheet)</button>' +
+      '<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="wlInclExported"' + (cfWlInclExported ? ' checked' : '') + '> Include already-exported</label></div>';
     var rows = cfWlFiltered();
     var list;
     if (!cfWlRows.length) {
@@ -2129,8 +2139,9 @@
           ? '<b>' + esc(r.business_name || '(no business name)') + '</b>' + (r.category ? ' · ' + esc(r.category) : '')
           : (r.intent ? 'Plans to sell: ' + esc(r.intent) : 'Private seller');
         var contact = esc(r.email || '') + (r.phone ? ' · <a href="tel:' + esc(r.phone.replace(/[^0-9+]/g, '')) + '">' + esc(r.phone) + '</a>' : '');
+        var expTag = r.exported_at ? ' · <span style="font-weight:700">Exported ✓ ' + shortDate(r.exported_at) + '</span>' : '';
         return '<div class="lcard"><div class="inf"><div class="t">' + main + ' ' + pill + '</div>' +
-          '<div class="s">' + contact + ' · ' + shortDate(r.created_at) + '</div></div></div>';
+          '<div class="s">' + contact + ' · ' + shortDate(r.created_at) + expTag + '</div></div></div>';
       }).join('');
     }
     box.innerHTML = counts + controls + list;
@@ -2138,14 +2149,15 @@
   async function renderAdminWaitlist(client) {
     var box = el('adminWaitlistBox');
     if (!box) return;
+    cfWlClient = client;
     var res = null;
     try {
       res = await client.from('waitlist_signups')
-        .select('id,email,created_at,signup_type,business_name,category,phone,intent')
+        .select('id,email,created_at,signup_type,business_name,category,phone,intent,exported_at')
         .order('created_at', { ascending: false }).limit(1000);
     } catch (e) {}
     if (!res || res.error || !res.data) {
-      box.innerHTML = '<div class="notice">The waitlist list needs the segments SQL first (file: supabase/cf-waitlist-segments-migration.sql). Run it in the Supabase SQL Editor, then refresh.</div>';
+      box.innerHTML = '<div class="notice">The waitlist list needs its SQL first (files: supabase/cf-waitlist-segments-migration.sql, then supabase/cf-waitlist-export-stamp-migration.sql). Run them in the Supabase SQL Editor, then refresh.</div>';
       return;
     }
     cfWlRows = res.data;
@@ -2156,11 +2168,18 @@
     v = (v === null || v === undefined) ? '' : String(v);
     return '"' + v.replace(/"/g, '""') + '"';
   }
-  function cfWlExport() {
+  async function cfWlExport() {
     var rows = cfWlFiltered();
+    var use = cfWlInclExported ? rows : rows.filter(function (r) { return !r.exported_at; });
+    if (!use.length) {
+      alert(rows.length
+        ? 'Everything in this view is already exported. Tick "Include already-exported" to download the full list again.'
+        : 'No signups match this filter.');
+      return;
+    }
     var head = ['Date', 'Type', 'Business', 'Category', 'Email', 'Phone', 'Intent', 'Called/Emailed', 'Date Contacted', 'Outcome/Notes'];
     var lines = [head.map(cfWlCsvCell).join(',')];
-    rows.forEach(function (r) {
+    use.forEach(function (r) {
       lines.push([
         r.created_at ? String(r.created_at).slice(0, 10) : '',
         r.signup_type || '',
@@ -2179,11 +2198,32 @@
     document.body.appendChild(a);
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+    /* Stamp the just-exported rows so they never download twice.
+       Chunked at 100 ids to keep the update URL sane at scale.
+       Fail-soft: if the stamp write fails, the rows simply stay
+       unstamped and will be offered again next export. */
+    var toStamp = use.filter(function (r) { return !r.exported_at; });
+    if (toStamp.length && cfWlClient) {
+      var stamp = new Date().toISOString();
+      var ok = true;
+      for (var i = 0; i < toStamp.length; i += 100) {
+        var ids = toStamp.slice(i, i + 100).map(function (r) { return r.id; });
+        try {
+          var up = await cfWlClient.from('waitlist_signups').update({ exported_at: stamp }).in('id', ids);
+          if (up && up.error) { ok = false; break; }
+        } catch (e) { ok = false; break; }
+      }
+      if (ok) {
+        toStamp.forEach(function (r) { r.exported_at = stamp; });
+        cfWlPaint();
+      }
+    }
   }
   document.addEventListener('change', function (e) {
     if (!e.target) return;
     if (e.target.id === 'wlSegFilter') { cfWlSeg = e.target.value; cfWlPaint(); }
     if (e.target.id === 'wlCatFilter') { cfWlCat = e.target.value; cfWlPaint(); }
+    if (e.target.id === 'wlInclExported') { cfWlInclExported = !!e.target.checked; }
   });
   document.addEventListener('click', function (e) {
     var b = e.target && e.target.closest ? e.target.closest('[data-cf-wl-export]') : null;

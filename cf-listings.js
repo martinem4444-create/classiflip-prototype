@@ -1914,6 +1914,7 @@
   var rrListing = null;
   function rrModalBuild() {
     var m = document.getElementById('cfRrModal');
+    if (!document.getElementById('cfRrStyle')) { var st = document.createElement('style'); st.id = 'cfRrStyle'; st.textContent = '.mback{position:fixed;inset:0;z-index:80;background:rgba(7,14,25,.58);display:none;align-items:flex-start;justify-content:center;padding:18px;overflow-y:auto}.mback.on{display:flex}.mcard{position:relative;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:22px;width:min(460px,100%);margin:5vh auto 0}.mcard h3{margin:0 24px 6px 0;font-size:19px}.mcard .sub{color:var(--muted);font-size:13.5px;margin:0 0 12px}.mcard .field{margin-bottom:12px}.mcard .field label{display:block;font-weight:600;font-size:13px;margin-bottom:5px}.mx{position:absolute;top:10px;right:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-size:17px;cursor:pointer;line-height:1}'; document.head.appendChild(st); }
     if (m && !document.getElementById('cfRrSend')) { m.remove(); m = null; }
     if (m) return m;
     m = document.createElement('div');

@@ -602,9 +602,11 @@
          uploads to the listing-photos bucket, in picker order, BEFORE
          the listing insert, so a failed upload stops the post (real
          error shown, form kept) instead of posting photo-less or
-         partial by accident. Cap: 8 photos — the picker already caps
-         at 8, this is the backstop with a clear message. */
-      var MAX_PHOTOS = 8;
+         partial by accident. Caps by category (Cars 20, Homes 40,
+         everything else 8) — the picker already caps, this is the
+         backstop with a clear message. */
+      var _capEl = document.getElementById('adCategory');
+      var MAX_PHOTOS = (_capEl && _capEl.value === 'Cars') ? 20 : (_capEl && _capEl.value === 'Homes') ? 40 : 8;
       var picked = [];
       try {
         if (typeof pendingPhotos !== 'undefined' && pendingPhotos.length) picked = pendingPhotos.slice();

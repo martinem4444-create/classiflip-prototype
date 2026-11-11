@@ -1316,6 +1316,7 @@
   function openRealDetail(x) {
     try {
       activeListingId = x.id;
+      window.__cfActiveListing = x;
       document.getElementById('detailTitle').textContent = 'Listing details';
       document.getElementById('detailBody').innerHTML =
         '<div class="detail">' + detailGalleryMarkup(x) + '<div class="detail-info">' +
@@ -1937,7 +1938,8 @@
   function closeRr() { var m = document.getElementById('cfRrModal'); if (m) m.classList.remove('on'); }
   async function openRr(listingId) {
     var x = null;
-    try { x = listings.find(function (y) { return String(y.id) === String(listingId); }); } catch (e) {}
+    try { if (window.__cfActiveListing && String(window.__cfActiveListing.id) === String(listingId)) x = window.__cfActiveListing; } catch (e) {}
+    if (!x) { try { x = listings.find(function (y) { return String(y.id) === String(listingId); }); } catch (e) {} }
     if (!x) return;
     rrListing = x;
     var m = rrModalBuild();

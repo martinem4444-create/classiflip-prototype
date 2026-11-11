@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.17 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
+/* ClassiFlip real listings v1.18 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -341,13 +341,26 @@
   async function refreshListings() {
     var client = getClient();
     if (!client) return false;
+    /* v1.18 (Nov 11, 2026): hero carousel painted late — Martin timed
+       the first slide at 1s+. The old chain ran getUser, the listings
+       query, the photos query and the boosts RPC strictly one after
+       another. The boosts RPC depends on none of them, so it now
+       fires HERE, in parallel with everything else, and is only
+       awaited where its result is consumed below. getUser likewise
+       no longer blocks the listings query: it resolves into
+       window.__cfMyId whenever it lands, exactly as render() gates
+       on it. Behaviour is otherwise identical. */
+    var boostsPromise = null;
+    try { boostsPromise = Promise.resolve(client.rpc('cf_effective_boosts')).catch(function () { return null; }); }
+    catch (e) { boostsPromise = null; }
     /* Marketplace real boost button (v1.9): the signed-in owner id,
        so the page's render() can gate the real Boost button on own
        listings. getUser() resolves the stored session even when the
        page's loggedIn flag has not flipped yet. */
     try {
-      var uRes = await client.auth.getUser();
-      window.__cfMyId = (uRes && uRes.data && uRes.data.user) ? uRes.data.user.id : null;
+      Promise.resolve(client.auth.getUser()).then(function (uRes) {
+        window.__cfMyId = (uRes && uRes.data && uRes.data.user) ? uRes.data.user.id : null;
+      }).catch(function () { window.__cfMyId = null; });
     } catch (e) { window.__cfMyId = null; }
     try { refreshPauseBanner(); } catch (e2) {}
     try {
@@ -385,7 +398,7 @@
       var boostedIds = {};
       var boostSort = {};
       try {
-        var br = await client.rpc('cf_effective_boosts');
+        var br = boostsPromise ? await boostsPromise : await client.rpc('cf_effective_boosts');
         if (br && !br.error && br.data) {
           var nowMs = Date.now();
           br.data.forEach(function (b) {

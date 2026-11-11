@@ -756,7 +756,7 @@ openModal('detailModal');
   const boosted=listings.filter(x=>x.boostedEffective).sort(fcfsCompare);
   const samples=listings.filter(x=>x.featured&&!x.boostedEffective);
   const feats=boosted.concat(samples).slice(0,10);
-  track.innerHTML=feats.map(x=>`<div class="hcar-slide" data-view="${x.id}"><span class="hcar-tag">BOOSTED</span><img src="${x.photo||''}" alt="" loading="eager"><div class="hcar-cap"><div class="t">${safe(x.title)}</div><div class="p">${money(x.price)}</div></div></div>`).join('');
+  track.innerHTML=feats.map((x,i)=>`<div class="hcar-slide" data-view="${x.id}"><span class="hcar-tag">BOOSTED</span><img src="${x.photo||''}" alt="" ${i===0?'loading="eager" fetchpriority="high"':'loading="lazy"'} decoding="async"><div class="hcar-cap"><div class="t">${safe(x.title)}</div><div class="p">${money(x.price)}</div></div></div>`).join('');
   dots.innerHTML=feats.map((_,i)=>`<button data-dot="${i}" aria-label="Slide ${i+1}" class="${i===0?'on':''}"></button>`).join('');
   let cur=0;const n=feats.length;let timer=null;
   const go=i=>{cur=(i+n)%n;track.style.transform=`translateX(-${cur*100}%)`;dots.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('on',j===cur));};

@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.18 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
+/* ClassiFlip real listings v1.19 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -371,24 +371,27 @@
         .order('created_at', { ascending: false });
       if (res.error || !res.data || !res.data.length) return false;
       /* Multi-photo (v1.7): one extra read for every fetched ad's
-         photos, ordered by position. If it fails (migration not run
-         yet, table missing), photosById stays null and mapRow falls
-         back to photo_url — the page keeps working exactly as
-         before, just single-photo. */
-      var photosById = null;
+         photos, ordered by position. v1.19 (Nov 11, 2026): this read
+         no longer BLOCKS the first paint — Martin still timed a
+         carousel delay after v1.18 because the whole chain (photos
+         read + storefront read) had to finish before any slide
+         existed. Card and carousel covers all come from photo_url,
+         which is exactly the position-0 photo (mapRow: photo =
+         r.photo_url; gallery falls back to [photo_url]), so rows
+         now paint from the listings query alone and the photos read
+         runs in the background, filling each row's gallery (row
+         .photos) when it lands. Detail views opened after it lands
+         see the full gallery, exactly as before; one opened in the
+         first fraction of a second shows the cover only until the
+         next refresh. If this read fails, galleries simply stay
+         [photo_url] — the page works exactly as before. */
+      var photosPromise = null;
       try {
         var ids = res.data.map(function (r) { return r.id; });
-        var ph = await client.from('listing_photos')
+        photosPromise = Promise.resolve(client.from('listing_photos')
           .select('listing_id,photo_url,position')
-          .in('listing_id', ids).order('position', { ascending: true });
-        if (ph && !ph.error && ph.data) {
-          photosById = {};
-          ph.data.forEach(function (p) {
-            if (!photosById[p.listing_id]) photosById[p.listing_id] = [];
-            if (p.photo_url) photosById[p.listing_id].push(p.photo_url);
-          });
-        }
-      } catch (e) { photosById = null; }
+          .in('listing_id', ids).order('position', { ascending: true })).catch(function () { return null; });
+      } catch (e) { photosPromise = null; }
       /* Step 5 Boost (v1.8): effective-boost set from the public RPC.
          Render-time enforcement lives here: only Active rows with
          expires_at in the future count, and the latest expiry wins
@@ -424,7 +427,7 @@
           });
         }
       } catch (e) { boostedIds = {}; boostSort = {}; }
-      var rows = res.data.map(function (r) { return mapRow(r, photosById, boostedIds, boostSort); });
+      var rows = res.data.map(function (r) { return mapRow(r, null, boostedIds, boostSort); });
       /* Dealer pages (v1.11): which fetched sellers have a public
          storefront? business_profiles is publicly readable by
          policy, so this works logged-out too. A seller with no row
@@ -432,19 +435,21 @@
          (the migration's trigger enforces advertiser-only). If the
          query fails (migration not run yet), the set stays empty
          and the page renders exactly as before. */
+      /* v1.19: fired, not awaited — the dealer buttons this feeds are
+         a grid detail, not worth delaying first paint for. When the
+         read lands and actually adds storefronts, the grid re-renders
+         once so the buttons appear (same pattern as the photos fill
+         below). */
+      var storefrontsPromise = null;
       try {
         var sellerIds = [];
         res.data.forEach(function (r) {
           if (r.seller_id && sellerIds.indexOf(r.seller_id) === -1) sellerIds.push(r.seller_id);
         });
         if (sellerIds.length) {
-          var sp = await client.from('business_profiles').select('id').in('id', sellerIds);
-          if (sp && !sp.error && sp.data) {
-            window.__cfStorefronts = new Set();
-            sp.data.forEach(function (b) { window.__cfStorefronts.add(String(b.id)); });
-          }
+          storefrontsPromise = Promise.resolve(client.from('business_profiles').select('id').in('id', sellerIds)).catch(function () { return null; });
         }
-      } catch (e) { /* leave the previous set; buttons just stay hidden */ }
+      } catch (e) { storefrontsPromise = null; }
       // v1.16 (Nov 6, 2026): demo merge RETIRED. The v1.5 behaviour
       // (snapshot the page's prototype samples and re-append them
       // below the real ads) made the marketplace flash demo ads on
@@ -459,6 +464,31 @@
       var rn = document.getElementById('resultsNote');
       if (rn) rn.textContent = rows.length + (rows.length === 1 ? ' live listing' : ' live listings');
       try { maybeOpenDeepLink(); } catch (e) {}
+      /* v1.19 background fills: when the photos read lands, swap each
+         painted row's gallery for the full listing_photos set — no
+         re-render, covers never come from .photos, so nothing on
+         screen moves. When the storefront read lands with new ids,
+         re-render once so dealer buttons appear. */
+      if (photosPromise) {
+        photosPromise.then(function (ph) {
+          if (!ph || ph.error || !ph.data) return;
+          var byId = {};
+          ph.data.forEach(function (p) {
+            if (!byId[p.listing_id]) byId[p.listing_id] = [];
+            if (p.photo_url) byId[p.listing_id].push(p.photo_url);
+          });
+          rows.forEach(function (row) { if (byId[row.id]) row.photos = byId[row.id]; });
+        }).catch(function () {});
+      }
+      if (storefrontsPromise) {
+        storefrontsPromise.then(function (sp) {
+          if (!sp || sp.error || !sp.data || !sp.data.length) return;
+          var before = window.__cfStorefronts ? window.__cfStorefronts.size : 0;
+          if (!window.__cfStorefronts) window.__cfStorefronts = new Set();
+          sp.data.forEach(function (b) { window.__cfStorefronts.add(String(b.id)); });
+          if (window.__cfStorefronts.size !== before && typeof render === 'function') render();
+        }).catch(function () {});
+      }
       return true;
     } catch (e) {
       return false;

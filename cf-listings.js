@@ -1,4 +1,4 @@
-/* ClassiFlip real listings v1.19 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
+/* ClassiFlip real listings v1.20 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
  *
  * WHAT IT DOES:
@@ -268,12 +268,15 @@
     var price = Number(r.price);
     if (isNaN(price)) price = 0;
     var photos = (photosById && photosById[r.id]) || (r.photo_url ? [r.photo_url] : []);
+    var sp = parseSpecs(r.specs);
     return {
       id: r.id,
       title: r.title || '',
       price: price,
       category: r.category || 'General',
-      condition: r.condition || 'Good',
+      condition: r.condition || ((r.category === 'Cars' && sp.vehicle_type) ? (CAR_LABELS.vehicle_type[sp.vehicle_type] || 'Good') : 'Good'),
+      specs: sp,
+      carSearch: carSearchOf(sp),
       location: r.location || 'Mississauga, ON',
       desc: r.description || '',
       icon: ICON_MAP[r.category] || 'laptop',
@@ -366,9 +369,21 @@
     try {
       var res = await client
         .from('listings')
-        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags')
+        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags,specs')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
+      if (res.error) {
+        /* Cars fields v1: listings.specs exists only after Martin
+           pastes the migration. Retry spec-less so the marketplace
+           NEVER breaks before the SQL lands — rows just have no
+           specs and render exactly as before. */
+        try { console.warn('[ClassiFlip] listings.specs read failed - retrying without specs (Cars migration not pasted yet).'); } catch (e) {}
+        res = await client
+          .from('listings')
+          .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+      }
       if (res.error || !res.data || !res.data.length) return false;
       /* Multi-photo (v1.7): one extra read for every fetched ad's
          photos, ordered by position. v1.19 (Nov 11, 2026): this read
@@ -554,6 +569,16 @@
         return;
       }
       if (isNaN(price)) price = 0;
+      /* Cars fields v1: collect + validate the structured specs
+         BEFORE any upload, so a bad car post fails with the form
+         intact and no orphaned photos in storage. */
+      var carCategory = document.getElementById('adCategory').value;
+      var carSpecs = null;
+      if (carCategory === 'Cars') {
+        carSpecs = collectCarSpecs();
+        var carErr = validateCarSpecs(carSpecs);
+        if (carErr) { fail(carErr); return; }
+      }
       /* Boost-at-post (v1.12): the Cars form's private-seller option
          is now Boost $2.99 (replacing the stale '$5 bump to top',
          which bought nothing — the real path never read the plan).
@@ -619,7 +644,6 @@
         description: document.getElementById('adDescription').value.trim(),
         price: price,
         category: document.getElementById('adCategory').value,
-        condition: document.getElementById('adCondition').value,
         location: document.getElementById('adLocation').value.trim() || 'Mississauga, ON',
         /* Step 4 approval gate: pending, NOT active. The public fetch
            reads only status='active' rows (and the seller's own rows),
@@ -627,6 +651,12 @@
         status: 'pending'
       };
       if (photoUrl) newRow.photo_url = photoUrl;
+      /* Cars: the generic Condition select is hidden for Cars (spec
+         section 1.5) — the key stays out of the row and the vehicle
+         type carries the meaning. Every other category keeps the
+         select value exactly as before. Specs ride in the same row. */
+      if (carCategory !== 'Cars') newRow.condition = document.getElementById('adCondition').value;
+      if (carSpecs) newRow.specs = carSpecs;
       /* Tags (Oct 29): free, max 5, any seller. Omit when empty so
          pre-migration rows (no tags column yet) still insert. */
       try {
@@ -643,6 +673,20 @@
         if (pd && pd.orderId && pd.category === newRow.category) newRow.order_id = pd.orderId;
       } catch (e) {}
       var ins = await client.from('listings').insert([newRow]).select().single();
+      if (ins.error && newRow.specs && /specs/i.test(ins.error.message || '')) {
+        /* Specs column missing (Cars migration not pasted yet):
+           retry without specs — a post must never hard-fail on the
+           new column (same graceful pattern as tags). */
+        try { console.warn('[ClassiFlip] listings.specs insert failed - posting without specs. Paste the Cars fields migration to store car details.'); } catch (e) {}
+        delete newRow.specs;
+        ins = await client.from('listings').insert([newRow]).select().single();
+      }
+      if (ins.error && carSpecs && !('condition' in newRow) && /condition/i.test(ins.error.message || '')) {
+        /* If condition turns out to be NOT NULL with no default,
+           fall back to the vehicle-type label so the post lands. */
+        newRow.condition = carSpecs.vehicle_type === 'new' ? 'New' : (carSpecs.vehicle_type === 'certified' ? 'Certified pre-owned' : 'Used');
+        ins = await client.from('listings').insert([newRow]).select().single();
+      }
       if (ins.error || !ins.data || !ins.data.id) {
         /* Listing insert failed after uploads: remove the objects so
            no orphaned storage is left behind. */
@@ -1272,22 +1316,25 @@
       activeListingId = x.id;
       document.getElementById('detailTitle').textContent = 'Listing details';
       document.getElementById('detailBody').innerHTML =
-        '<div class="detail">' + detailGalleryMarkup(x) + '<div>' +
+        '<div class="detail">' + detailGalleryMarkup(x) + '<div class="detail-info">' +
                 (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
-        '<div class="detail-price">' + displayPrice(x) + '</div>' +
+        '<div class="detail-price">' + displayPrice(x) + '</div>' + carAvailPill(x) +
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         listingContactMarkup(x) +
         reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
+        carSectionsHtml(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
+        carSellerBlockHtml(x) +
         '<div id="cfMoreSeller"></div>' +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
       try { loadMoreFromSeller(x); } catch (e) {}
+      try { fillDealerCall(x); } catch (e) {}
     } catch (err) { /* Never crash the page from a deep link. */ }
   }
 
@@ -1339,23 +1386,26 @@
       activeListingId = x.id;
       document.getElementById('detailTitle').textContent = 'Listing details';
       document.getElementById('detailBody').innerHTML =
-        '<div class="detail">' + detailGalleryMarkup(x) + '<div>' +
+        '<div class="detail">' + detailGalleryMarkup(x) + '<div class="detail-info">' +
                 (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
-        '<div class="detail-price">' + displayPrice(x) + '</div>' +
+        '<div class="detail-price">' + displayPrice(x) + '</div>' + carAvailPill(x) +
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         /* Messages move-up (Oct 26, 2026): contact (Message seller + Share) sits under the price, mirroring the v1.10 Boost move — the bottom of a tall modal hides behind the mobile tab bar. */
         listingContactMarkup(x) +
         reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
+        carSectionsHtml(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
+        carSellerBlockHtml(x) +
         '<div id="cfMoreSeller"></div>' +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
       try { loadMoreFromSeller(x); } catch (e) {}
+      try { fillDealerCall(x); } catch (e) {}
     } catch (err) {
       /* Never crash the page from this guard. */
     }
@@ -1612,6 +1662,349 @@
       });
     }
   } catch (e) {}
+
+
+  /* ================================================================
+     CARS FIELDS v1 (Nov 11, 2026) — spec:
+     goals/classiflip-classifieds-marketplace/files/
+     ClassiFlip_Cars_Fields_Spec.md. Structured car data lives in
+     listings.specs (jsonb; migration pasted separately by Martin).
+     Everything here is fail-soft: before the migration lands, rows
+     simply have no specs and render exactly as before. The VIN is
+     NEVER rendered on a public surface — only the seller's own
+     dashboard editor and the admin approval queue may show it.
+     ================================================================ */
+  var CAR_LABELS = {
+    body_type: { sedan: 'Sedan', coupe: 'Coupe', hatchback: 'Hatchback', wagon: 'Wagon', suv: 'SUV', crossover: 'Crossover', truck: 'Pickup truck', van: 'Van', minivan: 'Minivan', convertible: 'Convertible', other: 'Other' },
+    vehicle_type: { used: 'Used', new: 'New', certified: 'Certified pre-owned' },
+    transmission: { automatic: 'Automatic', manual: 'Manual', cvt: 'CVT', single: 'Single-speed (EV)', unknown: 'Don\'t know' },
+    drivetrain: { fwd: 'FWD', rwd: 'RWD', awd: 'AWD', '4x4': '4x4', unknown: 'Don\'t know' },
+    fuel: { gas: 'Gasoline', diesel: 'Diesel', hybrid: 'Hybrid', phev: 'Plug-in hybrid', ev: 'Electric', other: 'Other' },
+    accidents: { none: 'None reported', reported: 'Reported - ask the seller', unsure: 'Not sure' },
+    warranty: { factory: 'Factory warranty remaining', dealer: 'Dealer warranty', none: 'No warranty / as-is' },
+    availability: { now: 'Available now', soon: 'Arriving soon', ordered: 'On order' }
+  };
+  var CAR_KEYS = ['year', 'make', 'model', 'trim', 'body_type', 'km', 'vehicle_type', 'colour', 'seats', 'doors', 'availability', 'transmission', 'drivetrain', 'fuel', 'engine_l', 'cylinders', 'accidents', 'safety_certified', 'warranty', 'report_url', 'report_available', 'stock_number', 'vin'];
+  function parseSpecs(v) {
+    var o = null;
+    if (v && typeof v === 'object') o = v;
+    else if (typeof v === 'string' && v) { try { o = JSON.parse(v); } catch (e) { o = null; } }
+    if (!o || typeof o !== 'object') return {};
+    var out = {};
+    CAR_KEYS.forEach(function (k) { if (o[k] !== undefined && o[k] !== null && o[k] !== '') out[k] = o[k]; });
+    return out;
+  }
+  function carLabel(group, slug) {
+    var m = CAR_LABELS[group] || {};
+    return m[slug] || String(slug == null ? '' : slug);
+  }
+  function fmtKm(n) {
+    var x = Number(n);
+    return isNaN(x) ? '' : x.toLocaleString('en-CA');
+  }
+  /* Search text (spec 3.2): make/model/trim/labels/year/colour and
+     the dealer stock number. The VIN is deliberately NEVER here. */
+  function carSearchOf(sp) {
+    if (!sp || !Object.keys(sp).length) return '';
+    var parts = [sp.year, sp.make, sp.model, sp.trim, sp.colour, sp.stock_number,
+      carLabel('body_type', sp.body_type), carLabel('transmission', sp.transmission),
+      carLabel('drivetrain', sp.drivetrain), carLabel('fuel', sp.fuel),
+      carLabel('vehicle_type', sp.vehicle_type), sp.body_type, sp.transmission, sp.drivetrain, sp.fuel];
+    return parts.filter(Boolean).join(' ').toLowerCase();
+  }
+  function specRow(k, v) {
+    return '<div class="spec-row"><span class="k">' + safe(k) + '</span><span class="v">' + safe(v) + '</span></div>';
+  }
+  function specGroup(title, rows) {
+    if (!rows.length) return '';
+    return '<div class="spec-card"><h4>' + safe(title) + '</h4><div class="spec-rows">' + rows.join('') + '</div></div>';
+  }
+  /* Detail spec sections (spec 4.2): rows only for present values,
+     groups hidden when empty. report_url becomes the View-history-
+     report link row; report_available (no URL) adds the request
+     button under the sections (live rows only — never in preview). */
+  function carSectionsHtml(x) {
+    if (!x || x.category !== 'Cars') return '';
+    var sp = x.specs || {};
+    if (!Object.keys(sp).length) return '';
+    var b = [], g = [], h = [];
+    if (sp.year) b.push(specRow('Year', sp.year));
+    var mm = [sp.make, sp.model].filter(Boolean).join(' ');
+    if (mm) b.push(specRow('Make & model', mm + (sp.trim ? ' ' + sp.trim : '')));
+    if (sp.body_type) b.push(specRow('Body type', carLabel('body_type', sp.body_type)));
+    if (sp.km != null && sp.km !== '') b.push(specRow('Kilometres', fmtKm(sp.km) + ' km'));
+    if (sp.vehicle_type) b.push(specRow('Vehicle type', carLabel('vehicle_type', sp.vehicle_type)));
+    if (sp.colour) b.push(specRow('Colour', sp.colour));
+    if (sp.seats) b.push(specRow('Seats', sp.seats));
+    if (sp.doors) b.push(specRow('Doors', sp.doors));
+    if (sp.transmission && sp.transmission !== 'unknown') g.push(specRow('Transmission', carLabel('transmission', sp.transmission)));
+    if (sp.drivetrain && sp.drivetrain !== 'unknown') g.push(specRow('Drivetrain', carLabel('drivetrain', sp.drivetrain)));
+    if (sp.fuel) g.push(specRow('Fuel', carLabel('fuel', sp.fuel)));
+    if (sp.engine_l) g.push(specRow('Engine', sp.engine_l + ' L'));
+    if (sp.cylinders) g.push(specRow('Cylinders', sp.cylinders === 'none' ? 'None (electric)' : sp.cylinders));
+    if (sp.accidents) h.push(specRow('Accident history', carLabel('accidents', sp.accidents)));
+    if (sp.safety_certified) h.push(specRow('Safety certified', '\u2713 Certified (Ontario)'));
+    if (sp.warranty) h.push(specRow('Warranty', carLabel('warranty', sp.warranty)));
+    if (sp.report_url) h.push('<div class="spec-row"><span class="k">History report</span><span class="v"><a href="' + escAttr(sp.report_url) + '" target="_blank" rel="noopener">View history report</a></span></div>');
+    else if (sp.report_available) h.push(specRow('History report', 'Available on request'));
+    var out = specGroup('The Basics', b) + specGroup('Running Gear', g) + specGroup('History & Honesty', h);
+    if (sp.report_available && !sp.report_url && x.id && x.live) {
+      out += '<button type="button" class="rr-btn" data-cf-rr-open="' + escAttr(x.id) + '">Request history report</button>';
+    }
+    return out;
+  }
+  /* Availability pill (spec 4.2): now/soon only; "On order" gets
+     no pill by design. */
+  function carAvailPill(x) {
+    if (!x || x.category !== 'Cars' || !x.specs) return '';
+    if (x.specs.availability === 'now') return '<div><span class="avail-pill now">\u25cf Available now</span></div>';
+    if (x.specs.availability === 'soon') return '<div><span class="avail-pill soon">Arriving soon</span></div>';
+    return '';
+  }
+  /* Card chips (spec 4.1): km, transmission, drivetrain — max 3,
+     in that priority order, hidden entirely when empty. */
+  function carChipsHtml(x) {
+    if (!x || x.category !== 'Cars' || !x.specs) return '';
+    var sp = x.specs, chips = [];
+    if (sp.km != null && sp.km !== '') chips.push(fmtKm(sp.km) + ' km');
+    if (sp.transmission && sp.transmission !== 'unknown') chips.push(carLabel('transmission', sp.transmission));
+    if (sp.drivetrain && sp.drivetrain !== 'unknown') chips.push(carLabel('drivetrain', sp.drivetrain));
+    if (!chips.length) return '';
+    return '<div class="car-chips">' + chips.map(function (c) { return '<span>' + safe(c) + '</span>'; }).join('') + '</div>';
+  }
+  /* Seller-block extras (spec 4.2 item 10): the Stock # line for
+     dealer ads, plus the slot the Call-dealership button fills
+     asynchronously (number comes ONLY from the business's own
+     published business_profiles row — never scraped from the ad). */
+  function carSellerBlockHtml(x) {
+    if (!x || x.category !== 'Cars') return '';
+    var sp = x.specs || {}, out = '';
+    if (sp.stock_number) out += '<div class="meta" style="margin-top:10px"><span>Stock # ' + safe(sp.stock_number) + '</span></div>';
+    out += '<span id="cfCallSlot"></span>';
+    return out;
+  }
+  async function fillDealerCall(x) {
+    var slot = document.getElementById('cfCallSlot');
+    if (!slot || !x || x.category !== 'Cars' || !x.seller_id) return;
+    var client = getClient();
+    if (!client) return;
+    try {
+      var res = await client.from('business_profiles').select('business_phone').eq('id', x.seller_id).maybeSingle();
+      if (!res || res.error || !res.data || !res.data.business_phone) return;
+      var tel = String(res.data.business_phone).replace(/[^+\d]/g, '');
+      if (!tel) return;
+      slot.innerHTML = '<a class="primary" href="tel:' + escAttr(tel) + '" style="display:inline-block;margin-top:10px;text-decoration:none;padding:10px 16px">Call dealership</a>';
+    } catch (e) {}
+  }
+
+  /* ---- Post-form collection + validation (spec sections 1-2) ---- */
+  function _cv(id) { var el = document.getElementById(id); return el ? String(el.value).trim() : ''; }
+  function _cn(id) { var v = _cv(id).replace(/[,\s]/g, ''); if (v === '') return null; var n = Number(v); return isNaN(n) ? null : n; }
+  function collectCarSpecs() {
+    var sp = {};
+    var year = _cn('car_year'); if (year != null) sp.year = Math.round(year);
+    var make = _cv('car_make'); if (make) sp.make = make.slice(0, 40);
+    var model = _cv('car_model'); if (model) sp.model = model.slice(0, 40);
+    var trim = _cv('car_trim'); if (trim) sp.trim = trim.slice(0, 30);
+    var bt = _cv('car_body_type'); if (bt) sp.body_type = bt;
+    var km = _cn('car_km'); if (km != null) sp.km = Math.round(km);
+    sp.vehicle_type = _cv('car_vehicle_type') || 'used';
+    sp.availability = _cv('car_availability') || 'now';
+    var colour = _cv('car_colour'); if (colour) sp.colour = colour.slice(0, 30);
+    var seats = _cn('car_seats'); if (seats != null) sp.seats = Math.round(seats);
+    var doors = _cn('car_doors'); if (doors != null) sp.doors = Math.round(doors);
+    var tr = _cv('car_transmission'); if (tr) sp.transmission = tr;
+    var dr = _cv('car_drivetrain'); if (dr) sp.drivetrain = dr;
+    var fu = _cv('car_fuel'); if (fu) sp.fuel = fu;
+    var eng = _cv('car_engine_l'); if (eng !== '') { var en = Number(eng); if (!isNaN(en)) sp.engine_l = en; }
+    var cyl = _cv('car_cylinders'); if (cyl) sp.cylinders = (cyl === 'none') ? 'none' : (parseInt(cyl, 10) || cyl);
+    var acc = _cv('car_accidents'); if (acc) sp.accidents = acc;
+    var safetyEl = document.getElementById('car_safety'); if (safetyEl && safetyEl.checked) sp.safety_certified = true;
+    var war = _cv('car_warranty'); if (war) sp.warranty = war;
+    var rurl = _cv('car_report_url'); if (rurl) sp.report_url = rurl;
+    var raEl = document.getElementById('car_report_available'); if (raEl && raEl.checked) sp.report_available = true;
+    var stock = _cv('car_stock_number'); if (stock) sp.stock_number = stock.slice(0, 20);
+    var vin = _cv('car_vin').toUpperCase(); if (vin) sp.vin = vin;
+    return sp;
+  }
+  function validateCarSpecs(sp) {
+    if (!sp) return 'Car details are missing - please reopen the form and try again.';
+    var maxYear = new Date().getFullYear() + 1;
+    if (!sp.year || sp.year < 1930 || sp.year > maxYear) return 'Add the car\'s year (1930-' + maxYear + ') - it is required for Cars.';
+    if (!sp.make) return 'Add the make (e.g. Ford) - it is required for Cars.';
+    if (!sp.model) return 'Add the model (e.g. F-150) - it is required for Cars.';
+    if (!sp.body_type) return 'Pick a body type - it is required for Cars.';
+    if (sp.km == null || sp.km < 0 || sp.km > 2000000) return 'Add the kilometres (0-2,000,000) - it is required for Cars.';
+    if (sp.engine_l != null && (sp.engine_l < 0.5 || sp.engine_l > 10)) return 'Engine size must be between 0.5 and 10.0 litres.';
+    if (sp.seats != null && (sp.seats < 1 || sp.seats > 12)) return 'Seats must be between 1 and 12.';
+    if (sp.doors != null && (sp.doors < 2 || sp.doors > 6)) return 'Doors must be between 2 and 6.';
+    if (sp.vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(sp.vin)) return 'The VIN must be exactly 17 characters (the letters I, O and Q are never used in a VIN).';
+    if (sp.report_url && !/^https?:\/\//i.test(sp.report_url)) return 'The history report link must start with http:// or https://.';
+    return '';
+  }
+  /* Form sync: Dealer Desk + the dealer report nudge show only when
+     posting as a dealer. Chains onto the package-aware form updater
+     (the package section above already wrapped it once). */
+  function syncCarForm() {
+    try {
+      var cat = document.getElementById('adCategory');
+      var isCar = !!(cat && cat.value === 'Cars');
+      var sellerEl = document.getElementById('carSellerType');
+      var isDealer = isCar && !!sellerEl && sellerEl.value === 'dealer';
+      var desk = document.getElementById('dealerDeskField');
+      if (desk) desk.hidden = !isDealer;
+      var nudge = document.getElementById('carDealerNudge');
+      if (nudge) nudge.hidden = !isDealer;
+    } catch (e) {}
+  }
+  try {
+    if (typeof updateCarPostingFields === 'function') {
+      var _ucpfCars = updateCarPostingFields;
+      updateCarPostingFields = function () { _ucpfCars(); syncCarForm(); };
+    }
+    var _sellerSel = document.getElementById('carSellerType');
+    if (_sellerSel) _sellerSel.addEventListener('change', syncCarForm);
+    var _kmEl = document.getElementById('car_km');
+    if (_kmEl) _kmEl.addEventListener('input', function () {
+      var hint = document.getElementById('carKmHint');
+      if (!hint) return;
+      var v = Number(String(_kmEl.value).replace(/[,\s]/g, ''));
+      if (v > 0 && v < 100) { hint.textContent = 'That\'s very low - double-check the odometer.'; hint.hidden = false; }
+      else hint.hidden = true;
+    });
+    syncCarForm();
+  } catch (e) {}
+  /* Required-five gate at the PREVIEW step too (the logged-out demo
+     flow included): this capture-phase listener runs before the
+     page's own submit handler, so an incomplete car never reaches
+     the preview. postAd() re-validates on the real post. */
+  document.addEventListener('submit', function (e) {
+    if (!e.target || e.target.id !== 'postForm') return;
+    var cat = document.getElementById('adCategory');
+    if (!cat || cat.value !== 'Cars') return;
+    var err = validateCarSpecs(collectCarSpecs());
+    if (!err) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var notice = document.getElementById('postNotice');
+    if (notice) { notice.textContent = err; notice.style.display = ''; }
+  }, true);
+  /* Public surface for the page's own renders (preview, grid cards,
+     search text): window.CFCars. */
+  window.CFCars = {
+    collect: collectCarSpecs,
+    validate: validateCarSpecs,
+    sectionsHtml: carSectionsHtml,
+    chipsHtml: carChipsHtml,
+    availPill: carAvailPill,
+    vehicleTypeLabel: function () { return carLabel('vehicle_type', _cv('car_vehicle_type') || 'used'); },
+    labels: CAR_LABELS
+  };
+
+  /* ---- History report requests (spec 4.4) ----
+     The request window: a buyer (logged in or out) sends their name
+     + email so the SELLER can email them the report. Rows land in
+     report_requests (public INSERT, seller + admin SELECT only -
+     never publicly readable). The seller sees requests on the ad in
+     My Ads (cf-dashboard.js); there is deliberately NO email path in
+     v1 - the Resend notify functions are not deployed yet. */
+  var rrListing = null;
+  function rrModalBuild() {
+    var m = document.getElementById('cfRrModal');
+    if (m && !document.getElementById('cfRrSend')) { m.remove(); m = null; }
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'cfRrModal';
+    m.className = 'mback';
+    m.innerHTML = '<div class="mcard" style="max-width:460px">' +
+      '<button class="mx" type="button" data-cf-rr-close>&times;</button>' +
+      '<h3>Request history report</h3>' +
+      '<p class="sub" id="cfRrContext"></p>' +
+      '<div id="cfRrForm">' +
+      '<div class="field"><label for="cfRrName">Your name *</label><input id="cfRrName" autocomplete="name" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
+      '<div class="field"><label for="cfRrEmail">Your email *</label><input id="cfRrEmail" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
+      '<div class="field"><label for="cfRrNote">Note (optional)</label><textarea id="cfRrNote" rows="2" placeholder="Anything to add?" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></textarea></div>' +
+      '<p style="font-size:12.5px;color:var(--mu)">Send my name and email to this seller so they can email me the report.</p>' +
+      '<div id="cfRrMsg" style="font-size:13.5px;margin:8px 0"></div>' +
+      '<button type="button" class="primary" id="cfRrSend" style="width:100%">Send request</button>' +
+      '</div></div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', function (e) { if (e.target === m) closeRr(); });
+    return m;
+  }
+  function closeRr() { var m = document.getElementById('cfRrModal'); if (m) m.classList.remove('on'); }
+  async function openRr(listingId) {
+    var x = null;
+    try { x = listings.find(function (y) { return String(y.id) === String(listingId); }); } catch (e) {}
+    if (!x) return;
+    rrListing = x;
+    var m = rrModalBuild();
+    document.getElementById('cfRrContext').textContent = 'For: ' + (x.title || 'this car') + ' - the seller emails you the history report directly.';
+    var msgEl = document.getElementById('cfRrMsg'); if (msgEl) msgEl.textContent = '';
+    var sendBtn = document.getElementById('cfRrSend');
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send request'; }
+    /* Logged-in prefill (name + email); logged-out buyers just type. */
+    try {
+      var client = getClient();
+      if (client) {
+        var uRes = await client.auth.getUser();
+        var u = uRes && uRes.data && uRes.data.user;
+        if (u) {
+          var em = document.getElementById('cfRrEmail'); if (em && !em.value) em.value = u.email || '';
+          try {
+            var pr = await client.from('profiles').select('display_name').eq('id', u.id).maybeSingle();
+            var nm = document.getElementById('cfRrName');
+            if (nm && !nm.value && pr && pr.data && pr.data.display_name) nm.value = pr.data.display_name;
+          } catch (e2) {}
+        }
+      }
+    } catch (e) {}
+    m.classList.add('on');
+  }
+  document.addEventListener('click', async function (e) {
+    var openBtn = e.target && e.target.closest ? e.target.closest('[data-cf-rr-open]') : null;
+    if (openBtn) { e.preventDefault(); openRr(openBtn.getAttribute('data-cf-rr-open')); return; }
+    var closeBtn = e.target && e.target.closest ? e.target.closest('[data-cf-rr-close]') : null;
+    if (closeBtn) { closeRr(); return; }
+    var sendBtn = e.target && e.target.closest ? e.target.closest('#cfRrSend') : null;
+    if (!sendBtn || !rrListing) return;
+    var nameEl = document.getElementById('cfRrName');
+    var emailEl = document.getElementById('cfRrEmail');
+    var noteEl = document.getElementById('cfRrNote');
+    var msgEl = document.getElementById('cfRrMsg');
+    var name = nameEl ? nameEl.value.trim() : '';
+    var email = emailEl ? emailEl.value.trim() : '';
+    if (!name) { if (msgEl) { msgEl.textContent = 'Please add your name.'; msgEl.style.color = '#B3261E'; } return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (msgEl) { msgEl.textContent = 'Please add a valid email - the seller sends the report there.'; msgEl.style.color = '#B3261E'; } return; }
+    var client = getClient();
+    if (!client) { if (msgEl) { msgEl.textContent = 'Not connected - please reload and try again.'; msgEl.style.color = '#B3261E'; } return; }
+    sendBtn.disabled = true; sendBtn.textContent = 'Sending\u2026';
+    try {
+      var ins = await client.from('report_requests').insert([{
+        listing_id: rrListing.id,
+        seller_id: rrListing.seller_id,
+        buyer_name: name.slice(0, 80),
+        buyer_email: email.slice(0, 120),
+        note: noteEl && noteEl.value.trim() ? noteEl.value.trim().slice(0, 500) : null,
+        status: 'open'
+      }]);
+      if (ins.error) throw ins.error;
+      document.getElementById('cfRrForm').innerHTML = '<div style="font-size:15px;font-weight:700;color:#137333">Request sent \u2713</div><p style="font-size:13.5px;color:var(--mu)">The seller has your email and can send you the report. If they have one on file, you will usually hear back within a day or two.</p><button type="button" class="primary" data-cf-rr-close style="width:100%">Done</button>';
+    } catch (err) {
+      var em = (err && err.message) || '';
+      if ((err && err.code === '23505') || /duplicate|unique/i.test(em)) {
+        document.getElementById('cfRrForm').innerHTML = '<div style="font-size:15px;font-weight:700">Already requested</div><p style="font-size:13.5px;color:var(--mu)">You already have an open request for this car - the seller has your email.</p><button type="button" class="primary" data-cf-rr-close style="width:100%">Done</button>';
+      } else {
+        sendBtn.disabled = false; sendBtn.textContent = 'Send request';
+        if (msgEl) {
+          msgEl.style.color = '#B3261E';
+          msgEl.textContent = /report_requests|relation|schema cache/i.test(em)
+            ? 'Report requests are not switched on yet - message the seller instead.'
+            : 'Could not send the request: ' + (em || 'unknown error');
+        }
+      }
+    }
+  });
 
   /* Page load: switch to database rows when possible, demo otherwise. */
   refreshListings();

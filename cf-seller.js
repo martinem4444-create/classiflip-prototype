@@ -1,4 +1,4 @@
-/* ClassiFlip dealer pages v1.1 — public seller page (seller.html).
+/* ClassiFlip dealer pages v1.2 — public seller page (seller.html).
    Reads ONLY the business_profiles table (public-read by policy) plus
    the seller's live listings. No profiles, orders, emails, or auth
    phones are ever read here — a business page shows only what the
@@ -42,6 +42,33 @@
     var n = Number(x.price);
     if (isNaN(n)) return esc(x.price);
     return '$' + n.toLocaleString('en-CA', { maximumFractionDigits: 0 });
+  }
+
+  /* Cars fields v1 (v1.2): the card chip row (km / transmission /
+     drivetrain), same rule as the marketplace cards — max 3, in
+     that order, hidden when the ad carries no specs. Specs arrive
+     via a separate fail-soft read in init() (the listings.specs
+     column exists only after Martin pastes the migration). */
+  var CAR_CHIP_LABELS = {
+    transmission: { automatic: 'Automatic', manual: 'Manual', cvt: 'CVT', single: 'Single-speed (EV)' },
+    drivetrain: { fwd: 'FWD', rwd: 'RWD', awd: 'AWD', '4x4': '4x4' }
+  };
+  function carChips(a) {
+    if (!a || a.category !== 'Cars') return '';
+    var sp = a.specs;
+    if (typeof sp === 'string' && sp) { try { sp = JSON.parse(sp); } catch (e) { sp = null; } }
+    if (!sp || typeof sp !== 'object') return '';
+    var chips = [];
+    if (sp.km != null && sp.km !== '') {
+      var n = Number(sp.km);
+      if (!isNaN(n)) chips.push(n.toLocaleString('en-CA') + ' km');
+    }
+    if (sp.transmission && sp.transmission !== 'unknown') chips.push(CAR_CHIP_LABELS.transmission[sp.transmission] || String(sp.transmission));
+    if (sp.drivetrain && sp.drivetrain !== 'unknown') chips.push(CAR_CHIP_LABELS.drivetrain[sp.drivetrain] || String(sp.drivetrain));
+    if (!chips.length) return '';
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">' + chips.map(function (c) {
+      return '<span style="font-size:11px;font-weight:700;border:1px solid var(--line,#d8dee9);border-radius:999px;padding:2px 8px">' + esc(c) + '</span>';
+    }).join('') + '</div>';
   }
 
   function firstPhoto(x) {
@@ -199,6 +226,21 @@
       }
     } catch (e) {}
 
+    /* Cars fields v1: specs ride in their own fail-soft read — if
+       the column is missing (migration not pasted yet) the cards
+       simply render without chips, exactly as before. */
+    try {
+      if (ads.length) {
+        var sids = ads.map(function (a) { return a.id; });
+        var sr = await client.from('listings').select('id,specs').in('id', sids);
+        if (sr && !sr.error && sr.data) {
+          var sById = {};
+          sr.data.forEach(function (r) { sById[r.id] = r.specs; });
+          ads.forEach(function (a) { a.specs = sById[a.id] || null; });
+        }
+      }
+    } catch (e) {}
+
     /* Boosted-first FCFS, then newest first — the same order as the
        marketplace grid. A boost counts only while Active AND
        unexpired (cf_effective_boosts). */
@@ -243,6 +285,7 @@
             '<div class="ad-media">' + media + '</div>' +
             '<div class="ad-body"><h3>' + esc(a.title || 'Listing') + '</h3>' +
             '<div class="price">' + priceOf(a) + '</div>' +
+            carChips(a) +
             '<div class="sold">\u2713 SOLD</div>' +
             '<div class="meta">' + esc(a.condition || '') + (a.location ? ' \u00b7 ' + esc(a.location) : '') + '</div>' +
             '</div></div>';
@@ -251,6 +294,7 @@
           '<div class="ad-media">' + media + '</div>' +
           '<div class="ad-body"><h3>' + esc(a.title || 'Listing') + '</h3>' +
           '<div class="price">' + priceOf(a) + '</div>' +
+          carChips(a) +
           (a._boosted ? '<div class="boosted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
           '<div class="meta">' + esc(a.condition || '') + (a.location ? ' · ' + esc(a.location) : '') + '</div>' +
           '</div></a>';

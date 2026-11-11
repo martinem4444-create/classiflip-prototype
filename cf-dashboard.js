@@ -1,4 +1,4 @@
-/* ClassiFlip dashboard wiring v1.4 (step 4 + multi-photo + step 5 Boost + ad manager + business stats) — Supabase (marketplace-dev).
+/* ClassiFlip dashboard wiring v1.5 (step 4 + multi-photo + step 5 Boost + ad manager + business stats) — Supabase (marketplace-dev).
  *
  * WHAT IT DOES (signed-in users only; logged-out visitors keep the demo):
  * - Replaces the demo listing cards with the signed-in user's REAL listings
@@ -509,7 +509,7 @@
     var listings = [], orders = [], threads = [], myBoosts = [];
     try {
       var lr = await client.from('listings')
-        .select('id,title,price,category,condition,location,status,created_at,photo_url,rejection_reason')
+        .select('id,title,price,category,condition,location,status,created_at,photo_url,rejection_reason,specs')
         .eq('seller_id', user.id).order('created_at', { ascending: false }).limit(100);
       /* Fail-soft: if the reject-reason SQL has not run yet, the
          column does not exist and this select errors — retry
@@ -535,6 +535,18 @@
         .select('id,listing_id,amount,payment_method,status,payment_ref,expires_at,activated_at,created_at')
         .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(50);
       if (br && br.data) myBoosts = br.data;
+    } catch (e) {}
+    /* Cars fields v1: history-report requests on MY ads (seller
+       read via RLS). Fail-soft: the table exists only after the
+       Cars migration is pasted — an error just means no block. */
+    var rrByListing = {};
+    try {
+      var rrq = await client.from('report_requests')
+        .select('id,listing_id,buyer_name,buyer_email,note,status,created_at')
+        .eq('seller_id', user.id).order('created_at', { ascending: false }).limit(100);
+      if (rrq && !rrq.error && rrq.data) rrq.data.forEach(function (q) {
+        (rrByListing[q.listing_id] = rrByListing[q.listing_id] || []).push(q);
+      });
     } catch (e) {}
     try {
       if (window.CFMessages && window.CFMessages.listThreads) {
@@ -706,6 +718,12 @@
             ? '<br>Posting as a business? <a href="advertise.html" style="color:#7f1d1d;font-weight:700;text-decoration:underline">Get a services package</a>, then post a new ad under Services.' : '';
           var rejNote = (x.status === 'rejected')
             ? '<div style="margin:8px 0;padding:10px 12px;border:1px solid #e5484d;border-radius:10px;background:#fdecea;color:#7f1d1d;font-size:14px;line-height:1.4"><strong>Rejected — fix this:</strong> ' + esc(rejReason || 'Rejected by admin.') + rejPkgLine + '</div>' : '';
+          var rrList = rrByListing[x.id] || [];
+          var rrOpen = rrList.filter(function (q) { return q.status === 'open'; });
+          var rrNote = rrOpen.length
+            ? '<div style="margin:8px 0;padding:10px 12px;border:1px solid #f5d67a;border-radius:10px;background:#fef7e0;font-size:13.5px;line-height:1.5"><strong>\uD83D\uDCC4 History report requests (' + rrOpen.length + '):</strong>' + rrOpen.map(function (q) {
+                return '<br>' + esc(q.buyer_name || '') + ' \u2014 <a href="mailto:' + esc(q.buyer_email || '') + '">' + esc(q.buyer_email || '') + '</a>' + (q.note ? ' \u00b7 \u201c' + esc(q.note) + '\u201d' : '');
+              }).join('') + '<br><span style="color:var(--mu)">Email the buyer the report from your own email app.</span></div>' : '';
           if (dashView === 'grid') {
             return '<div class="gtile"><div class="gph">' +
               (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '&#128722;') + '</div>' +
@@ -713,6 +731,7 @@
               '<div class="p">' + money(x.price) + '</div>' +
               '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div>' +
               rejNote +
+              rrNote +
               '<div class="s">' + statsLine(x.id) + '</div>' +
               '<div class="acts">' + viewBtn + boostBtn + editBtn + soldBtn + delBtn + '</div></div></div>';
           }
@@ -722,6 +741,7 @@
             '<div class="p">' + money(x.price) + '</div>' +
             '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div>' +
             rejNote +
+            rrNote +
             '<div class="s">' + statsLine(x.id) + '</div></div>' +
             '<div class="acts">' + viewBtn + boostBtn + editBtn + soldBtn + delBtn + '</div>' +
             '</div>';
@@ -992,6 +1012,251 @@
     }
   });
 
+
+  /* ================================================================
+     CARS FIELDS v1 (Nov 11, 2026) — dashboard side. Spec:
+     ClassiFlip_Cars_Fields_Spec.md. The admin approval queue shows
+     the spec groups READ-ONLY (the admin MAY see the VIN — spec
+     1.4: owner + admin only). The editor (dashboard.html modal)
+     gets an injected Car details block for Cars ads: prefilled,
+     re-validated, saved into listings.specs with the same
+     omit-and-warn fallback as the post path. Report requests are
+     visible to the seller on their own ads (renderReal) and to the
+     admin below; v1 has NO email notification (the Resend notify
+     functions are not deployed yet) — in-app visibility only.
+     ================================================================ */
+  var CAR_LABELS_D = {
+    body_type: { sedan: 'Sedan', coupe: 'Coupe', hatchback: 'Hatchback', wagon: 'Wagon', suv: 'SUV', crossover: 'Crossover', truck: 'Pickup truck', van: 'Van', minivan: 'Minivan', convertible: 'Convertible', other: 'Other' },
+    vehicle_type: { used: 'Used', new: 'New', certified: 'Certified pre-owned' },
+    transmission: { automatic: 'Automatic', manual: 'Manual', cvt: 'CVT', single: 'Single-speed (EV)', unknown: 'Don\'t know' },
+    drivetrain: { fwd: 'FWD', rwd: 'RWD', awd: 'AWD', '4x4': '4x4', unknown: 'Don\'t know' },
+    fuel: { gas: 'Gasoline', diesel: 'Diesel', hybrid: 'Hybrid', phev: 'Plug-in hybrid', ev: 'Electric', other: 'Other' },
+    accidents: { none: 'None reported', reported: 'Reported - ask the seller', unsure: 'Not sure' },
+    warranty: { factory: 'Factory warranty remaining', dealer: 'Dealer warranty', none: 'No warranty / as-is' },
+    availability: { now: 'Available now', soon: 'Arriving soon', ordered: 'On order' }
+  };
+  var CAR_KEYS_D = ['year', 'make', 'model', 'trim', 'body_type', 'km', 'vehicle_type', 'colour', 'seats', 'doors', 'availability', 'transmission', 'drivetrain', 'fuel', 'engine_l', 'cylinders', 'accidents', 'safety_certified', 'warranty', 'report_url', 'report_available', 'stock_number', 'vin'];
+  function parseCarSpecs(v) {
+    var o = null;
+    if (v && typeof v === 'object') o = v;
+    else if (typeof v === 'string' && v) { try { o = JSON.parse(v); } catch (e) { o = null; } }
+    if (!o || typeof o !== 'object') return {};
+    var out = {};
+    CAR_KEYS_D.forEach(function (k) { if (o[k] !== undefined && o[k] !== null && o[k] !== '') out[k] = o[k]; });
+    return out;
+  }
+  function carLabelD(group, slug) {
+    var m = CAR_LABELS_D[group] || {};
+    return m[slug] || String(slug == null ? '' : slug);
+  }
+  function validateCarSpecsD(sp) {
+    if (!sp) return 'Car details are missing.';
+    var maxYear = new Date().getFullYear() + 1;
+    if (!sp.year || sp.year < 1930 || sp.year > maxYear) return 'Add the car\'s year (1930-' + maxYear + ') - required for Cars.';
+    if (!sp.make) return 'Add the make - required for Cars.';
+    if (!sp.model) return 'Add the model - required for Cars.';
+    if (!sp.body_type) return 'Pick a body type - required for Cars.';
+    if (sp.km == null || sp.km < 0 || sp.km > 2000000) return 'Add the kilometres (0-2,000,000) - required for Cars.';
+    if (sp.engine_l != null && (sp.engine_l < 0.5 || sp.engine_l > 10)) return 'Engine size must be between 0.5 and 10.0 litres.';
+    if (sp.seats != null && (sp.seats < 1 || sp.seats > 12)) return 'Seats must be between 1 and 12.';
+    if (sp.doors != null && (sp.doors < 2 || sp.doors > 6)) return 'Doors must be between 2 and 6.';
+    if (sp.vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(sp.vin)) return 'The VIN must be exactly 17 characters (I, O and Q are never used in a VIN).';
+    if (sp.report_url && !/^https?:\/\//i.test(sp.report_url)) return 'The history report link must start with http:// or https://.';
+    return '';
+  }
+  /* Read-only spec groups for the admin approval queue. VIN shows
+     here (admin) — it is never rendered on public surfaces. */
+  function carSpecsAdminHtml(x) {
+    var sp = parseCarSpecs(x && x.specs);
+    if (!Object.keys(sp).length) return '';
+    function grp(title, pairs) {
+      var rows = pairs.filter(function (p) { return p; }).map(function (p) {
+        return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:2px 0;border-bottom:1px dashed var(--line)"><span style="color:var(--mu)">' + esc(p[0]) + '</span><span style="font-weight:600;text-align:right">' + esc(p[1]) + '</span></div>';
+      }).join('');
+      if (!rows) return '';
+      return '<div style="margin-top:8px"><div style="font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--mu);margin-bottom:2px">' + esc(title) + '</div>' + rows + '</div>';
+    }
+    function kmFmt(n) { var v = Number(n); return isNaN(v) ? '' : v.toLocaleString('en-CA') + ' km'; }
+    var mm = [sp.make, sp.model].filter(Boolean).join(' ');
+    return '<div style="margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px">' +
+      grp('The Basics', [
+        sp.year ? ['Year', String(sp.year)] : null,
+        mm ? ['Make & model', mm + (sp.trim ? ' ' + sp.trim : '')] : null,
+        sp.body_type ? ['Body type', carLabelD('body_type', sp.body_type)] : null,
+        (sp.km != null && sp.km !== '') ? ['Kilometres', kmFmt(sp.km)] : null,
+        sp.vehicle_type ? ['Vehicle type', carLabelD('vehicle_type', sp.vehicle_type)] : null,
+        sp.colour ? ['Colour', String(sp.colour)] : null,
+        sp.seats ? ['Seats', String(sp.seats)] : null,
+        sp.doors ? ['Doors', String(sp.doors)] : null,
+        sp.availability ? ['Availability', carLabelD('availability', sp.availability)] : null
+      ]) +
+      grp('Running Gear', [
+        sp.transmission ? ['Transmission', carLabelD('transmission', sp.transmission)] : null,
+        sp.drivetrain ? ['Drivetrain', carLabelD('drivetrain', sp.drivetrain)] : null,
+        sp.fuel ? ['Fuel', carLabelD('fuel', sp.fuel)] : null,
+        sp.engine_l ? ['Engine', sp.engine_l + ' L'] : null,
+        sp.cylinders ? ['Cylinders', sp.cylinders === 'none' ? 'None (electric)' : String(sp.cylinders)] : null
+      ]) +
+      grp('History & Honesty', [
+        sp.accidents ? ['Accident history', carLabelD('accidents', sp.accidents)] : null,
+        sp.safety_certified ? ['Safety certified', '\u2713 Certified (Ontario)'] : null,
+        sp.warranty ? ['Warranty', carLabelD('warranty', sp.warranty)] : null,
+        sp.report_url ? ['Report link', String(sp.report_url)] : null,
+        sp.report_available ? ['Report on request', 'Yes'] : null
+      ]) +
+      grp('Dealer Desk (admin only)', [
+        sp.stock_number ? ['Stock #', String(sp.stock_number)] : null,
+        sp.vin ? ['VIN', String(sp.vin)] : null
+      ]) +
+      '</div>';
+  }
+
+  /* Admin: history report requests across all ads (newest first),
+     with a Mark done action (admin UPDATE policy). Injected as a
+     sibling panel under the approvals list — dashboard.html itself
+     is unchanged. Fails soft to nothing before the migration. */
+  async function renderAdminCarRequests(client) {
+    var host = el('adminAdsList');
+    if (!host || !host.parentNode) return;
+    var box = el('cfAdminRR');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'cfAdminRR';
+      host.parentNode.insertBefore(box, host.nextSibling);
+    }
+    var rr = [];
+    try {
+      var r = await client.from('report_requests')
+        .select('id,listing_id,buyer_name,buyer_email,note,status,created_at')
+        .order('created_at', { ascending: false }).limit(100);
+      if (r && !r.error && r.data) rr = r.data;
+    } catch (e) {}
+    if (!rr.length) { box.innerHTML = ''; return; }
+    var titles = {};
+    try {
+      var ids = rr.map(function (q) { return q.listing_id; }).filter(Boolean);
+      if (ids.length) {
+        var tr = await client.from('listings').select('id,title').in('id', ids);
+        (tr.data || []).forEach(function (t) { titles[t.id] = t.title; });
+      }
+    } catch (e) {}
+    var openCount = rr.filter(function (q) { return q.status === 'open'; }).length;
+    box.innerHTML = '<h3 style="margin:24px 0 8px">\uD83D\uDCC4 History report requests (' + openCount + ' open)</h3>' +
+      rr.map(function (q) {
+        return '<div class="lcard"><div class="inf"><div class="t">' + esc(q.buyer_name || '') + ' ' + (q.status === 'open' ? pillFor('pending') : pillFor('active')) + '</div>' +
+          '<div class="s">' + esc(q.buyer_email || '') + ' \u00b7 ad: ' + esc(titles[q.listing_id] || '(ad removed)') + ' \u00b7 ' + shortDate(q.created_at) + '</div>' +
+          (q.note ? '<div style="margin-top:6px;font-size:13.5px">' + esc(q.note) + '</div>' : '') + '</div>' +
+          (q.status === 'open' ? '<div class="acts"><button class="btn gho" data-cf-rr-done="' + esc(q.id) + '">Mark done</button></div>' : '') +
+          '</div>';
+      }).join('');
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-cf-rr-done]') : null;
+    if (!b) return;
+    var client = getClient();
+    if (!client) return;
+    b.disabled = true;
+    client.from('report_requests').update({ status: 'done' }).eq('id', b.getAttribute('data-cf-rr-done')).then(function (res) {
+      if (res && res.error) { b.disabled = false; say('Could not update the request: ' + res.error.message); return; }
+      refresh();
+    });
+  });
+
+  /* ---- Editor Car details block (injected into #mEditor) ---- */
+  function _ef(id, label, inner) {
+    return '<div class="fld"><label>' + label + '</label>' + inner + '</div>';
+  }
+  function _es(id, pairs, blankLabel) {
+    var o = '<select id="' + id + '">';
+    if (blankLabel != null) o += '<option value="">' + blankLabel + '</option>';
+    pairs.forEach(function (p) { o += '<option value="' + p[0] + '">' + p[1] + '</option>'; });
+    return o + '</select>';
+  }
+  function editorCarBox() {
+    var box = el('cfEdCarBox');
+    if (box) return box;
+    var descEl = el('edDesc');
+    if (!descEl || !descEl.closest) return null;
+    var fld = descEl.closest('.fld');
+    if (!fld || !fld.parentNode) return null;
+    box = document.createElement('div');
+    box.id = 'cfEdCarBox';
+    var L = CAR_LABELS_D;
+    function opts(map, order) { return order.map(function (k) { return [k, map[k]]; }); }
+    box.innerHTML =
+      '<div style="font-weight:800;margin:16px 0 4px">\uD83D\uDE97 Car details</div>' +
+      '<div class="f2">' + _ef('cfEd_year', 'Year *', '<input id="cfEd_year" inputmode="numeric">') + _ef('cfEd_km', 'Kilometres *', '<input id="cfEd_km" inputmode="numeric">') + '</div>' +
+      '<div class="f2">' + _ef('cfEd_make', 'Make *', '<input id="cfEd_make">') + _ef('cfEd_model', 'Model *', '<input id="cfEd_model">') + '</div>' +
+      '<div class="f2">' + _ef('cfEd_body_type', 'Body type *', _es('cfEd_body_type', opts(L.body_type, ['sedan', 'coupe', 'hatchback', 'wagon', 'suv', 'crossover', 'truck', 'van', 'minivan', 'convertible', 'other']), 'Select\u2026')) + _ef('cfEd_vehicle_type', 'Vehicle type', _es('cfEd_vehicle_type', opts(L.vehicle_type, ['used', 'new', 'certified']), null)) + '</div>' +
+      '<div class="f2">' + _ef('cfEd_trim', 'Trim', '<input id="cfEd_trim" maxlength="30">') + _ef('cfEd_colour', 'Colour', '<input id="cfEd_colour">') + '</div>' +
+      '<div class="f2">' + _ef('cfEd_seats', 'Seats', '<input id="cfEd_seats" type="number" min="1" max="12">') + _ef('cfEd_doors', 'Doors', '<input id="cfEd_doors" type="number" min="2" max="6">') + '</div>' +
+      '<div class="f2">' + _ef('cfEd_availability', 'Availability', _es('cfEd_availability', opts(L.availability, ['now', 'soon', 'ordered']), null)) + _ef('cfEd_transmission', 'Transmission', _es('cfEd_transmission', opts(L.transmission, ['automatic', 'manual', 'cvt', 'single', 'unknown']), 'Select\u2026')) + '</div>' +
+      '<div class="f2">' + _ef('cfEd_drivetrain', 'Drivetrain', _es('cfEd_drivetrain', opts(L.drivetrain, ['fwd', 'rwd', 'awd', '4x4', 'unknown']), 'Select\u2026')) + _ef('cfEd_fuel', 'Fuel', _es('cfEd_fuel', opts(L.fuel, ['gas', 'diesel', 'hybrid', 'phev', 'ev', 'other']), 'Select\u2026')) + '</div>' +
+      '<div class="f2">' + _ef('cfEd_engine_l', 'Engine (litres)', '<input id="cfEd_engine_l" inputmode="decimal">') + _ef('cfEd_cylinders', 'Cylinders', _es('cfEd_cylinders', [['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12'], ['none', 'None (electric)']], 'Select\u2026')) + '</div>' +
+      '<div class="f2">' + _ef('cfEd_accidents', 'Accident history', _es('cfEd_accidents', opts(L.accidents, ['none', 'reported', 'unsure']), 'Select\u2026')) + _ef('cfEd_warranty', 'Warranty', _es('cfEd_warranty', opts(L.warranty, ['factory', 'dealer', 'none']), 'Select\u2026')) + '</div>' +
+      '<div class="f2">' +
+        '<div class="fld"><label><input type="checkbox" id="cfEd_safety" style="width:auto"> Safety certified (Ontario)</label></div>' +
+        '<div class="fld"><label><input type="checkbox" id="cfEd_report_available" style="width:auto"> History report available on request</label></div>' +
+      '</div>' +
+      _ef('cfEd_report_url', 'History report link', '<input id="cfEd_report_url" placeholder="https://\u2026">') +
+      '<div id="cfEd_dealerWrap"><div style="font-weight:800;margin:10px 0 4px">\uD83C\uDFE2 Dealer desk</div>' +
+      '<div class="f2">' + _ef('cfEd_stock_number', 'Stock #', '<input id="cfEd_stock_number" maxlength="20">') + _ef('cfEd_vin', 'VIN (17 characters)', '<input id="cfEd_vin" maxlength="17" style="text-transform:uppercase">') + '</div>' +
+      '<div style="font-size:12px;color:var(--mu)">Buyers never see the VIN. Only you and the ClassiFlip admin can view it.</div></div>';
+    fld.parentNode.insertBefore(box, fld.nextSibling);
+    return box;
+  }
+  function fillEditorCarFields(ad) {
+    var box = editorCarBox();
+    if (!box) return;
+    if (!ad || ad.category !== 'Cars') { box.style.display = 'none'; return; }
+    box.style.display = '';
+    var sp = parseCarSpecs(ad.specs);
+    function set(id, v) { var n = el(id); if (n) n.value = (v == null ? '' : String(v)); }
+    set('cfEd_year', sp.year); set('cfEd_make', sp.make); set('cfEd_model', sp.model);
+    set('cfEd_trim', sp.trim); set('cfEd_body_type', sp.body_type); set('cfEd_km', sp.km);
+    set('cfEd_vehicle_type', sp.vehicle_type || 'used'); set('cfEd_colour', sp.colour);
+    set('cfEd_seats', sp.seats); set('cfEd_doors', sp.doors);
+    set('cfEd_availability', sp.availability || 'now'); set('cfEd_transmission', sp.transmission);
+    set('cfEd_drivetrain', sp.drivetrain); set('cfEd_fuel', sp.fuel);
+    set('cfEd_engine_l', sp.engine_l); set('cfEd_cylinders', sp.cylinders);
+    set('cfEd_accidents', sp.accidents); set('cfEd_warranty', sp.warranty);
+    set('cfEd_report_url', sp.report_url);
+    var sf = el('cfEd_safety'); if (sf) sf.checked = !!sp.safety_certified;
+    var ra = el('cfEd_report_available'); if (ra) ra.checked = !!sp.report_available;
+    set('cfEd_stock_number', sp.stock_number); set('cfEd_vin', sp.vin);
+    var dw = el('cfEd_dealerWrap');
+    if (dw) dw.style.display = ((realEdit && realEdit.isAdvertiser) || sp.stock_number || sp.vin) ? '' : 'none';
+  }
+  function collectEditorCarSpecs() {
+    function v(id) { var n = el(id); return n ? String(n.value).trim() : ''; }
+    function num(id) { var t = v(id).replace(/[,\s]/g, ''); if (t === '') return null; var n = Number(t); return isNaN(n) ? null : n; }
+    var sp = {};
+    var year = num('cfEd_year'); if (year != null) sp.year = Math.round(year);
+    var make = v('cfEd_make'); if (make) sp.make = make.slice(0, 40);
+    var model = v('cfEd_model'); if (model) sp.model = model.slice(0, 40);
+    var trim = v('cfEd_trim'); if (trim) sp.trim = trim.slice(0, 30);
+    var bt = v('cfEd_body_type'); if (bt) sp.body_type = bt;
+    var km = num('cfEd_km'); if (km != null) sp.km = Math.round(km);
+    sp.vehicle_type = v('cfEd_vehicle_type') || 'used';
+    sp.availability = v('cfEd_availability') || 'now';
+    var colour = v('cfEd_colour'); if (colour) sp.colour = colour.slice(0, 30);
+    var seats = num('cfEd_seats'); if (seats != null) sp.seats = Math.round(seats);
+    var doors = num('cfEd_doors'); if (doors != null) sp.doors = Math.round(doors);
+    var tr = v('cfEd_transmission'); if (tr) sp.transmission = tr;
+    var dr = v('cfEd_drivetrain'); if (dr) sp.drivetrain = dr;
+    var fu = v('cfEd_fuel'); if (fu) sp.fuel = fu;
+    var eng = v('cfEd_engine_l'); if (eng !== '') { var en = Number(eng); if (!isNaN(en)) sp.engine_l = en; }
+    var cyl = v('cfEd_cylinders'); if (cyl) sp.cylinders = (cyl === 'none') ? 'none' : (parseInt(cyl, 10) || cyl);
+    var acc = v('cfEd_accidents'); if (acc) sp.accidents = acc;
+    var sf = el('cfEd_safety'); if (sf && sf.checked) sp.safety_certified = true;
+    var war = v('cfEd_warranty'); if (war) sp.warranty = war;
+    var rurl = v('cfEd_report_url'); if (rurl) sp.report_url = rurl;
+    var ra = el('cfEd_report_available'); if (ra && ra.checked) sp.report_available = true;
+    var stock = v('cfEd_stock_number'); if (stock) sp.stock_number = stock.slice(0, 20);
+    var vin = v('cfEd_vin').toUpperCase(); if (vin) sp.vin = vin;
+    return sp;
+  }
+
   async function renderAdmin(client) {
     /* Site pause switch (admin only): read the single site_settings
        row, show its state, and let the admin flip it. Until the
@@ -1051,6 +1316,7 @@
     try { await renderAdminWaitlist(client); } catch (e) {}
     try { await renderAdminUsers(client); } catch (e) {}
     try { await renderAdminReports(client); } catch (e) {}
+    try { await renderAdminCarRequests(client); } catch (e) {}
 
     var adsList = el('adminAdsList'), ordersList = el('adminOrdersList'), expList = el('adminExpiringList');
     if (adsList) adsList.innerHTML = '<div class="notice">Loading pending ads…</div>';
@@ -1061,8 +1327,14 @@
     var pending = [];
     try {
       var pr = await client.from('listings')
-        .select('id,title,description,price,category,location,status,photo_url,created_at,seller_id,tags')
+        .select('id,title,description,price,category,location,status,photo_url,created_at,seller_id,tags,specs')
         .eq('status', 'pending').order('created_at', { ascending: true }).limit(100);
+      if (pr && pr.error) {
+        /* Specs column missing (Cars migration not pasted yet). */
+        pr = await client.from('listings')
+          .select('id,title,description,price,category,location,status,photo_url,created_at,seller_id,tags')
+          .eq('status', 'pending').order('created_at', { ascending: true }).limit(100);
+      }
       if (pr && pr.data) pending = pr.data;
     } catch (e) {}
     /* Multi-photo (v1.1): every pending ad's photos, ordered by
@@ -1108,7 +1380,7 @@
           }).join('') + '</div>' : '') +
           strip +
           (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
-                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + '</div>' +
+                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + carSpecsAdminHtml(x) + '</div>' +
           '<div class="acts"><div style="margin-bottom:6px"><select data-cf-reject-reason="' + esc(x.id) + '" aria-label="Reject reason" style="width:100%;margin-bottom:4px;padding:6px;border:1px solid var(--line);border-radius:8px">' +
           '<option value="Wrong category — please post a new ad under Services">Wrong category — post a new ad under Services</option>' +
           '<option value="Wrong category — please post a new ad in the correct category">Wrong category — correct category</option>' +
@@ -1659,8 +1931,14 @@
     var user = await getUser(client);
     if (!user) { say('Please log in first.'); return; }
     var lr = await client.from('listings')
-      .select('id,title,description,price,category,location,status,photo_url,seller_id,rejection_reason')
+      .select('id,title,description,price,category,location,status,photo_url,seller_id,rejection_reason,specs')
       .eq('id', id).maybeSingle();
+    if (lr && lr.error) {
+      /* Specs column missing (Cars migration not pasted yet). */
+      lr = await client.from('listings')
+        .select('id,title,description,price,category,location,status,photo_url,seller_id,rejection_reason')
+        .eq('id', id).maybeSingle();
+    }
     if (!lr || !lr.data) { say('Could not load that ad.'); return; }
     var ad = lr.data;
     if (String(ad.seller_id || '') !== String(user.id)) { say('That ad is not yours.'); return; }
@@ -1676,11 +1954,12 @@
     } catch (e) {}
     if (!photos.length && ad.photo_url) photos = [ad.photo_url];
     var limit = 8;
+    var isAdv = false;
     try {
       var pr = await client.from('profiles').select('role').eq('id', user.id).maybeSingle();
-      if (pr && pr.data && pr.data.role === 'advertiser') limit = 20;
+      if (pr && pr.data && pr.data.role === 'advertiser') { limit = 20; isAdv = true; }
     } catch (e2) {}
-    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit };
+    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit, category: ad.category || '', isAdvertiser: isAdv };
     var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = 'Edit ad';
     var edSub = el('edSub');
     /* Rejected-editor guidance (Oct 29, best-solution build):
@@ -1717,6 +1996,7 @@
       cat.style.opacity = '0.6';
       cat.style.background = '#f1f1f1';
     }
+    fillEditorCarFields(ad);
     var grid = el('pgrid');
     if (grid) {
       var tiles = photos.map(function (u, i) {
@@ -1739,6 +2019,15 @@
     var price = parseFloat(priceRaw);
     if (!title) { say('Give the ad a title first.'); return; }
     if (isNaN(price) || price < 0) { say('Enter a valid price.'); return; }
+    /* Cars fields v1: the category is locked in the editor, so a
+       Cars ad always carries specs — re-collect and re-validate
+       the required five before anything uploads. */
+    var edCarSpecs = null;
+    if (st.category === 'Cars') {
+      edCarSpecs = collectEditorCarSpecs();
+      var edCarErr = validateCarSpecsD(edCarSpecs);
+      if (edCarErr) { say(edCarErr); return; }
+    }
     var grid = el('pgrid');
     var tiles = grid ? grid.querySelectorAll('.ptile:not(.add)') : [];
     var finalExisting = [];
@@ -1835,7 +2124,15 @@
       photo_url: cover,
       status: 'pending'
     };
+    if (edCarSpecs) upd.specs = edCarSpecs;
     var res = await client.from('listings').update(upd).eq('id', st.id);
+    if (res.error && edCarSpecs && /specs/i.test(res.error.message || '')) {
+      /* Specs column missing: save everything else (same graceful
+         pattern as the post path). */
+      try { console.warn('[ClassiFlip] listings.specs update failed - saving without specs.'); } catch (e8) {}
+      delete upd.specs;
+      res = await client.from('listings').update(upd).eq('id', st.id);
+    }
     if (res.error) { say('Could not save: ' + res.error.message); return; }
     closeRealEditor();
     try { if (typeof closeM === 'function') closeM('mEditor'); } catch (e7) {}

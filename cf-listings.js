@@ -1274,7 +1274,7 @@
     var thumbs = photos.map(function (p, i) {
       return '<button class="gallery-thumb gallery-tone-' + ((i % 5) + 1) + (i === 0 ? ' active' : '') + '" data-gallery-image="' + (i + 1) + '" data-gallery-icon="' + escAttr(x.icon) + '" data-gallery-photo="' + escAttr(p) + '" aria-label="Show image ' + (i + 1) + ' of ' + photos.length + '"><img src="' + escAttr(p) + '" alt="" loading="lazy"></button>';
     }).join('');
-    return '<div class="detail-gallery"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of ' + photos.length + '"><img src="' + escAttr(photos[0]) + '" alt="" loading="lazy"></div><div class="gallery-thumbs" aria-label="Listing image gallery">' + thumbs + '</div></div>';
+    return '<div class="detail-gallery"><div class="detail-visual-wrap"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of ' + photos.length + '"><img src="' + escAttr(photos[0]) + '" alt="" loading="lazy"></div><button type="button" class="gal-arrow prev" data-gal-nav="-1" aria-label="Previous photo">&#8249;</button><button type="button" class="gal-arrow next" data-gal-nav="1" aria-label="Next photo">&#8250;</button></div><div class="gallery-thumbs" aria-label="Listing image gallery">' + thumbs + '</div></div>';
   }
 
   /* Dealer-page detail opener (v1.11): the same real-row detail
@@ -1991,7 +1991,24 @@
         status: 'open'
       }]);
       if (ins.error) throw ins.error;
-      document.getElementById('cfRrForm').innerHTML = '<div style="font-size:15px;font-weight:700;color:#137333">Request sent \u2713</div><p style="font-size:13.5px;color:var(--mu)">The seller has your email and can send you the report. If they have one on file, you will usually hear back within a day or two.</p><button type="button" class="primary" data-cf-rr-close style="width:100%">Done</button>';
+      /* Martin (Nov 11): the request ALSO shoots the seller a message
+         about this car, in the listing's own message thread, when the
+         buyer is signed in. The report_requests row stays the record;
+         this is best-effort and never blocks the request. Signed-out
+         buyers have no account to message from - record only. */
+      var msgSent = false;
+      try {
+        if (window.CFMessages && window.CFMessages.getUser && window.CFMessages.sendForListing) {
+          var cu = await window.CFMessages.getUser();
+          if (cu) {
+            var noteTxt = noteEl && noteEl.value.trim() ? noteEl.value.trim().slice(0, 300) : '';
+            var rrText = 'Hi - I would like the history report for this car (' + (rrListing.title || 'your listing') + '), please. You can email it to me at ' + email + '.' + (noteTxt ? ' Note: ' + noteTxt : '') + ' - ' + name;
+            var sr = await window.CFMessages.sendForListing(rrListing.id, rrText);
+            msgSent = !!(sr && sr.ok);
+          }
+        }
+      } catch (mErr) {}
+      document.getElementById('cfRrForm').innerHTML = '<div style="font-size:15px;font-weight:700;color:#137333">Request sent \u2713</div><p style="font-size:13.5px;color:var(--mu)">The seller has your email and can send you the report.' + (msgSent ? ' They also got a message here on ClassiFlip about this car.' : '') + ' If they have one on file, you will usually hear back within a day or two.</p><button type="button" class="primary" data-cf-rr-close style="width:100%">Done</button>';
     } catch (err) {
       var em = (err && err.message) || '';
       if ((err && err.code === '23505') || /duplicate|unique/i.test(em)) {

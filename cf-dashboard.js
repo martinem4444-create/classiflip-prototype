@@ -1563,6 +1563,15 @@
       if (uc2) uc2.textContent = 'Unavailable';
     }
 
+    /* Live-ads count for the All Ads tab chip (Nov 12, 2026, Martin's
+       ask): same exact-count pattern as Users above, filtered to
+       status 'active' so the chip shows total LIVE ads. Always shown
+       (even 0) so the number is there at a glance. */
+    try {
+      var lac = await client.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'active');
+      if (lac && !lac.error && typeof lac.count === 'number') setTabBadge('atabNAllAds', lac.count, true);
+    } catch (e) {}
+
     /* Site overview counts (admin only): exact totals for the top
        strip — total ads, pending ads, pending packages (orders in
        'Pending'). Count-only queries, so the numbers stay exact
@@ -1801,7 +1810,14 @@
         ? actBoosts.map(function (b) {
             var expMs = b.expires_at ? new Date(b.expires_at).getTime() - Date.now() : 0;
             var flag = (b.expires_at && expMs > 0 && expMs <= 3 * 24 * 3600 * 1000) ? ' <span class="pill pend">Expiring soon</span>' : '';
-            return boostCard(b, '<div class="acts">' + flag + '<button class="btn gho danger" data-cf-boost-expire="' + esc(b.id) + '" data-cf-boost-listing="' + esc(b.listing_id) + '">Expire</button></div>');
+            /* Truth-in-labelling (Nov 12, 2026): a boost past its
+               expires_at has no effect on the marketplace (the
+               effective-boosts RPC already ignores it), so the card
+               must not wear the green Active pill — show Expired.
+               The stored row stays Active until the admin closes it
+               with the Expire button; this only fixes the display. */
+            var shown = (b.expires_at && expMs <= 0) ? Object.assign({}, b, { status: 'Expired' }) : b;
+            return boostCard(shown, '<div class="acts">' + flag + '<button class="btn gho danger" data-cf-boost-expire="' + esc(b.id) + '" data-cf-boost-listing="' + esc(b.listing_id) + '">Expire</button></div>');
           }).join('')
         : '<div class="notice">No active boosts.</div>';
     }

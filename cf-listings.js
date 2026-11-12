@@ -277,6 +277,7 @@
       condition: r.condition || ((r.category === 'Cars' && sp.vehicle_type) ? (CAR_LABELS.vehicle_type[sp.vehicle_type] || 'Good') : 'Good'),
       specs: sp,
       carSearch: carSearchOf(sp),
+      homeSearch: homeSearchOf(sp),
       location: r.location || 'Mississauga, ON',
       desc: r.description || '',
       icon: ICON_MAP[r.category] || 'laptop',
@@ -579,6 +580,12 @@
         var carErr = validateCarSpecs(carSpecs);
         if (carErr) { fail(carErr); return; }
       }
+      var homeSpecs = null;
+      if (carCategory === 'Homes' || carCategory === 'Rentals') {
+        homeSpecs = collectHomeSpecs();
+        var homeErr = validateHomeSpecs(homeSpecs, carCategory);
+        if (homeErr) { fail(homeErr); return; }
+      }
       /* Boost-at-post (v1.12): the Cars form's private-seller option
          is now Boost $2.99 (replacing the stale '$5 bump to top',
          which bought nothing — the real path never read the plan).
@@ -657,8 +664,9 @@
          section 1.5) — the key stays out of the row and the vehicle
          type carries the meaning. Every other category keeps the
          select value exactly as before. Specs ride in the same row. */
-      if (carCategory !== 'Cars') newRow.condition = document.getElementById('adCondition').value;
+      if (carCategory !== 'Cars' && carCategory !== 'Homes' && carCategory !== 'Rentals') newRow.condition = document.getElementById('adCondition').value;
       if (carSpecs) newRow.specs = carSpecs;
+      if (homeSpecs) newRow.specs = homeSpecs;
       /* Tags (Oct 29): free, max 5, any seller. Omit when empty so
          pre-migration rows (no tags column yet) still insert. */
       try {
@@ -1322,13 +1330,13 @@
         '<div class="detail">' + galleryWithBrand(x) + '<div class="detail-info">' +
                 (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
-        '<div class="detail-price">' + displayPrice(x) + '</div>' + carAvailPill(x) +
+        '<div class="detail-price">' + displayPrice(x) + '</div>' + carAvailPill(x) + rentalAvailPill(x) +
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         listingContactMarkup(x) +
         reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
-        carSectionsHtml(x) +
+        carSectionsHtml(x) + homeSectionsHtml(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
         carSellerBlockHtml(x) +
@@ -1393,14 +1401,14 @@
         '<div class="detail">' + galleryWithBrand(x) + '<div class="detail-info">' +
                 (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
-        '<div class="detail-price">' + displayPrice(x) + '</div>' + carAvailPill(x) +
+        '<div class="detail-price">' + displayPrice(x) + '</div>' + carAvailPill(x) + rentalAvailPill(x) +
         (canRealBoost(x) ? '<div style="margin-top:12px;margin-bottom:10px"><button class="primary" data-cf-real-boost="' + x.id + '">Boost · $2.99</button></div>' : '') +
         /* Messages move-up (Oct 26, 2026): contact (Message seller + Share) sits under the price, mirroring the v1.10 Boost move — the bottom of a tall modal hides behind the mobile tab bar. */
         listingContactMarkup(x) +
         reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
-        carSectionsHtml(x) +
+        carSectionsHtml(x) + homeSectionsHtml(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
         carSellerBlockHtml(x) +
@@ -1690,13 +1698,14 @@
     availability: { now: 'Available now', soon: 'Arriving soon', ordered: 'On order' }
   };
   var CAR_KEYS = ['year', 'make', 'model', 'trim', 'body_type', 'km', 'vehicle_type', 'colour', 'seats', 'doors', 'availability', 'transmission', 'drivetrain', 'fuel', 'engine_l', 'cylinders', 'accidents', 'safety_certified', 'warranty', 'report_url', 'report_available', 'stock_number', 'vin'];
+  var HOME_KEYS = ['property_type', 'bedrooms', 'bathrooms', 'sqft', 'parking', 'laundry', 'lot_sqft', 'year_built', 'basement', 'heating', 'cooling', 'tour_url', 'taxes_annual', 'condo_fee_monthly', 'mls_number', 'available_date', 'lease_term', 'furnished', 'utilities_included', 'pets', 'viewings_ok'];
   function parseSpecs(v) {
     var o = null;
     if (v && typeof v === 'object') o = v;
     else if (typeof v === 'string' && v) { try { o = JSON.parse(v); } catch (e) { o = null; } }
     if (!o || typeof o !== 'object') return {};
     var out = {};
-    CAR_KEYS.forEach(function (k) { if (o[k] !== undefined && o[k] !== null && o[k] !== '') out[k] = o[k]; });
+    CAR_KEYS.concat(HOME_KEYS).forEach(function (k) { if (o[k] !== undefined && o[k] !== null && o[k] !== '') out[k] = o[k]; });
     return out;
   }
   function carLabel(group, slug) {
@@ -1911,8 +1920,11 @@
   document.addEventListener('submit', function (e) {
     if (!e.target || e.target.id !== 'postForm') return;
     var cat = document.getElementById('adCategory');
-    if (!cat || cat.value !== 'Cars') return;
-    var err = validateCarSpecs(collectCarSpecs());
+    if (!cat) return;
+    var err = null;
+    if (cat.value === 'Cars') err = validateCarSpecs(collectCarSpecs());
+    else if (cat.value === 'Homes' || cat.value === 'Rentals') err = validateHomeSpecs(collectHomeSpecs(), cat.value);
+    else return;
     if (!err) return;
     e.preventDefault();
     e.stopPropagation();
@@ -1929,6 +1941,304 @@
     availPill: carAvailPill,
     vehicleTypeLabel: function () { return carLabel('vehicle_type', _cv('car_vehicle_type') || 'used'); },
     labels: CAR_LABELS
+  };
+
+  /* ---- Homes & Rentals structured specs (spec Nov 11, 2026) ----
+     Same architecture as Cars: values live in listings.specs under
+     HOME_KEYS; labels map client-side via HOME_LABELS. Required cores:
+     Homes = property type, bedrooms, bathrooms, interior size;
+     Rentals = bedrooms, bathrooms, available date. */
+  var HOME_LABELS = {
+    property_type: { detached: 'Detached house', semi: 'Semi-detached', townhouse: 'Townhouse', condo: 'Condo / Apartment', duplex: 'Duplex / Multi-unit', other: 'Other' },
+    parking: { garage: 'Garage', driveway: 'Driveway', underground: 'Underground', street: 'Street', none: 'None' },
+    laundry: { in_unit: 'In-unit', in_building: 'In building', none: 'None' },
+    basement: { finished: 'Finished', partial: 'Partly finished', unfinished: 'Unfinished', none: 'None' },
+    heating: { forced_air_gas: 'Forced air (natural gas)', electric: 'Electric / baseboard', radiant: 'Radiant / hot water', heat_pump: 'Heat pump', oil: 'Oil', other: 'Other' },
+    cooling: { central: 'Central air', window: 'Window unit(s)', none: 'No A/C' },
+    lease_term: { '12_plus': '12 months or longer', short: 'Short term (under 12 months)', month_to_month: 'Month-to-month', flexible: 'Flexible' },
+    furnished: { unfurnished: 'Unfurnished', partly: 'Partly furnished', furnished: 'Furnished' },
+    pets: { welcome: 'Pets welcome', cats: 'Cats only', dogs: 'Dogs only', no: 'No pets', ask: 'Ask the landlord' },
+    utilities: { heat: 'Heat', water: 'Water', hydro: 'Hydro', internet: 'Internet', parking: 'Parking' }
+  };
+  function homeLabel(group, slug) {
+    if (!slug) return '';
+    var m = HOME_LABELS[group];
+    return (m && m[slug]) || String(slug);
+  }
+  function collectHomeSpecs() {
+    var catEl = document.getElementById('adCategory');
+    var cat = catEl ? catEl.value : '';
+    var sp = {};
+    var pt = _cv('home_property_type'); if (pt) sp.property_type = pt;
+    var bd = _cn('home_bedrooms'); if (bd != null) sp.bedrooms = Math.round(bd);
+    var ba = _cn('home_bathrooms'); if (ba != null) sp.bathrooms = ba;
+    var sq = _cn('home_sqft'); if (sq != null) sp.sqft = Math.round(sq);
+    var pk = _cv('home_parking'); if (pk) sp.parking = pk;
+    var ld = _cv('home_laundry'); if (ld) sp.laundry = ld;
+    if (cat === 'Homes') {
+      var lot = _cn('home_lot_sqft'); if (lot != null) sp.lot_sqft = Math.round(lot);
+      var yb = _cn('home_year_built'); if (yb != null) sp.year_built = Math.round(yb);
+      var bs = _cv('home_basement'); if (bs) sp.basement = bs;
+      var ht = _cv('home_heating'); if (ht) sp.heating = ht;
+      var cl = _cv('home_cooling'); if (cl) sp.cooling = cl;
+      var tu = _cv('home_tour_url'); if (tu) sp.tour_url = tu.slice(0, 300);
+      var tx = _cn('home_taxes_annual'); if (tx != null) sp.taxes_annual = Math.round(tx);
+      if (pt === 'condo') { var cf = _cn('home_condo_fee_monthly'); if (cf != null) sp.condo_fee_monthly = Math.round(cf); }
+      var mls = _cv('home_mls_number').toUpperCase(); if (mls) sp.mls_number = mls.slice(0, 12);
+    }
+    if (cat === 'Rentals') {
+      var ad = _cv('home_available_date'); if (ad) sp.available_date = ad;
+      sp.lease_term = _cv('home_lease_term') || '12_plus';
+      sp.furnished = _cv('home_furnished') || 'unfurnished';
+      var utils = [];
+      var boxes = document.querySelectorAll('input[name="home_util"]:checked');
+      var known = HOME_LABELS.utilities;
+      for (var i = 0; i < boxes.length; i++) { if (known[boxes[i].value]) utils.push(boxes[i].value); }
+      if (utils.length) sp.utilities_included = utils;
+      var pets = _cv('home_pets'); if (pets) sp.pets = pets;
+    }
+    var vok = document.getElementById('home_viewings_ok');
+    sp.viewings_ok = vok ? !!vok.checked : true;
+    return sp;
+  }
+  function validateHomeSpecs(sp, cat) {
+    if (!sp) return 'Property details are missing - please reopen the form and try again.';
+    if (cat === 'Homes' && !sp.property_type) return 'Pick a property type - it is required for Homes.';
+    if (sp.bedrooms == null) return 'Add the bedrooms - it is required.';
+    if (sp.bedrooms < 0 || sp.bedrooms > 10) return 'Bedrooms must be between 0 (bachelor) and 10.';
+    if (sp.bathrooms == null) return 'Add the bathrooms - it is required.';
+    if (sp.bathrooms < 1 || sp.bathrooms > 10 || (sp.bathrooms * 2) % 1 !== 0) return 'Bathrooms must be 1 to 10, in half steps (e.g. 2.5).';
+    if (cat === 'Homes') {
+      if (sp.sqft == null) return 'Add the interior size in square feet - it is required for Homes.';
+      if (sp.sqft < 100 || sp.sqft > 50000) return 'Interior size must be between 100 and 50,000 sq ft.';
+      if (sp.lot_sqft != null && (sp.lot_sqft < 200 || sp.lot_sqft > 1000000)) return 'Lot size must be between 200 and 1,000,000 sq ft.';
+      var maxYB = new Date().getFullYear() + 1;
+      if (sp.year_built != null && (sp.year_built < 1800 || sp.year_built > maxYB)) return 'Year built must be between 1800 and ' + maxYB + '.';
+      if (sp.taxes_annual != null && (sp.taxes_annual < 0 || sp.taxes_annual > 250000)) return 'Property taxes must be between $0 and $250,000 per year.';
+      if (sp.condo_fee_monthly != null && (sp.condo_fee_monthly < 0 || sp.condo_fee_monthly > 10000)) return 'Condo fee must be between $0 and $10,000 per month.';
+      if (sp.mls_number && !/^[A-Z0-9-]{1,12}$/.test(sp.mls_number)) return 'The MLS # should be letters, numbers or dashes, up to 12 characters - or leave it blank.';
+      if (sp.tour_url && !/^https?:\/\//i.test(sp.tour_url)) return 'The virtual tour link must start with http:// or https:// - or leave it blank.';
+    }
+    if (cat === 'Rentals') {
+      if (sp.sqft != null && (sp.sqft < 100 || sp.sqft > 50000)) return 'Interior size must be between 100 and 50,000 sq ft.';
+      if (!sp.available_date) return 'Add the available date - it is required for Rentals.';
+      var d = new Date(sp.available_date + 'T00:00:00');
+      if (isNaN(d.getTime())) return 'The available date does not look right.';
+      var maxD = new Date(); maxD.setMonth(maxD.getMonth() + 18);
+      if (d > maxD) return 'The available date is more than 18 months out - please check it.';
+    }
+    return null;
+  }
+  /* Search text: property type / beds / baths words buyers type. */
+  function homeSearchOf(sp) {
+    if (!sp || !Object.keys(sp).length) return '';
+    var parts = [homeLabel('property_type', sp.property_type), sp.property_type,
+      homeLabel('basement', sp.basement), homeLabel('heating', sp.heating),
+      homeLabel('cooling', sp.cooling), homeLabel('parking', sp.parking),
+      homeLabel('furnished', sp.furnished), homeLabel('pets', sp.pets), sp.mls_number];
+    if (sp.bedrooms != null) { parts.push(sp.bedrooms + ' bed'); parts.push(sp.bedrooms + ' bedroom'); parts.push(sp.bedrooms + ' bedrooms'); if (Number(sp.bedrooms) === 0) parts.push('bachelor studio'); }
+    if (sp.bathrooms != null) { parts.push(sp.bathrooms + ' bath'); parts.push(sp.bathrooms + ' bathroom'); }
+    return parts.filter(Boolean).join(' ');
+  }
+  /* Card chips (spec 5.1): beds, baths, size - max 3, in that order. */
+  function homeChipsHtml(x) {
+    if (!x || (x.category !== 'Homes' && x.category !== 'Rentals') || !x.specs) return '';
+    var sp = x.specs, chips = [];
+    if (sp.bedrooms != null && sp.bedrooms !== '') chips.push(Number(sp.bedrooms) === 0 ? 'Bachelor' : sp.bedrooms + ' bd');
+    if (sp.bathrooms != null && sp.bathrooms !== '') chips.push(sp.bathrooms + ' ba');
+    if (sp.sqft) chips.push(fmtKm(sp.sqft) + ' sq ft');
+    if (!chips.length) return '';
+    return '<div class="car-chips">' + chips.map(function (c) { return '<span>' + safe(c) + '</span>'; }).join('') + '</div>';
+  }
+  function homeAvailText(dstr) {
+    var d = new Date(dstr + 'T00:00:00');
+    if (isNaN(d.getTime())) return '';
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    if (d <= today) return 'Available now';
+    return 'Available ' + d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+  }
+  /* Rental availability pill beside the price (spec 5.2 item 3). */
+  function rentalAvailPill(x) {
+    if (!x || x.category !== 'Rentals' || !x.specs || !x.specs.available_date) return '';
+    var d = new Date(x.specs.available_date + 'T00:00:00');
+    if (isNaN(d.getTime())) return '';
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    if (d <= today) return '<div><span class="avail-pill now">\u25cf Available now</span></div>';
+    return '<div><span class="avail-pill soon">' + safe(homeAvailText(x.specs.available_date)) + '</span></div>';
+  }
+  /* Detail facts (spec 5.2): Basics + Property/Costs (Homes) or
+     The Lease (Rentals); groups with no values hide entirely. */
+  function homeSectionsHtml(x) {
+    if (!x || (x.category !== 'Homes' && x.category !== 'Rentals') || !x.specs) return '';
+    var sp = x.specs;
+    if (!Object.keys(sp).length) return '';
+    var b = [];
+    if (sp.property_type) b.push(specRow('Property type', homeLabel('property_type', sp.property_type)));
+    if (sp.bedrooms != null && sp.bedrooms !== '') b.push(specRow('Bedrooms', Number(sp.bedrooms) === 0 ? 'Bachelor / studio' : sp.bedrooms));
+    if (sp.bathrooms != null && sp.bathrooms !== '') b.push(specRow('Bathrooms', sp.bathrooms));
+    if (sp.sqft) b.push(specRow('Interior size', fmtKm(sp.sqft) + ' sq ft'));
+    if (sp.parking) b.push(specRow('Parking', homeLabel('parking', sp.parking)));
+    if (sp.laundry) b.push(specRow('Laundry', homeLabel('laundry', sp.laundry)));
+    var out = specGroup('The Basics', b);
+    if (x.category === 'Homes') {
+      var p = [];
+      if (sp.lot_sqft) p.push(specRow('Lot size', fmtKm(sp.lot_sqft) + ' sq ft'));
+      if (sp.year_built) p.push(specRow('Year built', sp.year_built));
+      if (sp.basement) p.push(specRow('Basement', homeLabel('basement', sp.basement)));
+      if (sp.heating) p.push(specRow('Heating', homeLabel('heating', sp.heating)));
+      if (sp.cooling) p.push(specRow('Cooling', homeLabel('cooling', sp.cooling)));
+      out += specGroup('The Property', p);
+      if (sp.tour_url && /^https?:\/\//i.test(sp.tour_url)) out += '<div class="spec-card"><div class="spec-rows"><div class="spec-row"><span class="k">Virtual tour</span><span class="v"><a href="' + escAttr(sp.tour_url) + '" target="_blank" rel="noopener">View virtual tour</a></span></div></div></div>';
+      var c = [];
+      if (sp.taxes_annual != null && sp.taxes_annual !== '') c.push(specRow('Property taxes', '$' + fmtKm(sp.taxes_annual) + ' / year'));
+      if (sp.condo_fee_monthly != null && sp.condo_fee_monthly !== '') c.push(specRow('Condo fee', '$' + fmtKm(sp.condo_fee_monthly) + ' / month'));
+      var px = Number(x.price);
+      if (px > 0 && sp.sqft) c.push(specRow('Price per sq ft', '$' + fmtKm(Math.round(px / Number(sp.sqft))) + ' / sq ft'));
+      out += specGroup('Costs & Paperwork', c);
+      if (sp.mls_number) out += '<div class="mls-line">MLS\u00ae # ' + safe(sp.mls_number) + '</div>';
+    } else {
+      var l = [];
+      if (sp.available_date) l.push(specRow('Available', homeAvailText(sp.available_date) || sp.available_date));
+      if (sp.lease_term) l.push(specRow('Lease term', homeLabel('lease_term', sp.lease_term)));
+      if (sp.furnished) l.push(specRow('Furnished', homeLabel('furnished', sp.furnished)));
+      if (sp.utilities_included && sp.utilities_included.length) l.push(specRow('Utilities included', sp.utilities_included.map(function (u) { return homeLabel('utilities', u); }).join(', ')));
+      if (sp.pets) l.push(specRow('Pets', homeLabel('pets', sp.pets)));
+      out += specGroup('The Lease', l);
+    }
+    if (x.live && sp.viewings_ok && x.id) {
+      out += '<div style="margin-top:12px"><button type="button" class="rr-btn" data-cf-vw-open="' + escAttr(x.id) + '">Request a viewing</button></div>';
+    }
+    return out;
+  }
+  /* ---- Viewing requests (spec 5.5) ----
+     Same window pattern as history reports: name + email under a
+     plain consent line; the row in viewing_requests is the record;
+     signed-in buyers ALSO get a message in the listing's thread
+     (Martin's Nov 11 wiring from the report flow). */
+  var vwListing = null;
+  function vwModalBuild() {
+    var m = document.getElementById('cfVwModal');
+    if (!document.getElementById('cfRrStyle')) { var st = document.createElement('style'); st.id = 'cfRrStyle'; st.textContent = '.mback{position:fixed;inset:0;z-index:80;background:rgba(7,14,25,.58);display:none;align-items:flex-start;justify-content:center;padding:18px;overflow-y:auto}.mback.on{display:flex}.mcard{position:relative;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:22px;width:min(460px,100%);margin:5vh auto 0}.mcard h3{margin:0 24px 6px 0;font-size:19px}.mcard .sub{color:var(--muted);font-size:13.5px;margin:0 0 12px}.mcard .field{margin-bottom:12px}.mcard .field label{display:block;font-weight:600;font-size:13px;margin-bottom:5px}.mx{position:absolute;top:10px;right:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-size:17px;cursor:pointer;line-height:1}'; document.head.appendChild(st); }
+    if (m && !document.getElementById('cfVwSend')) { m.remove(); m = null; }
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'cfVwModal';
+    m.className = 'mback';
+    m.innerHTML = '<div class="mcard" style="max-width:460px">' +
+      '<button class="mx" type="button" data-cf-vw-close>&times;</button>' +
+      '<h3>Request a viewing</h3>' +
+      '<p class="sub" id="cfVwContext"></p>' +
+      '<div id="cfVwForm">' +
+      '<div class="field"><label for="cfVwName">Your name *</label><input id="cfVwName" autocomplete="name" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
+      '<div class="field"><label for="cfVwEmail">Your email *</label><input id="cfVwEmail" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
+      '<div class="field"><label for="cfVwDate">Preferred date (optional)</label><input id="cfVwDate" type="date" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
+      '<div class="field"><label for="cfVwTime">Preferred time (optional)</label><select id="cfVwTime" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"><option value="">No preference</option><option>Morning</option><option>Afternoon</option><option>Evening</option></select></div>' +
+      '<div class="field"><label for="cfVwNote">Note (optional)</label><textarea id="cfVwNote" rows="2" placeholder="Anything to add?" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></textarea></div>' +
+      '<p style="font-size:12.5px;color:var(--muted)">Send my name and email to this seller so they can arrange my viewing.</p>' +
+      '<div id="cfVwMsg" style="font-size:13.5px;margin:8px 0"></div>' +
+      '<button type="button" class="primary" id="cfVwSend" style="width:100%">Send request</button>' +
+      '</div></div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', function (e) { if (e.target === m) closeVw(); });
+    return m;
+  }
+  function closeVw() { var m = document.getElementById('cfVwModal'); if (m) m.classList.remove('on'); }
+  async function openVw(listingId) {
+    var x = null;
+    try { if (window.__cfActiveListing && String(window.__cfActiveListing.id) === String(listingId)) x = window.__cfActiveListing; } catch (e) {}
+    if (!x) { try { x = listings.find(function (y) { return String(y.id) === String(listingId); }); } catch (e) {} }
+    if (!x) return;
+    vwListing = x;
+    var m = vwModalBuild();
+    document.getElementById('cfVwContext').textContent = 'For: ' + (x.title || 'this home') + ' - the seller arranges the viewing with you directly.';
+    var msgEl = document.getElementById('cfVwMsg'); if (msgEl) msgEl.textContent = '';
+    var sendBtn = document.getElementById('cfVwSend');
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send request'; }
+    try {
+      var client = getClient();
+      if (client) {
+        var uRes = await client.auth.getUser();
+        var u = uRes && uRes.data && uRes.data.user;
+        if (u) {
+          var em = document.getElementById('cfVwEmail'); if (em && !em.value) em.value = u.email || '';
+          try {
+            var pr = await client.from('profiles').select('display_name').eq('id', u.id).maybeSingle();
+            var nm = document.getElementById('cfVwName');
+            if (nm && !nm.value && pr && pr.data && pr.data.display_name) nm.value = pr.data.display_name;
+          } catch (e2) {}
+        }
+      }
+    } catch (e) {}
+    m.classList.add('on');
+  }
+  document.addEventListener('click', async function (e) {
+    var openBtn = e.target && e.target.closest ? e.target.closest('[data-cf-vw-open]') : null;
+    if (openBtn) { e.preventDefault(); openVw(openBtn.getAttribute('data-cf-vw-open')); return; }
+    var closeBtn = e.target && e.target.closest ? e.target.closest('[data-cf-vw-close]') : null;
+    if (closeBtn) { closeVw(); return; }
+    var sendBtn = e.target && e.target.closest ? e.target.closest('#cfVwSend') : null;
+    if (!sendBtn || !vwListing) return;
+    var nameEl = document.getElementById('cfVwName');
+    var emailEl = document.getElementById('cfVwEmail');
+    var dateEl = document.getElementById('cfVwDate');
+    var timeEl = document.getElementById('cfVwTime');
+    var noteEl = document.getElementById('cfVwNote');
+    var msgEl = document.getElementById('cfVwMsg');
+    var name = nameEl ? nameEl.value.trim() : '';
+    var email = emailEl ? emailEl.value.trim() : '';
+    if (!name) { if (msgEl) { msgEl.textContent = 'Please add your name.'; msgEl.style.color = '#B3261E'; } return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (msgEl) { msgEl.textContent = 'Please add a valid email - the seller arranges the viewing there.'; msgEl.style.color = '#B3261E'; } return; }
+    var client = getClient();
+    if (!client) { if (msgEl) { msgEl.textContent = 'Not connected - please reload and try again.'; msgEl.style.color = '#B3261E'; } return; }
+    sendBtn.disabled = true; sendBtn.textContent = 'Sending\u2026';
+    try {
+      var ins = await client.from('viewing_requests').insert([{
+        listing_id: vwListing.id,
+        seller_id: vwListing.seller_id,
+        buyer_name: name.slice(0, 80),
+        buyer_email: email.slice(0, 120),
+        preferred_date: dateEl && dateEl.value ? dateEl.value : null,
+        preferred_time: timeEl && timeEl.value ? timeEl.value : null,
+        note: noteEl && noteEl.value.trim() ? noteEl.value.trim().slice(0, 500) : null,
+        status: 'open'
+      }]);
+      if (ins.error) throw ins.error;
+      var msgSent = false;
+      try {
+        if (window.CFMessages && window.CFMessages.getUser && window.CFMessages.sendForListing) {
+          var cu = await window.CFMessages.getUser();
+          if (cu) {
+            var pref = '';
+            if (dateEl && dateEl.value) { var dd = new Date(dateEl.value + 'T00:00:00'); if (!isNaN(dd.getTime())) pref = dd.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' }); }
+            if (timeEl && timeEl.value) pref = pref ? pref + ', ' + timeEl.value.toLowerCase() : timeEl.value;
+            var noteTxt = noteEl && noteEl.value.trim() ? noteEl.value.trim().slice(0, 300) : '';
+            var vwText = 'Hi - I would like to arrange a viewing of "' + (vwListing.title || 'your listing') + '". You can reach me at ' + email + '.' + (pref ? ' Preferred: ' + pref + '.' : '') + (noteTxt ? ' Note: ' + noteTxt : '') + ' - ' + name;
+            var sr = await window.CFMessages.sendForListing(vwListing.id, vwText);
+            msgSent = !!(sr && sr.ok);
+          }
+        }
+      } catch (mErr) {}
+      document.getElementById('cfVwForm').innerHTML = '<div style="font-size:15px;font-weight:700;color:#137333">Request sent \u2713</div><p style="font-size:13.5px;color:var(--muted)">The seller has your email and can arrange your viewing.' + (msgSent ? ' They also got a message here on ClassiFlip about this home.' : '') + ' Sellers usually reply within a day or two.</p><button type="button" class="primary" data-cf-vw-close style="width:100%">Done</button>';
+    } catch (err) {
+      var em2 = (err && err.message) || '';
+      if ((err && err.code === '23505') || /duplicate|unique/i.test(em2)) {
+        document.getElementById('cfVwForm').innerHTML = '<div style="font-size:15px;font-weight:700">Already requested</div><p style="font-size:13.5px;color:var(--muted)">You already have an open viewing request for this home - the seller has your email.</p><button type="button" class="primary" data-cf-vw-close style="width:100%">Done</button>';
+      } else {
+        sendBtn.disabled = false; sendBtn.textContent = 'Send request';
+        if (msgEl) { msgEl.textContent = 'Something went wrong - please try again.'; msgEl.style.color = '#B3261E'; }
+      }
+    }
+  });
+
+
+  /* Public surface for the page's own renders: window.CFHomes. */
+  window.CFHomes = {
+    collect: collectHomeSpecs,
+    validate: validateHomeSpecs,
+    sectionsHtml: homeSectionsHtml,
+    chipsHtml: homeChipsHtml,
+    availPill: rentalAvailPill,
+    labels: HOME_LABELS
   };
 
   /* ---- History report requests (spec 4.4) ----

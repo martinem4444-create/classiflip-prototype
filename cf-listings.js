@@ -2227,7 +2227,36 @@
     } catch (err) {
       var em2 = (err && err.message) || '';
       if ((err && err.code === '23505') || /duplicate|unique/i.test(em2)) {
-        document.getElementById('cfVwForm').innerHTML = '<div style="font-size:15px;font-weight:700">Already requested</div><p style="font-size:13.5px;color:var(--muted)">You already have an open viewing request for this home - the seller has your email.</p><button type="button" class="primary" data-cf-vw-close style="width:100%">Done</button>';
+        /* Repeat request (same email, one open request per ad - the spam
+           guard keeps ONE row). But people change plans (Martin, Nov 11):
+           a signed-in buyer re-sending with new details - a new viewing
+           time, a phone, a note - gets an UPDATE into the seller's thread
+           as a safety net, instead of a dead end. */
+        var vwUpdSent = false;
+        try {
+          if (window.CFMessages && window.CFMessages.getUser && window.CFMessages.sendForListing && vwListing.seller_id) {
+            var uu2 = await window.CFMessages.getUser();
+            if (uu2 && uu2.id !== vwListing.seller_id) {
+              var uParts = [];
+              var uPref = '';
+              if (dateEl && dateEl.value) { var udd = new Date(dateEl.value + 'T00:00:00'); if (!isNaN(udd.getTime())) uPref = udd.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' }); }
+              if (timeEl && timeEl.value) uPref = uPref ? uPref + ', ' + timeEl.value.toLowerCase() : timeEl.value;
+              if (uPref) uParts.push('I need to change my viewing time to ' + uPref);
+              if (phoneVal) uParts.push('you can reach me at ' + phoneVal);
+              var uNote = noteEl && noteEl.value.trim() ? noteEl.value.trim().slice(0, 300) : '';
+              if (uNote) uParts.push(uNote);
+              if (uParts.length) {
+                var ur2 = await window.CFMessages.sendForListing(vwListing.id, 'Update on my viewing request for "' + (vwListing.title || 'your listing') + '": ' + uParts.join('. ') + ' - ' + name);
+                vwUpdSent = !!(ur2 && ur2.ok);
+              }
+            }
+          }
+        } catch (uErr2) {}
+        if (vwUpdSent) {
+          document.getElementById('cfVwForm').innerHTML = '<div style="font-size:15px;font-weight:700;color:#137333">Update sent \u2713</div><p style="font-size:13.5px;color:var(--muted)">Your first request is still open - the seller now has your new details and can lock in the new time.</p><button type="button" class="primary" data-cf-vw-close style="width:100%">Done</button>';
+        } else {
+          document.getElementById('cfVwForm').innerHTML = '<div style="font-size:15px;font-weight:700">Already requested</div><p style="font-size:13.5px;color:var(--muted)">You already have an open viewing request for this home - the seller has your email. Need to change your time? Send the request again with the new details - if you are signed in, the seller gets an update automatically.</p><button type="button" class="primary" data-cf-vw-close style="width:100%">Done</button>';
+        }
       } else {
         sendBtn.disabled = false; sendBtn.textContent = 'Send request';
         if (msgEl) { msgEl.textContent = 'Something went wrong - please try again.'; msgEl.style.color = '#B3261E'; }
@@ -2357,7 +2386,25 @@
     } catch (err) {
       var em = (err && err.message) || '';
       if ((err && err.code === '23505') || /duplicate|unique/i.test(em)) {
-        document.getElementById('cfRrForm').innerHTML = '<div style="font-size:15px;font-weight:700">Already requested</div><p style="font-size:13.5px;color:var(--mu)">You already have an open request for this car - the seller has your email.</p><button type="button" class="primary" data-cf-rr-close style="width:100%">Done</button>';
+        /* Same safety net as viewing requests: a signed-in buyer who
+           re-sends WITH a note gets the note into the seller's thread
+           as an update; the original request row stays the record. */
+        var rrUpdSent = false;
+        try {
+          var rNote = noteEl && noteEl.value.trim() ? noteEl.value.trim().slice(0, 300) : '';
+          if (rNote && window.CFMessages && window.CFMessages.getUser && window.CFMessages.sendForListing && rrListing.seller_id) {
+            var ru = await window.CFMessages.getUser();
+            if (ru && ru.id !== rrListing.seller_id) {
+              var rur = await window.CFMessages.sendForListing(rrListing.id, 'Update on my history report request for this car (' + (rrListing.title || 'your listing') + '): ' + rNote + ' - ' + name);
+              rrUpdSent = !!(rur && rur.ok);
+            }
+          }
+        } catch (rErr) {}
+        if (rrUpdSent) {
+          document.getElementById('cfRrForm').innerHTML = '<div style="font-size:15px;font-weight:700;color:#137333">Update sent \u2713</div><p style="font-size:13.5px;color:var(--mu)">Your first request is still open - the seller has your note.</p><button type="button" class="primary" data-cf-rr-close style="width:100%">Done</button>';
+        } else {
+          document.getElementById('cfRrForm').innerHTML = '<div style="font-size:15px;font-weight:700">Already requested</div><p style="font-size:13.5px;color:var(--mu)">You already have an open request for this car - the seller has your email. Anything to add? Send again with a note - if you are signed in, the seller gets it as an update.</p><button type="button" class="primary" data-cf-rr-close style="width:100%">Done</button>';
+        }
       } else {
         sendBtn.disabled = false; sendBtn.textContent = 'Send request';
         if (msgEl) {

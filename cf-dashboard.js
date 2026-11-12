@@ -1351,6 +1351,135 @@
     fld.parentNode.insertBefore(box, fld.nextSibling);
     return box;
   }
+    /* ---- Homes & Rentals editor (Nov 11, 2026) ----
+     The Cars editor's twin: a dynamically built Property details
+     block in the dashboard editor - prefilled from specs,
+     re-collected and re-validated on save. */
+  function editorHomeBox() {
+    var box = el('cfEdHomeBox');
+    if (box) return box;
+    var descEl = el('edDesc');
+    if (!descEl || !descEl.closest) return null;
+    var fld = descEl.closest('.fld');
+    if (!fld || !fld.parentNode) return null;
+    box = document.createElement('div');
+    box.id = 'cfEdHomeBox';
+    var L = HOME_LABELS_D;
+    function opts(map, order) { return order.map(function (k) { return [k, map[k]]; }); }
+    var bedPairs = [['0', '0 - Bachelor / studio']];
+    for (var bi = 1; bi <= 10; bi++) bedPairs.push([String(bi), String(bi)]);
+    var bathPairs = ['1', '1.5', '2', '2.5', '3', '3.5', '4', '5', '6', '8', '10'].map(function (v) { return [v, v]; });
+    box.innerHTML =
+      '<div style="font-weight:800;margin:16px 0 4px">\uD83C\uDFE0 Property details</div>' +
+      '<div class="f2">' + _ef('cfEdH_property_type', 'Property type', _es('cfEdH_property_type', opts(L.property_type, ['detached', 'semi', 'townhouse', 'condo', 'duplex', 'other']), 'Select\u2026')) + _ef('cfEdH_sqft', 'Interior size (sq ft)', '<input id="cfEdH_sqft" inputmode="numeric">') + '</div>' +
+      '<div class="f2">' + _ef('cfEdH_bedrooms', 'Bedrooms *', _es('cfEdH_bedrooms', bedPairs, 'Select\u2026')) + _ef('cfEdH_bathrooms', 'Bathrooms *', _es('cfEdH_bathrooms', bathPairs, 'Select\u2026')) + '</div>' +
+      '<div class="f2">' + _ef('cfEdH_parking', 'Parking', _es('cfEdH_parking', opts(L.parking, ['garage', 'driveway', 'underground', 'street', 'none']), 'Not stated')) + _ef('cfEdH_laundry', 'Laundry', _es('cfEdH_laundry', opts(L.laundry, ['in_unit', 'in_building', 'none']), 'Not stated')) + '</div>' +
+      '<div id="cfEdH_saleWrap">' +
+      '<div class="f2">' + _ef('cfEdH_lot_sqft', 'Lot size (sq ft)', '<input id="cfEdH_lot_sqft" inputmode="numeric">') + _ef('cfEdH_year_built', 'Year built', '<input id="cfEdH_year_built" inputmode="numeric">') + '</div>' +
+      '<div class="f2">' + _ef('cfEdH_basement', 'Basement', _es('cfEdH_basement', opts(L.basement, ['finished', 'partial', 'unfinished', 'none']), 'Not stated')) + _ef('cfEdH_heating', 'Heating', _es('cfEdH_heating', opts(L.heating, ['forced_air_gas', 'electric', 'radiant', 'heat_pump', 'oil', 'other']), 'Not stated')) + '</div>' +
+      '<div class="f2">' + _ef('cfEdH_cooling', 'Cooling', _es('cfEdH_cooling', opts(L.cooling, ['central', 'window', 'none']), 'Not stated')) + _ef('cfEdH_taxes_annual', 'Property taxes ($/year)', '<input id="cfEdH_taxes_annual" inputmode="numeric">') + '</div>' +
+      '<div class="f2">' + _ef('cfEdH_condo_fee_monthly', 'Condo fee ($/month)', '<input id="cfEdH_condo_fee_monthly" inputmode="numeric">') + _ef('cfEdH_tour_url', 'Virtual tour link', '<input id="cfEdH_tour_url">') + '</div>' +
+      '<div id="cfEdH_agentWrap"><div class="f2">' + _ef('cfEdH_mls_number', 'MLS #', '<input id="cfEdH_mls_number" maxlength="12">') + '<div></div></div></div>' +
+      '</div>' +
+      '<div id="cfEdH_leaseWrap">' +
+      '<div class="f2">' + _ef('cfEdH_available_date', 'Available date *', '<input id="cfEdH_available_date" type="date">') + _ef('cfEdH_lease_term', 'Lease term', _es('cfEdH_lease_term', opts(L.lease_term, ['12_plus', 'short', 'month_to_month', 'flexible']), null)) + '</div>' +
+      '<div class="f2">' + _ef('cfEdH_furnished', 'Furnished', _es('cfEdH_furnished', opts(L.furnished, ['unfurnished', 'partly', 'furnished']), null)) + _ef('cfEdH_pets', 'Pets', _es('cfEdH_pets', opts(L.pets, ['welcome', 'cats', 'dogs', 'no', 'ask']), 'Not stated')) + '</div>' +
+      '<div class="fld"><label>Utilities included</label><div>' + ['heat', 'water', 'hydro', 'internet', 'parking'].map(function (u) { return '<label style="display:inline-flex;gap:6px;align-items:center;margin:0 10px 6px 0;font-weight:400"><input type="checkbox" name="cfEdH_util" value="' + u + '"> ' + L.utilities[u] + '</label>'; }).join('') + '</div></div>' +
+      '</div>' +
+      '<div class="fld"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-weight:400"><input type="checkbox" id="cfEdH_viewings_ok" style="margin-top:3px"><span>Let buyers request a viewing with their name + email</span></label></div>';
+    fld.parentNode.insertBefore(box, fld.nextSibling);
+    return box;
+  }
+  function fillEditorHomeFields(ad) {
+    var box = editorHomeBox();
+    if (!box) return;
+    if (!ad || (ad.category !== 'Homes' && ad.category !== 'Rentals')) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    var sp = parseHomeSpecs(ad.specs);
+    function set(id, v) { var n = el(id); if (n) n.value = (v == null ? '' : String(v)); }
+    set('cfEdH_property_type', sp.property_type); set('cfEdH_bedrooms', sp.bedrooms);
+    set('cfEdH_bathrooms', sp.bathrooms); set('cfEdH_sqft', sp.sqft);
+    set('cfEdH_parking', sp.parking); set('cfEdH_laundry', sp.laundry);
+    set('cfEdH_lot_sqft', sp.lot_sqft); set('cfEdH_year_built', sp.year_built);
+    set('cfEdH_basement', sp.basement); set('cfEdH_heating', sp.heating);
+    set('cfEdH_cooling', sp.cooling); set('cfEdH_tour_url', sp.tour_url);
+    set('cfEdH_taxes_annual', sp.taxes_annual); set('cfEdH_condo_fee_monthly', sp.condo_fee_monthly);
+    set('cfEdH_mls_number', sp.mls_number);
+    set('cfEdH_available_date', sp.available_date); set('cfEdH_lease_term', sp.lease_term || '12_plus');
+    set('cfEdH_furnished', sp.furnished || 'unfurnished'); set('cfEdH_pets', sp.pets);
+    var utils = sp.utilities_included || [];
+    var boxes = box.querySelectorAll('input[name="cfEdH_util"]');
+    for (var i = 0; i < boxes.length; i++) boxes[i].checked = utils.indexOf(boxes[i].value) >= 0;
+    var vok = el('cfEdH_viewings_ok'); if (vok) vok.checked = sp.viewings_ok == null ? true : !!sp.viewings_ok;
+    var sw = el('cfEdH_saleWrap'); if (sw) sw.style.display = ad.category === 'Homes' ? '' : 'none';
+    var lw = el('cfEdH_leaseWrap'); if (lw) lw.style.display = ad.category === 'Rentals' ? '' : 'none';
+    var aw = el('cfEdH_agentWrap');
+    if (aw) aw.style.display = ((realEdit && realEdit.isAdvertiser) || sp.mls_number) ? '' : 'none';
+  }
+  function collectEditorHomeSpecs(cat) {
+    function v(id) { var n = el(id); return n ? String(n.value).trim() : ''; }
+    function num(id) { var t = v(id).replace(/[,\s]/g, ''); if (t === '') return null; var n = Number(t); return isNaN(n) ? null : n; }
+    var sp = {};
+    var pt = v('cfEdH_property_type'); if (pt) sp.property_type = pt;
+    var bd = num('cfEdH_bedrooms'); if (bd != null) sp.bedrooms = Math.round(bd);
+    var ba = num('cfEdH_bathrooms'); if (ba != null) sp.bathrooms = ba;
+    var sq = num('cfEdH_sqft'); if (sq != null) sp.sqft = Math.round(sq);
+    var pk = v('cfEdH_parking'); if (pk) sp.parking = pk;
+    var ld = v('cfEdH_laundry'); if (ld) sp.laundry = ld;
+    if (cat === 'Homes') {
+      var lot = num('cfEdH_lot_sqft'); if (lot != null) sp.lot_sqft = Math.round(lot);
+      var yb = num('cfEdH_year_built'); if (yb != null) sp.year_built = Math.round(yb);
+      var bs = v('cfEdH_basement'); if (bs) sp.basement = bs;
+      var ht = v('cfEdH_heating'); if (ht) sp.heating = ht;
+      var cl = v('cfEdH_cooling'); if (cl) sp.cooling = cl;
+      var tu = v('cfEdH_tour_url'); if (tu) sp.tour_url = tu.slice(0, 300);
+      var tx = num('cfEdH_taxes_annual'); if (tx != null) sp.taxes_annual = Math.round(tx);
+      var cf = num('cfEdH_condo_fee_monthly'); if (cf != null) sp.condo_fee_monthly = Math.round(cf);
+      var mls = v('cfEdH_mls_number').toUpperCase(); if (mls) sp.mls_number = mls.slice(0, 12);
+    }
+    if (cat === 'Rentals') {
+      var ad8 = v('cfEdH_available_date'); if (ad8) sp.available_date = ad8;
+      sp.lease_term = v('cfEdH_lease_term') || '12_plus';
+      sp.furnished = v('cfEdH_furnished') || 'unfurnished';
+      var utils = [];
+      var boxes = document.querySelectorAll('input[name="cfEdH_util"]:checked');
+      for (var i = 0; i < boxes.length; i++) { if (HOME_LABELS_D.utilities[boxes[i].value]) utils.push(boxes[i].value); }
+      if (utils.length) sp.utilities_included = utils;
+      var pets = v('cfEdH_pets'); if (pets) sp.pets = pets;
+    }
+    var vok = el('cfEdH_viewings_ok');
+    sp.viewings_ok = vok ? !!vok.checked : true;
+    return sp;
+  }
+  function validateHomeSpecsD(sp, cat) {
+    if (!sp) return 'Property details are missing.';
+    if (cat === 'Homes' && !sp.property_type) return 'Pick a property type - required for Homes.';
+    if (sp.bedrooms == null) return 'Add the bedrooms - required.';
+    if (sp.bedrooms < 0 || sp.bedrooms > 10) return 'Bedrooms must be between 0 (bachelor) and 10.';
+    if (sp.bathrooms == null) return 'Add the bathrooms - required.';
+    if (sp.bathrooms < 1 || sp.bathrooms > 10 || (sp.bathrooms * 2) % 1 !== 0) return 'Bathrooms must be 1 to 10, in half steps.';
+    if (cat === 'Homes') {
+      if (sp.sqft == null) return 'Add the interior size in square feet - required for Homes.';
+      if (sp.sqft < 100 || sp.sqft > 50000) return 'Interior size must be between 100 and 50,000 sq ft.';
+      if (sp.lot_sqft != null && (sp.lot_sqft < 200 || sp.lot_sqft > 1000000)) return 'Lot size must be between 200 and 1,000,000 sq ft.';
+      var maxYB = new Date().getFullYear() + 1;
+      if (sp.year_built != null && (sp.year_built < 1800 || sp.year_built > maxYB)) return 'Year built must be between 1800 and ' + maxYB + '.';
+      if (sp.taxes_annual != null && (sp.taxes_annual < 0 || sp.taxes_annual > 250000)) return 'Property taxes must be between $0 and $250,000 per year.';
+      if (sp.condo_fee_monthly != null && (sp.condo_fee_monthly < 0 || sp.condo_fee_monthly > 10000)) return 'Condo fee must be between $0 and $10,000 per month.';
+      if (sp.mls_number && !/^[A-Z0-9-]{1,12}$/.test(sp.mls_number)) return 'The MLS # should be letters, numbers or dashes, up to 12 characters - or leave it blank.';
+      if (sp.tour_url && !/^https?:\/\//i.test(sp.tour_url)) return 'The virtual tour link must start with http:// or https:// - or leave it blank.';
+    }
+    if (cat === 'Rentals') {
+      if (sp.sqft != null && (sp.sqft < 100 || sp.sqft > 50000)) return 'Interior size must be between 100 and 50,000 sq ft.';
+      if (!sp.available_date) return 'Add the available date - required for Rentals.';
+      var d = new Date(sp.available_date + 'T00:00:00');
+      if (isNaN(d.getTime())) return 'The available date does not look right.';
+      var maxD = new Date(); maxD.setMonth(maxD.getMonth() + 18);
+      if (d > maxD) return 'The available date is more than 18 months out.';
+    }
+    return null;
+  }
+
   function fillEditorCarFields(ad) {
     var box = editorCarBox();
     if (!box) return;
@@ -2144,6 +2273,7 @@
       cat.style.background = '#f1f1f1';
     }
     fillEditorCarFields(ad);
+    fillEditorHomeFields(ad);
     var grid = el('pgrid');
     if (grid) {
       var tiles = photos.map(function (u, i) {
@@ -2174,6 +2304,12 @@
       edCarSpecs = collectEditorCarSpecs();
       var edCarErr = validateCarSpecsD(edCarSpecs);
       if (edCarErr) { say(edCarErr); return; }
+    }
+    var edHomeSpecs = null;
+    if (st.category === 'Homes' || st.category === 'Rentals') {
+      edHomeSpecs = collectEditorHomeSpecs(st.category);
+      var edHomeErr = validateHomeSpecsD(edHomeSpecs, st.category);
+      if (edHomeErr) { say(edHomeErr); return; }
     }
     var grid = el('pgrid');
     var tiles = grid ? grid.querySelectorAll('.ptile:not(.add)') : [];
@@ -2272,8 +2408,9 @@
       status: 'pending'
     };
     if (edCarSpecs) upd.specs = edCarSpecs;
+    if (edHomeSpecs) upd.specs = edHomeSpecs;
     var res = await client.from('listings').update(upd).eq('id', st.id);
-    if (res.error && edCarSpecs && /specs/i.test(res.error.message || '')) {
+    if (res.error && (edCarSpecs || edHomeSpecs) && /specs/i.test(res.error.message || '')) {
       /* Specs column missing: save everything else (same graceful
          pattern as the post path). */
       try { console.warn('[ClassiFlip] listings.specs update failed - saving without specs.'); } catch (e8) {}

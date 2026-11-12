@@ -2131,10 +2131,11 @@
       '<div id="cfVwForm">' +
       '<div class="field"><label for="cfVwName">Your name *</label><input id="cfVwName" autocomplete="name" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
       '<div class="field"><label for="cfVwEmail">Your email *</label><input id="cfVwEmail" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
+      '<div class="field"><label for="cfVwPhone">Your phone (optional)</label><input id="cfVwPhone" type="tel" autocomplete="tel" placeholder="416-555-0123 - sellers call back faster" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
       '<div class="field"><label for="cfVwDate">Preferred date (optional)</label><input id="cfVwDate" type="date" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></div>' +
       '<div class="field"><label for="cfVwTime">Preferred time (optional)</label><select id="cfVwTime" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"><option value="">No preference</option><option>Morning</option><option>Afternoon</option><option>Evening</option></select></div>' +
       '<div class="field"><label for="cfVwNote">Note (optional)</label><textarea id="cfVwNote" rows="2" placeholder="Anything to add?" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px"></textarea></div>' +
-      '<p style="font-size:12.5px;color:var(--muted)">Send my name and email to this seller so they can arrange my viewing.</p>' +
+      '<p style="font-size:12.5px;color:var(--muted)">Send my name, email and phone (if added) to this seller so they can arrange my viewing.</p>' +
       '<div id="cfVwMsg" style="font-size:13.5px;margin:8px 0"></div>' +
       '<button type="button" class="primary" id="cfVwSend" style="width:100%">Send request</button>' +
       '</div></div>';
@@ -2180,6 +2181,7 @@
     if (!sendBtn || !vwListing) return;
     var nameEl = document.getElementById('cfVwName');
     var emailEl = document.getElementById('cfVwEmail');
+    var phoneEl = document.getElementById('cfVwPhone');
     var dateEl = document.getElementById('cfVwDate');
     var timeEl = document.getElementById('cfVwTime');
     var noteEl = document.getElementById('cfVwNote');
@@ -2188,6 +2190,8 @@
     var email = emailEl ? emailEl.value.trim() : '';
     if (!name) { if (msgEl) { msgEl.textContent = 'Please add your name.'; msgEl.style.color = '#B3261E'; } return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (msgEl) { msgEl.textContent = 'Please add a valid email - the seller arranges the viewing there.'; msgEl.style.color = '#B3261E'; } return; }
+    var phoneVal = phoneEl ? phoneEl.value.trim() : '';
+    if (phoneVal && phoneVal.replace(/\D/g, '').length < 7) { if (msgEl) { msgEl.textContent = 'That phone number looks too short - check it, or leave it blank.'; msgEl.style.color = '#B3261E'; } return; }
     var client = getClient();
     if (!client) { if (msgEl) { msgEl.textContent = 'Not connected - please reload and try again.'; msgEl.style.color = '#B3261E'; } return; }
     sendBtn.disabled = true; sendBtn.textContent = 'Sending\u2026';
@@ -2197,6 +2201,7 @@
         seller_id: vwListing.seller_id,
         buyer_name: name.slice(0, 80),
         buyer_email: email.slice(0, 120),
+        buyer_phone: phoneEl && phoneEl.value.trim() ? phoneEl.value.trim().slice(0, 30) : null,
         preferred_date: dateEl && dateEl.value ? dateEl.value : null,
         preferred_time: timeEl && timeEl.value ? timeEl.value : null,
         note: noteEl && noteEl.value.trim() ? noteEl.value.trim().slice(0, 500) : null,
@@ -2212,7 +2217,7 @@
             if (dateEl && dateEl.value) { var dd = new Date(dateEl.value + 'T00:00:00'); if (!isNaN(dd.getTime())) pref = dd.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' }); }
             if (timeEl && timeEl.value) pref = pref ? pref + ', ' + timeEl.value.toLowerCase() : timeEl.value;
             var noteTxt = noteEl && noteEl.value.trim() ? noteEl.value.trim().slice(0, 300) : '';
-            var vwText = 'Hi - I would like to arrange a viewing of "' + (vwListing.title || 'your listing') + '". You can reach me at ' + email + '.' + (pref ? ' Preferred: ' + pref + '.' : '') + (noteTxt ? ' Note: ' + noteTxt : '') + ' - ' + name;
+            var vwText = 'Hi - I would like to arrange a viewing of "' + (vwListing.title || 'your listing') + '". You can reach me at ' + email + (phoneVal ? ' or ' + phoneVal : '') + '.' + (pref ? ' Preferred: ' + pref + '.' : '') + (noteTxt ? ' Note: ' + noteTxt : '') + ' - ' + name;
             var sr = await window.CFMessages.sendForListing(vwListing.id, vwText);
             msgSent = !!(sr && sr.ok);
           }

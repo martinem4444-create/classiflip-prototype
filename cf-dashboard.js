@@ -553,7 +553,7 @@
     var vwByListing = {};
     try {
       var vwq = await client.from('viewing_requests')
-        .select('id,listing_id,buyer_name,buyer_email,preferred_date,preferred_time,note,status,created_at')
+        .select('id,listing_id,buyer_name,buyer_email,buyer_phone,preferred_date,preferred_time,note,status,created_at')
         .eq('seller_id', user.id).order('created_at', { ascending: false }).limit(100);
       if (vwq && !vwq.error && vwq.data) vwq.data.forEach(function (q) {
         (vwByListing[q.listing_id] = vwByListing[q.listing_id] || []).push(q);
@@ -739,7 +739,7 @@
           var vwOpen = vwList.filter(function (q) { return q.status === 'open'; });
           var vwNote = vwOpen.length
             ? '<div style="margin:8px 0;padding:10px 12px;border:1px solid #a7d7a7;border-radius:10px;background:#edf7ed;font-size:13.5px;line-height:1.5"><strong>\uD83C\uDFE0 Viewing requests (' + vwOpen.length + '):</strong>' + vwOpen.map(function (q) {
-                return '<br>' + esc(q.buyer_name || '') + ' \u2014 <a href="mailto:' + esc(q.buyer_email || '') + '">' + esc(q.buyer_email || '') + '</a>' + (q.preferred_date ? ' \u00b7 prefers ' + esc(q.preferred_date) + (q.preferred_time ? ' (' + esc(q.preferred_time) + ')' : '') : '') + (q.note ? ' \u00b7 \u201c' + esc(q.note) + '\u201d' : '');
+                return '<br>' + esc(q.buyer_name || '') + ' \u2014 <a href="mailto:' + esc(q.buyer_email || '') + '">' + esc(q.buyer_email || '') + '</a>' + (q.buyer_phone ? ' \u00b7 ' + esc(q.buyer_phone) : '') + (q.preferred_date ? ' \u00b7 prefers ' + esc(q.preferred_date) + (q.preferred_time ? ' (' + esc(q.preferred_time) + ')' : '') : '') + (q.note ? ' \u00b7 \u201c' + esc(q.note) + '\u201d' : '');
               }).join('') + '<br><span style="color:var(--mu)">Email the buyer to arrange the viewing.</span></div>' : '';
           if (dashView === 'grid') {
             return '<div class="gtile"><div class="gph">' +
@@ -1225,7 +1225,7 @@
     var vw = [];
     try {
       var r = await client.from('viewing_requests')
-        .select('id,listing_id,buyer_name,buyer_email,preferred_date,preferred_time,note,status,created_at')
+        .select('id,listing_id,buyer_name,buyer_email,buyer_phone,preferred_date,preferred_time,note,status,created_at')
         .order('created_at', { ascending: false }).limit(100);
       if (r && !r.error && r.data) vw = r.data;
     } catch (e) {}
@@ -1242,7 +1242,7 @@
     box.innerHTML = '<h3 style="margin:24px 0 8px">\uD83C\uDFE0 Viewing requests (' + openCount + ' open)</h3>' +
       vw.map(function (q) {
         return '<div class="lcard"><div class="inf"><div class="t">' + esc(q.buyer_name || '') + ' ' + (q.status === 'open' ? pillFor('pending') : pillFor('active')) + '</div>' +
-          '<div class="s">' + esc(q.buyer_email || '') + ' \u00b7 ad: ' + esc(titles[q.listing_id] || '(ad removed)') + ' \u00b7 ' + shortDate(q.created_at) + '</div>' +
+          '<div class="s">' + esc(q.buyer_email || '') + (q.buyer_phone ? ' \u00b7 ' + esc(q.buyer_phone) : '') + ' \u00b7 ad: ' + esc(titles[q.listing_id] || '(ad removed)') + ' \u00b7 ' + shortDate(q.created_at) + '</div>' +
           (q.preferred_date || q.preferred_time ? '<div style="margin-top:6px;font-size:13.5px">Prefers: ' + esc([q.preferred_date, q.preferred_time].filter(Boolean).join(' \u00b7 ')) + '</div>' : '') +
           (q.note ? '<div style="margin-top:6px;font-size:13.5px">' + esc(q.note) + '</div>' : '') + '</div>' +
           (q.status === 'open' ? '<div class="acts"><button class="btn gho" data-cf-vw-done="' + esc(q.id) + '">Mark done</button></div>' : '') +

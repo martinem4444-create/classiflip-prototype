@@ -1319,7 +1319,7 @@
       window.__cfActiveListing = x;
       document.getElementById('detailTitle').textContent = 'Listing details';
       document.getElementById('detailBody').innerHTML =
-        '<div class="detail">' + detailGalleryMarkup(x) + '<div class="detail-info">' +
+        '<div class="detail">' + galleryWithBrand(x) + '<div class="detail-info">' +
                 (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' + carAvailPill(x) +
@@ -1338,6 +1338,7 @@
       if (typeof openModal === 'function') openModal('detailModal');
       try { loadMoreFromSeller(x); } catch (e) {}
       try { fillDealerCall(x); } catch (e) {}
+      try { fillDealerBrand(x); } catch (e) {}
     } catch (err) { /* Never crash the page from a deep link. */ }
   }
 
@@ -1389,7 +1390,7 @@
       activeListingId = x.id;
       document.getElementById('detailTitle').textContent = 'Listing details';
       document.getElementById('detailBody').innerHTML =
-        '<div class="detail">' + detailGalleryMarkup(x) + '<div class="detail-info">' +
+        '<div class="detail">' + galleryWithBrand(x) + '<div class="detail-info">' +
                 (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
         '<div class="detail-price">' + displayPrice(x) + '</div>' + carAvailPill(x) +
@@ -1409,6 +1410,7 @@
       if (typeof openModal === 'function') openModal('detailModal');
       try { loadMoreFromSeller(x); } catch (e) {}
       try { fillDealerCall(x); } catch (e) {}
+      try { fillDealerBrand(x); } catch (e) {}
     } catch (err) {
       /* Never crash the page from this guard. */
     }
@@ -1797,6 +1799,31 @@
       var tel = String(res.data.business_phone).replace(/[^+\d]/g, '');
       if (!tel) return;
       slot.innerHTML = '<a class="primary" href="tel:' + escAttr(tel) + '" style="display:inline-block;margin-top:10px;text-decoration:none;padding:10px 16px">Call dealership</a>';
+    } catch (e) {}
+  }
+
+  /* Dealer brand block (Nov 11): the seller's logo + name + tagline in a card
+     inside the gallery column, under the photos - fills the white space and
+     gives business sellers visible branding on every ad page. Business
+     sellers only: private sellers have no business_profiles row, so the
+     slot simply stays empty. Styles are self-injected (same pattern as the
+     report modal) so markup and CSS can never be separated by an upload. */
+  function galleryWithBrand(x) {
+    var gal = detailGalleryMarkup(x);
+    if (gal && gal.slice(-6) === '</div>') gal = gal.slice(0, -6) + '<div id="cfBrandSlot"></div></div>';
+    return gal;
+  }
+  async function fillDealerBrand(x) {
+    var slot = document.getElementById('cfBrandSlot');
+    if (!slot || !x || !x.seller_id) return;
+    if (!document.getElementById('cfBrandStyle')) { var st = document.createElement('style'); st.id = 'cfBrandStyle'; st.textContent = '.dealer-brand{display:flex;gap:12px;align-items:center;margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}.dealer-brand img{max-width:118px;max-height:54px;object-fit:contain;flex:0 0 auto}.dealer-brand .db-name{font-weight:800;font-size:15px;line-height:1.25}.dealer-brand .db-tag{color:var(--muted);font-size:12.5px;margin-top:2px}'; document.head.appendChild(st); }
+    var client = getClient();
+    if (!client) return;
+    try {
+      var res = await client.from('business_profiles').select('display_name,tagline,logo_url').eq('id', x.seller_id).maybeSingle();
+      if (!res || res.error || !res.data || !res.data.logo_url) return;
+      var d = res.data;
+      slot.innerHTML = '<div class="dealer-brand"><img src="' + escAttr(d.logo_url) + '" alt="">' + '<div><div class="db-name">' + safe(d.display_name || '') + '</div>' + (d.tagline ? '<div class="db-tag">' + safe(d.tagline) + '</div>' : '') + '</div></div>';
     } catch (e) {}
   }
 

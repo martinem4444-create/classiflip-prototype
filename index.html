@@ -59,6 +59,8 @@
     .categories{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}.cat{min-height:118px;text-align:left;padding:15px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--soft-shadow)}.cat:hover,.cat.active{border-color:var(--orange);background:color-mix(in srgb,var(--orange) 7%,var(--surface))}.cat svg{width:38px;height:38px;padding:7px;border-radius:10px;background:color-mix(in srgb,var(--navy) 18%,var(--surface));color:var(--navy)}.cat strong{font-size:14px}.cat small{color:var(--muted)}
     .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}.filters select{height:40px;padding:0 38px 0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}.filters input{height:40px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
     .results-note{margin-left:auto;align-self:center;color:var(--muted);font-size:13px}
+    .fair-note{display:flex;align-items:center;gap:9px;margin:-4px 0 14px;color:var(--muted);font-size:13px}
+    .fair-note .fp-pill{flex:none;background:var(--orange);color:#fff;font-size:11px;font-weight:800;letter-spacing:.6px;padding:3px 9px;border-radius:999px}
     .listing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .view-toggle{display:flex;gap:6px;margin-left:auto}
 .view-toggle button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;display:grid;place-items:center}
@@ -304,6 +306,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
         <div class="marketplace-content">
           <aside class="safety-strip" aria-label="Marketplace safety tips"><h3>Buy and sell safely</h3><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Meet in a busy public place.</span></div><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Inspect the item before paying.</span></div><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Pay in person and report suspicious ads.</span></div></aside>
           <div class="filters"><select id="cityFilter" aria-label="City"><option value="All">All cities</option></select><select id="conditionFilter" aria-label="Condition"><option value="All">Any condition</option><option>New</option><option>Like new</option><option>Good</option><option>Used</option></select><select id="sortFilter" aria-label="Sort listings"><option value="featured">Boosted first</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select><span class="results-note" id="resultsNote">Loading listings…</span></div>
+          <div class="fair-note" id="fairNote"><span class="fp-pill">FAIR PLAY</span><span>All ads rotate daily for fairness - every seller gets time at the top. Fresh ads show first; boosted ads stay pinned.</span></div>
           <div class="listing-grid" id="listingGrid"></div><div class="pagination" id="pagination" style="display:none"></div>
           <div class="map-wrap" id="mapWrap" hidden>
             <div class="map-stage" id="mapStage" role="img" aria-label="Map of Mississauga with property pins">
@@ -1105,6 +1108,14 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)upda
 window.addEventListener('pageshow',updateMsgsDot);
 window.addEventListener('focus',updateMsgsDot);
 })();
+</script>
+
+<script>
+/* Fair play note (Nov 11, 2026, Martin): the note describes the DEFAULT
+   (Boosted first) view, where fair rotation applies. When a buyer picks
+   a price sort, rotation does not apply - so the note hides itself
+   rather than say something untrue. */
+(function(){var n=document.getElementById('fairNote'),s=document.getElementById('sortFilter');if(!n||!s)return;function sync(){n.style.display=(s.value==='featured')?'flex':'none';}s.addEventListener('change',sync);sync();})();
 </script>
 </body>
 </html>

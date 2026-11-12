@@ -548,6 +548,17 @@
         (rrByListing[q.listing_id] = rrByListing[q.listing_id] || []).push(q);
       });
     } catch (e) {}
+    /* Homes v1: viewing requests on MY ads (seller read via RLS).
+       Fail-soft: the table exists only after the Homes migration. */
+    var vwByListing = {};
+    try {
+      var vwq = await client.from('viewing_requests')
+        .select('id,listing_id,buyer_name,buyer_email,preferred_date,preferred_time,note,status,created_at')
+        .eq('seller_id', user.id).order('created_at', { ascending: false }).limit(100);
+      if (vwq && !vwq.error && vwq.data) vwq.data.forEach(function (q) {
+        (vwByListing[q.listing_id] = vwByListing[q.listing_id] || []).push(q);
+      });
+    } catch (e) {}
     try {
       if (window.CFMessages && window.CFMessages.listThreads) {
         var th = await window.CFMessages.listThreads();
@@ -724,6 +735,12 @@
             ? '<div style="margin:8px 0;padding:10px 12px;border:1px solid #f5d67a;border-radius:10px;background:#fef7e0;font-size:13.5px;line-height:1.5"><strong>\uD83D\uDCC4 History report requests (' + rrOpen.length + '):</strong>' + rrOpen.map(function (q) {
                 return '<br>' + esc(q.buyer_name || '') + ' \u2014 <a href="mailto:' + esc(q.buyer_email || '') + '">' + esc(q.buyer_email || '') + '</a>' + (q.note ? ' \u00b7 \u201c' + esc(q.note) + '\u201d' : '');
               }).join('') + '<br><span style="color:var(--mu)">Email the buyer the report from your own email app.</span></div>' : '';
+          var vwList = vwByListing[x.id] || [];
+          var vwOpen = vwList.filter(function (q) { return q.status === 'open'; });
+          var vwNote = vwOpen.length
+            ? '<div style="margin:8px 0;padding:10px 12px;border:1px solid #a7d7a7;border-radius:10px;background:#edf7ed;font-size:13.5px;line-height:1.5"><strong>\uD83C\uDFE0 Viewing requests (' + vwOpen.length + '):</strong>' + vwOpen.map(function (q) {
+                return '<br>' + esc(q.buyer_name || '') + ' \u2014 <a href="mailto:' + esc(q.buyer_email || '') + '">' + esc(q.buyer_email || '') + '</a>' + (q.preferred_date ? ' \u00b7 prefers ' + esc(q.preferred_date) + (q.preferred_time ? ' (' + esc(q.preferred_time) + ')' : '') : '') + (q.note ? ' \u00b7 \u201c' + esc(q.note) + '\u201d' : '');
+              }).join('') + '<br><span style="color:var(--mu)">Email the buyer to arrange the viewing.</span></div>' : '';
           if (dashView === 'grid') {
             return '<div class="gtile"><div class="gph">' +
               (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '&#128722;') + '</div>' +
@@ -731,7 +748,7 @@
               '<div class="p">' + money(x.price) + '</div>' +
               '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div>' +
               rejNote +
-              rrNote +
+              rrNote + vwNote +
               '<div class="s">' + statsLine(x.id) + '</div>' +
               '<div class="acts">' + viewBtn + boostBtn + editBtn + soldBtn + delBtn + '</div></div></div>';
           }
@@ -741,7 +758,7 @@
             '<div class="p">' + money(x.price) + '</div>' +
             '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div>' +
             rejNote +
-            rrNote +
+            rrNote + vwNote +
             '<div class="s">' + statsLine(x.id) + '</div></div>' +
             '<div class="acts">' + viewBtn + boostBtn + editBtn + soldBtn + delBtn + '</div>' +
             '</div>';
@@ -1115,6 +1132,135 @@
      with a Mark done action (admin UPDATE policy). Injected as a
      sibling panel under the approvals list — dashboard.html itself
      is unchanged. Fails soft to nothing before the migration. */
+    /* ---- Homes & Rentals on the dashboard (Nov 11, 2026) ----
+     Approval-queue fact groups (homeSpecsAdminHtml), the admin
+     viewing-requests panel, and the seller's per-ad viewing box
+     (loader + note live in renderReal, beside the report twins). */
+  var HOME_KEYS_D = ['property_type', 'bedrooms', 'bathrooms', 'sqft', 'parking', 'laundry', 'lot_sqft', 'year_built', 'basement', 'heating', 'cooling', 'tour_url', 'taxes_annual', 'condo_fee_monthly', 'mls_number', 'available_date', 'lease_term', 'furnished', 'utilities_included', 'pets', 'viewings_ok'];
+  function parseHomeSpecs(v) {
+    var o = null;
+    if (v && typeof v === 'object') o = v;
+    else if (typeof v === 'string' && v) { try { o = JSON.parse(v); } catch (e) { o = null; } }
+    if (!o || typeof o !== 'object') return {};
+    var out = {};
+    HOME_KEYS_D.forEach(function (k) { if (o[k] !== undefined && o[k] !== null && o[k] !== '') out[k] = o[k]; });
+    return out;
+  }
+  var HOME_LABELS_D = {
+    property_type: { detached: 'Detached house', semi: 'Semi-detached', townhouse: 'Townhouse', condo: 'Condo / Apartment', duplex: 'Duplex / Multi-unit', other: 'Other' },
+    parking: { garage: 'Garage', driveway: 'Driveway', underground: 'Underground', street: 'Street', none: 'None' },
+    laundry: { in_unit: 'In-unit', in_building: 'In building', none: 'None' },
+    basement: { finished: 'Finished', partial: 'Partly finished', unfinished: 'Unfinished', none: 'None' },
+    heating: { forced_air_gas: 'Forced air (natural gas)', electric: 'Electric / baseboard', radiant: 'Radiant / hot water', heat_pump: 'Heat pump', oil: 'Oil', other: 'Other' },
+    cooling: { central: 'Central air', window: 'Window unit(s)', none: 'No A/C' },
+    lease_term: { '12_plus': '12 months or longer', short: 'Short term (under 12 months)', month_to_month: 'Month-to-month', flexible: 'Flexible' },
+    furnished: { unfurnished: 'Unfurnished', partly: 'Partly furnished', furnished: 'Furnished' },
+    pets: { welcome: 'Pets welcome', cats: 'Cats only', dogs: 'Dogs only', no: 'No pets', ask: 'Ask the landlord' },
+    utilities: { heat: 'Heat', water: 'Water', hydro: 'Hydro', internet: 'Internet', parking: 'Parking' }
+  };
+  function homeLabelD(group, slug) {
+    if (!slug) return '';
+    var m = HOME_LABELS_D[group];
+    return (m && m[slug]) || String(slug);
+  }
+  function homeSpecsAdminHtml(x) {
+    var sp = parseHomeSpecs(x && x.specs);
+    if (!Object.keys(sp).length) return '';
+    function grp(title, pairs) {
+      var rows = pairs.filter(function (p) { return p; }).map(function (p) {
+        return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:2px 0;border-bottom:1px dashed var(--line)"><span style="color:var(--mu)">' + esc(p[0]) + '</span><span style="font-weight:600;text-align:right">' + esc(p[1]) + '</span></div>';
+      }).join('');
+      if (!rows) return '';
+      return '<div style="margin-top:8px"><div style="font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--mu);margin-bottom:2px">' + esc(title) + '</div>' + rows + '</div>';
+    }
+    function numFmt(n) { var v = Number(n); return isNaN(v) ? '' : v.toLocaleString('en-CA'); }
+    return '<div style="margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px">' +
+      grp('The Basics', [
+        sp.property_type ? ['Property type', homeLabelD('property_type', sp.property_type)] : null,
+        (sp.bedrooms != null && sp.bedrooms !== '') ? ['Bedrooms', Number(sp.bedrooms) === 0 ? 'Bachelor / studio' : String(sp.bedrooms)] : null,
+        (sp.bathrooms != null && sp.bathrooms !== '') ? ['Bathrooms', String(sp.bathrooms)] : null,
+        sp.sqft ? ['Interior size', numFmt(sp.sqft) + ' sq ft'] : null,
+        sp.parking ? ['Parking', homeLabelD('parking', sp.parking)] : null,
+        sp.laundry ? ['Laundry', homeLabelD('laundry', sp.laundry)] : null
+      ]) +
+      grp('The Property', [
+        sp.lot_sqft ? ['Lot size', numFmt(sp.lot_sqft) + ' sq ft'] : null,
+        sp.year_built ? ['Year built', String(sp.year_built)] : null,
+        sp.basement ? ['Basement', homeLabelD('basement', sp.basement)] : null,
+        sp.heating ? ['Heating', homeLabelD('heating', sp.heating)] : null,
+        sp.cooling ? ['Cooling', homeLabelD('cooling', sp.cooling)] : null,
+        sp.tour_url ? ['Virtual tour', String(sp.tour_url)] : null
+      ]) +
+      grp('Costs & Paperwork', [
+        (sp.taxes_annual != null && sp.taxes_annual !== '') ? ['Property taxes', '$' + numFmt(sp.taxes_annual) + ' / year'] : null,
+        (sp.condo_fee_monthly != null && sp.condo_fee_monthly !== '') ? ['Condo fee', '$' + numFmt(sp.condo_fee_monthly) + ' / month'] : null
+      ]) +
+      grp('Agent Desk', [
+        sp.mls_number ? ['MLS #', String(sp.mls_number)] : null
+      ]) +
+      grp('The Lease', [
+        sp.available_date ? ['Available', String(sp.available_date)] : null,
+        sp.lease_term ? ['Lease term', homeLabelD('lease_term', sp.lease_term)] : null,
+        sp.furnished ? ['Furnished', homeLabelD('furnished', sp.furnished)] : null,
+        (sp.utilities_included && sp.utilities_included.length) ? ['Utilities included', sp.utilities_included.map(function (u) { return homeLabelD('utilities', u); }).join(', ')] : null,
+        sp.pets ? ['Pets', homeLabelD('pets', sp.pets)] : null
+      ]) +
+      grp('Listing Options', [
+        sp.viewings_ok != null ? ['Viewing requests', sp.viewings_ok ? 'On' : 'Off'] : null
+      ]) +
+      '</div>';
+  }
+  /* Admin: every viewing request across the site (the report
+     panel's twin), with Mark done. Fails soft pre-migration. */
+  async function renderAdminViewingRequests(client) {
+    var host = el('adminAdsList');
+    if (!host || !host.parentNode) return;
+    var box = el('cfAdminVW');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'cfAdminVW';
+      var anchorEl = el('cfAdminRR') || host;
+      anchorEl.parentNode.insertBefore(box, anchorEl.nextSibling);
+    }
+    var vw = [];
+    try {
+      var r = await client.from('viewing_requests')
+        .select('id,listing_id,buyer_name,buyer_email,preferred_date,preferred_time,note,status,created_at')
+        .order('created_at', { ascending: false }).limit(100);
+      if (r && !r.error && r.data) vw = r.data;
+    } catch (e) {}
+    if (!vw.length) { box.innerHTML = ''; return; }
+    var titles = {};
+    try {
+      var ids = vw.map(function (q) { return q.listing_id; }).filter(Boolean);
+      if (ids.length) {
+        var tr = await client.from('listings').select('id,title').in('id', ids);
+        (tr.data || []).forEach(function (t) { titles[t.id] = t.title; });
+      }
+    } catch (e) {}
+    var openCount = vw.filter(function (q) { return q.status === 'open'; }).length;
+    box.innerHTML = '<h3 style="margin:24px 0 8px">\uD83C\uDFE0 Viewing requests (' + openCount + ' open)</h3>' +
+      vw.map(function (q) {
+        return '<div class="lcard"><div class="inf"><div class="t">' + esc(q.buyer_name || '') + ' ' + (q.status === 'open' ? pillFor('pending') : pillFor('active')) + '</div>' +
+          '<div class="s">' + esc(q.buyer_email || '') + ' \u00b7 ad: ' + esc(titles[q.listing_id] || '(ad removed)') + ' \u00b7 ' + shortDate(q.created_at) + '</div>' +
+          (q.preferred_date || q.preferred_time ? '<div style="margin-top:6px;font-size:13.5px">Prefers: ' + esc([q.preferred_date, q.preferred_time].filter(Boolean).join(' \u00b7 ')) + '</div>' : '') +
+          (q.note ? '<div style="margin-top:6px;font-size:13.5px">' + esc(q.note) + '</div>' : '') + '</div>' +
+          (q.status === 'open' ? '<div class="acts"><button class="btn gho" data-cf-vw-done="' + esc(q.id) + '">Mark done</button></div>' : '') +
+          '</div>';
+      }).join('');
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-cf-vw-done]') : null;
+    if (!b) return;
+    var client = getClient();
+    if (!client) return;
+    b.disabled = true;
+    client.from('viewing_requests').update({ status: 'done' }).eq('id', b.getAttribute('data-cf-vw-done')).then(function (res) {
+      if (res && res.error) { b.disabled = false; say('Could not update the request: ' + res.error.message); return; }
+      try { renderAdminViewingRequests(client); } catch (e2) {}
+    });
+  });
+
   async function renderAdminCarRequests(client) {
     var host = el('adminAdsList');
     if (!host || !host.parentNode) return;
@@ -1317,6 +1463,7 @@
     try { await renderAdminUsers(client); } catch (e) {}
     try { await renderAdminReports(client); } catch (e) {}
     try { await renderAdminCarRequests(client); } catch (e) {}
+    try { await renderAdminViewingRequests(client); } catch (e) {}
 
     var adsList = el('adminAdsList'), ordersList = el('adminOrdersList'), expList = el('adminExpiringList');
     if (adsList) adsList.innerHTML = '<div class="notice">Loading pending ads…</div>';
@@ -1380,7 +1527,7 @@
           }).join('') + '</div>' : '') +
           strip +
           (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
-                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + carSpecsAdminHtml(x) + '</div>' +
+                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + carSpecsAdminHtml(x) + homeSpecsAdminHtml(x) + '</div>' +
           '<div class="acts"><div style="margin-bottom:6px"><select data-cf-reject-reason="' + esc(x.id) + '" aria-label="Reject reason" style="width:100%;margin-bottom:4px;padding:6px;border:1px solid var(--line);border-radius:8px">' +
           '<option value="Wrong category — please post a new ad under Services">Wrong category — post a new ad under Services</option>' +
           '<option value="Wrong category — please post a new ad in the correct category">Wrong category — correct category</option>' +

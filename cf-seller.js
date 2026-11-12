@@ -53,6 +53,23 @@
     transmission: { automatic: 'Automatic', manual: 'Manual', cvt: 'CVT', single: 'Single-speed (EV)' },
     drivetrain: { fwd: 'FWD', rwd: 'RWD', awd: 'AWD', '4x4': '4x4' }
   };
+    /* Homes & Rentals (Nov 11): the storefront chip row - beds,
+     baths, size - same rule as the marketplace cards. */
+  function homeChips(a) {
+    if (!a || (a.category !== 'Homes' && a.category !== 'Rentals')) return '';
+    var sp = a.specs;
+    if (typeof sp === 'string' && sp) { try { sp = JSON.parse(sp); } catch (e) { sp = null; } }
+    if (!sp || typeof sp !== 'object') return '';
+    var chips = [];
+    if (sp.bedrooms != null && sp.bedrooms !== '') chips.push(Number(sp.bedrooms) === 0 ? 'Bachelor' : sp.bedrooms + ' bd');
+    if (sp.bathrooms != null && sp.bathrooms !== '') chips.push(sp.bathrooms + ' ba');
+    if (sp.sqft) { var n = Number(sp.sqft); if (!isNaN(n)) chips.push(n.toLocaleString('en-CA') + ' sq ft'); }
+    if (!chips.length) return '';
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">' + chips.map(function (c) {
+      return '<span style="font-size:11px;font-weight:700;border:1px solid var(--line,#d8dee9);border-radius:999px;padding:2px 8px">' + esc(c) + '</span>';
+    }).join('') + '</div>';
+  }
+
   function carChips(a) {
     if (!a || a.category !== 'Cars') return '';
     var sp = a.specs;
@@ -285,7 +302,7 @@
             '<div class="ad-media">' + media + '</div>' +
             '<div class="ad-body"><h3>' + esc(a.title || 'Listing') + '</h3>' +
             '<div class="price">' + priceOf(a) + '</div>' +
-            carChips(a) +
+            carChips(a) + homeChips(a) +
             '<div class="sold">\u2713 SOLD</div>' +
             '<div class="meta">' + esc(a.condition || '') + (a.location ? ' \u00b7 ' + esc(a.location) : '') + '</div>' +
             '</div></div>';
@@ -294,7 +311,7 @@
           '<div class="ad-media">' + media + '</div>' +
           '<div class="ad-body"><h3>' + esc(a.title || 'Listing') + '</h3>' +
           '<div class="price">' + priceOf(a) + '</div>' +
-          carChips(a) +
+          carChips(a) + homeChips(a) +
           (a._boosted ? '<div class="boosted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
           '<div class="meta">' + esc(a.condition || '') + (a.location ? ' · ' + esc(a.location) : '') + '</div>' +
           '</div></a>';

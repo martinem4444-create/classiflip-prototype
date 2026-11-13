@@ -118,7 +118,7 @@
     var sel = el('orderPackage'), amt = el('orderAmount');
     if (sel && amt && PACKAGES[sel.value]) amt.textContent = money(PACKAGES[sel.value][1]);
     var lt = el('orderLockinTerms');
-    if (sel && lt && PACKAGES[sel.value]) lt.textContent = money(PACKAGES[sel.value][1]) + '/mo · Billed monthly · Price locked for 12 months · First month free';
+    if (sel && lt && PACKAGES[sel.value]) lt.textContent = money(PACKAGES[sel.value][1]) + '/mo · Billed monthly · Price locked for 12 months · First month free · Minimum 3-month term';
   }
 
   /* Founding cap (Oct 31, 2026): founding spots are capped at 10 per

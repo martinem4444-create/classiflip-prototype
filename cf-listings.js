@@ -211,6 +211,63 @@
     }
   }
 
+
+  /* Thumbnails (Nov 13, 2026): every uploaded photo also gets a
+     640x480 sibling object named <file>-t.jpg. Cards, the carousel
+     and other small renders use the thumb; the detail gallery keeps
+     the full-size original. Server-side image transforms are not
+     enabled on this Supabase plan (403 FeatureNotEnabled), so thumbs
+     are made in the browser at upload time. */
+  function thumbUrlFor(url) {
+    try {
+      var u = String(url || '');
+      if (u.indexOf('/listing-photos/') === -1) return url;
+      if (/-t\.(jpe?g|png)$/i.test(u)) return url;
+      return u.replace(/\.(jpe?g|png)$/i, '-t.$1');
+    } catch (e) { return url; }
+  }
+  window.CFThumbUrl = thumbUrlFor;
+  function thumbPathFor(path) {
+    return String(path).replace(/\.(jpe?g|png)$/i, '-t.$1');
+  }
+  /* 1200x900 cropper data URL -> 640x480 JPEG blob (null on failure).
+     Best-effort by design: a failed thumb never fails a post. */
+  function makeThumbBlob(dataUrl) {
+    return new Promise(function (resolve) {
+      try {
+        var img = new Image();
+        img.onload = function () {
+          try {
+            var c = document.createElement('canvas');
+            c.width = 640; c.height = 480;
+            var ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0, 640, 480);
+            if (c.toBlob) { c.toBlob(function (b) { resolve(b || null); }, 'image/jpeg', 0.8); }
+            else { resolve(dataUrlToBlob(c.toDataURL('image/jpeg', 0.8))); }
+          } catch (e) { resolve(null); }
+        };
+        img.onerror = function () { resolve(null); };
+        img.src = dataUrl;
+      } catch (e) { resolve(null); }
+    });
+  }
+  /* Fallback: an <img> pointed at a thumb that does not exist (photos
+     posted before thumbs) swaps ONCE to the full-size original.
+     Capture phase because img error events do not bubble. */
+  try {
+    if (!window.__cfThumbFallback) {
+      window.__cfThumbFallback = true;
+      document.addEventListener('error', function (ev) {
+        var t = ev && ev.target;
+        if (!t || t.tagName !== 'IMG' || t.__cfFullTried) return;
+        var s = t.getAttribute('src') || '';
+        if (s.indexOf('/listing-photos/') === -1 || !/-t\.(jpe?g|png)$/i.test(s)) return;
+        t.__cfFullTried = true;
+        t.src = s.replace(/-t(\.(?:jpe?g|png))$/i, '$1');
+      }, true);
+    }
+  } catch (e) {}
+
   /* Same category -> icon mapping the page's own collectAdForm uses,
      so a real row renders through the card template without a photo. */
   var ICON_MAP = {
@@ -623,6 +680,7 @@
         return;
       }
       var uploaded = []; /* [{ path, url }] in picker order (0 = cover) */
+      var thumbPaths = []; /* -t.jpg siblings; same rollback fate as uploaded */
       try {
         for (var pi = 0; pi < picked.length; pi++) {
           var blob = dataUrlToBlob(picked[pi]);
@@ -634,12 +692,21 @@
           var purl = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
           if (!purl) throw new Error('Could not get a public link for photo ' + (pi + 1) + '.');
           uploaded.push({ path: photoPath, url: purl });
+          /* Thumbnail sibling (best-effort; never fails the post). */
+          try {
+            var tBlob = await makeThumbBlob(picked[pi]);
+            if (tBlob) {
+              var tPath = thumbPathFor(photoPath);
+              var tup = await client.storage.from('listing-photos').upload(tPath, tBlob, { contentType: 'image/jpeg', upsert: false });
+              if (!tup.error) thumbPaths.push(tPath);
+            }
+          } catch (te) {}
         }
       } catch (upErr) {
         /* Roll back any objects already uploaded, then surface the
            real error through the outer catch (form kept for retry). */
         try {
-          if (uploaded.length) await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }));
+          if (uploaded.length) await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }).concat(thumbPaths));
         } catch (e) {}
         throw upErr;
       }
@@ -701,7 +768,7 @@
         /* Listing insert failed after uploads: remove the objects so
            no orphaned storage is left behind. */
         try {
-          if (uploaded.length) await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }));
+          if (uploaded.length) await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }).concat(thumbPaths));
         } catch (e) {}
         if (ins.error) throw ins.error;
         throw new Error('Could not create your ad. Please try again.');
@@ -717,7 +784,7 @@
         var phIns = await client.from('listing_photos').insert(photoRows);
         if (phIns.error) {
           try { await client.from('listings').delete().eq('id', ins.data.id); } catch (e) {}
-          try { await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; })); } catch (e) {}
+          try { await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }).concat(thumbPaths)); } catch (e) {}
           throw phIns.error;
         }
       }
@@ -1312,7 +1379,7 @@
       if (!rows.length) return;
       var cards = rows.map(function (r) {
         return '<button type="button" data-view="' + String(r.id) + '" style="text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;cursor:pointer;overflow:hidden">' +
-          (r.photo_url ? '<img src="' + escAttr(r.photo_url) + '" alt="" style="width:100%;height:110px;object-fit:cover;display:block">' : '<div style="height:110px;background:#E9EDF4;display:grid;place-items:center;font-size:28px">🛒</div>') +
+          (r.photo_url ? '<img src="' + escAttr(thumbUrlFor(r.photo_url)) + '" alt="" style="width:100%;height:110px;object-fit:cover;display:block">' : '<div style="height:110px;background:#E9EDF4;display:grid;place-items:center;font-size:28px">🛒</div>') +
           '<div style="padding:10px"><div style="font-weight:700;font-size:14px;line-height:1.3">' + safe(r.title) + '</div>' +
           '<div style="color:var(--orange);font-weight:800;margin-top:4px">' + displayPrice({ price: r.price }) + '</div>' +
           '<div style="color:var(--muted);font-size:12px;margin-top:2px">' + safe(r.location || '') + '</div></div></button>';

@@ -1929,6 +1929,13 @@
           }
         });
       } catch (e) {}
+      /* Thumbnails: take each photo's -t sibling with it. */
+      var tExtraDel = [];
+      cleanupPaths.forEach(function (p) {
+        var tp = thumbPathFor(p);
+        if (tp !== p && cleanupPaths.indexOf(tp) === -1 && tExtraDel.indexOf(tp) === -1) tExtraDel.push(tp);
+      });
+      cleanupPaths = cleanupPaths.concat(tExtraDel);
       client.from('listings').delete().eq('id', id).then(function (res) {
         if (res.error) { say('Could not delete: ' + res.error.message); return; }
         if (cleanupPaths.length) {
@@ -2188,6 +2195,63 @@
 
   /* ============ Ad manager v1.3: real Edit + admin search ============ */
 
+
+  /* Thumbnails (Nov 13, 2026): every uploaded photo also gets a
+     640x480 sibling object named <file>-t.jpg. Cards, the carousel
+     and other small renders use the thumb; the detail gallery keeps
+     the full-size original. Server-side image transforms are not
+     enabled on this Supabase plan (403 FeatureNotEnabled), so thumbs
+     are made in the browser at upload time. */
+  function dashThumbUrlFor(url) {
+    try {
+      var u = String(url || '');
+      if (u.indexOf('/listing-photos/') === -1) return url;
+      if (/-t\.(jpe?g|png)$/i.test(u)) return url;
+      return u.replace(/\.(jpe?g|png)$/i, '-t.$1');
+    } catch (e) { return url; }
+  }
+  window.CFThumbUrl = window.CFThumbUrl || dashThumbUrlFor;
+  function thumbPathFor(path) {
+    return String(path).replace(/\.(jpe?g|png)$/i, '-t.$1');
+  }
+  /* 1200x900 cropper data URL -> 640x480 JPEG blob (null on failure).
+     Best-effort by design: a failed thumb never fails a post. */
+  function makeThumbBlob(dataUrl) {
+    return new Promise(function (resolve) {
+      try {
+        var img = new Image();
+        img.onload = function () {
+          try {
+            var c = document.createElement('canvas');
+            c.width = 640; c.height = 480;
+            var ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0, 640, 480);
+            if (c.toBlob) { c.toBlob(function (b) { resolve(b || null); }, 'image/jpeg', 0.8); }
+            else { resolve(dataUrlToBlob(c.toDataURL('image/jpeg', 0.8))); }
+          } catch (e) { resolve(null); }
+        };
+        img.onerror = function () { resolve(null); };
+        img.src = dataUrl;
+      } catch (e) { resolve(null); }
+    });
+  }
+  /* Fallback: an <img> pointed at a thumb that does not exist (photos
+     posted before thumbs) swaps ONCE to the full-size original.
+     Capture phase because img error events do not bubble. */
+  try {
+    if (!window.__cfThumbFallback) {
+      window.__cfThumbFallback = true;
+      document.addEventListener('error', function (ev) {
+        var t = ev && ev.target;
+        if (!t || t.tagName !== 'IMG' || t.__cfFullTried) return;
+        var s = t.getAttribute('src') || '';
+        if (s.indexOf('/listing-photos/') === -1 || !/-t\.(jpe?g|png)$/i.test(s)) return;
+        t.__cfFullTried = true;
+        t.src = s.replace(/-t(\.(?:jpe?g|png))$/i, '$1');
+      }, true);
+    }
+  } catch (e) {}
+
   function dataUrlToBlob(dataUrl) {
     try {
       var parts = String(dataUrl).split(',');
@@ -2345,6 +2409,7 @@
     }
     if (!tiles.length) cover = null;
     var uploaded = [];
+    var thumbPaths = [];
     try {
       for (var ui = 0; ui < toUpload.length; ui++) {
         var blob = dataUrlToBlob(toUpload[ui].preview);
@@ -2356,10 +2421,19 @@
         var purl = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
         if (!purl) throw new Error('Could not get a public link for a new photo.');
         uploaded.push({ path: path, url: purl });
+        /* Thumbnail sibling (best-effort; never fails the save). */
+        try {
+          var tBlob2 = await makeThumbBlob(toUpload[ui].preview);
+          if (tBlob2) {
+            var tPath2 = thumbPathFor(path);
+            var tup2 = await client.storage.from('listing-photos').upload(tPath2, tBlob2, { contentType: 'image/jpeg', upsert: false });
+            if (!tup2.error) thumbPaths.push(tPath2);
+          }
+        } catch (te2) {}
       }
     } catch (upErr) {
       if (uploaded.length) {
-        try { await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; })); } catch (e2) {}
+        try { await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }).concat(thumbPaths)); } catch (e2) {}
       }
       say('Could not save photos: ' + (upErr && upErr.message ? upErr.message : 'Something went wrong.'));
       return;
@@ -2399,6 +2473,13 @@
             if (p && paths.indexOf(p) === -1) paths.push(p);
           }
         });
+        /* Thumbnails: drop each removed photo's -t sibling too. */
+        var tExtras = [];
+        paths.forEach(function (p) {
+          var tp = thumbPathFor(p);
+          if (tp !== p && paths.indexOf(tp) === -1 && tExtras.indexOf(tp) === -1) tExtras.push(tp);
+        });
+        paths = paths.concat(tExtras);
         if (paths.length) {
           try { await client.storage.from('listing-photos').remove(paths); } catch (e4) {}
         }

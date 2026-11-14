@@ -63,9 +63,22 @@
     });
   }
 
+  /* Thumbnails (Nov 13, 2026): small strip renders use the -t.jpg
+     sibling when the photo lives in the listing-photos bucket; the
+     shared capture-phase fallback (cf-listings.js) swaps any missing
+     thumb back to the full-size original. */
+  function thumbUrl(u) {
+    try {
+      var s = String(u || '');
+      if (s.indexOf('/listing-photos/') === -1) return u;
+      if (/-t\.(jpe?g|png)$/i.test(s)) return u;
+      return s.replace(/\.(jpe?g|png)$/i, '-t.$1');
+    } catch (e) { return u; }
+  }
+
   function card(x) {
     var visual = x._photo
-      ? '<img src="' + esc(x._photo) + '" alt="" loading="lazy">'
+      ? '<img src="' + esc(thumbUrl(x._photo)) + '" alt="" loading="lazy">'
       : '<span style="font-size:42px" aria-hidden="true">🏷️</span>';
     return '<a class="featured-card" href="seller.html?id=' + encodeURIComponent(x.seller_id) +
       '" style="text-decoration:none;color:inherit">' +

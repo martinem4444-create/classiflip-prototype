@@ -1147,19 +1147,28 @@ window.addEventListener('focus',updateMsgsDot);
     }
   },250);
 }catch(e){}})();</script>
-<script>/* CF price-drop alerts sync v2 (Nov 14, 2026): hearts stay
-   instant in-page; for signed-in users this layer reconciles the
-   page's saved set with the saved_items table every few seconds
-   (so the morning price-drop digest knows who to email) and
-   hydrates the hearts from the account on sign-in. Sample ads
-   (non-UUID ids) never sync. v2 replaces v1's click-mirror, which
-   silently failed to write; set reconciliation is self-healing
-   across every toggle path. Recent write errors are kept on
-   window.__cfSyncErrors for diagnosis. */
+<script>/* CF price-drop alerts sync v3-diag (Nov 14, 2026): v2's
+   set-reconciliation, with two changes for the live hunt: writes use
+   plain INSERT (a duplicate is treated as success) instead of
+   upsert/ON CONFLICT, and a small on-page badge reports what the
+   sync sees (signed-in user, db count, page count, last event or
+   error) so failures are visible without DevTools. BADGE IS
+   TEST-ONLY: remove before launch. Sample ads (non-UUID ids)
+   never sync. */
 (function () {
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  window.__cfSyncErrors = [];
-  function note(kind, msg) { try { window.__cfSyncErrors.push(kind + ": " + msg); if (window.__cfSyncErrors.length > 20) window.__cfSyncErrors.shift(); } catch (e) {} }
+  var state = { user: "", db: 0, page: 0, last: "starting" };
+  window.__cfSyncState = state;
+  function badge() {
+    var el = document.getElementById("cfSyncBadge");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "cfSyncBadge";
+      el.style.cssText = "position:fixed;left:10px;bottom:10px;z-index:99999;background:#0f2040;color:#fff;font:11px/1.5 monospace;padding:6px 9px;border-radius:8px;opacity:.92;max-width:78vw;white-space:pre-wrap";
+      document.body.appendChild(el);
+    }
+    el.textContent = "CF sync v3\nuser: " + (state.user ? state.user.slice(0, 8) : "signed out") + "  db: " + state.db + "  page: " + state.page + "\nlast: " + state.last;
+  }
   function client() { return (window.CFAuth && window.CFAuth.client) || null; }
   function sessionUser() {
     var c = client(); if (!c) return Promise.resolve(null);
@@ -1180,45 +1189,56 @@ window.addEventListener('focus',updateMsgsDot);
     } catch (e) {}
   }
   var hydratedFor = "";
-  var syncedFor = "";
   var snapshot = {};
   var busy = false;
   function tick() {
+    try { badge(); } catch (e) {}
     if (busy) return;
     sessionUser().then(function (u) {
-      if (!u) { hydratedFor = ""; syncedFor = ""; snapshot = {}; return; }
-      var c = client(); if (!c) return;
+      state.user = u ? u.id : "";
+      if (!u) { hydratedFor = ""; snapshot = {}; state.db = 0; state.page = 0; state.last = "no session"; badge(); return; }
+      var c = client(); if (!c) { state.last = "no client"; badge(); return; }
+      var current = {};
+      try { saved.forEach(function (id) { id = String(id); if (UUID.test(id)) current[id] = true; }); } catch (e) {}
+      state.page = Object.keys(current).length;
       if (hydratedFor !== u.id) {
         busy = true;
         c.from("saved_items").select("listing_id").eq("user_id", u.id).then(function (res) {
           busy = false;
-          if (res && res.error) { note("hydrate", res.error.message || res.error); return; }
+          if (res && res.error) { state.last = "hydrate err: " + (res.error.message || res.error); badge(); return; }
           snapshot = {};
           (res.data || []).forEach(function (r) {
             saved.add(String(r.listing_id));
             snapshot[String(r.listing_id)] = true;
           });
-          hydratedFor = u.id; syncedFor = u.id;
-          paintSaved();
-        }, function (err) { busy = false; note("hydrate", String(err)); });
+          hydratedFor = u.id;
+          state.db = Object.keys(snapshot).length;
+          state.last = "hydrated " + state.db;
+          paintSaved(); badge();
+        }, function (err) { busy = false; state.last = "hydrate err: " + String(err); badge(); });
         return;
       }
-      var current = {};
-      try { saved.forEach(function (id) { id = String(id); if (UUID.test(id)) current[id] = true; }); } catch (e) { return; }
       Object.keys(current).forEach(function (id) {
         if (snapshot[id]) return;
-        snapshot[id] = true;
-        c.from("saved_items").upsert({ user_id: u.id, listing_id: id }, { onConflict: "user_id,listing_id", ignoreDuplicates: true })
-          .then(function (res) { if (res && res.error) { delete snapshot[id]; note("insert " + id, res.error.message || res.error); } },
-                function (err) { delete snapshot[id]; note("insert " + id, String(err)); });
+        snapshot[id] = true; state.db = Object.keys(snapshot).length;
+        c.from("saved_items").insert({ user_id: u.id, listing_id: id })
+          .then(function (res) {
+            if (res && res.error && res.error.code !== "23505") { delete snapshot[id]; state.db = Object.keys(snapshot).length; state.last = "insert err: " + (res.error.message || res.error); }
+            else if (res && !res.error) { state.last = "inserted " + id.slice(0, 8); }
+            badge();
+          }, function (err) { delete snapshot[id]; state.db = Object.keys(snapshot).length; state.last = "insert err: " + String(err); badge(); });
       });
       Object.keys(snapshot).forEach(function (id) {
         if (current[id]) return;
-        delete snapshot[id];
+        delete snapshot[id]; state.db = Object.keys(snapshot).length;
         c.from("saved_items").delete().eq("user_id", u.id).eq("listing_id", id)
-          .then(function (res) { if (res && res.error) { snapshot[id] = true; note("delete " + id, res.error.message || res.error); } },
-                function (err) { snapshot[id] = true; note("delete " + id, String(err)); });
+          .then(function (res) {
+            if (res && res.error) { snapshot[id] = true; state.db = Object.keys(snapshot).length; state.last = "delete err: " + (res.error.message || res.error); }
+            else { state.last = "removed " + id.slice(0, 8); }
+            badge();
+          }, function (err) { snapshot[id] = true; state.db = Object.keys(snapshot).length; state.last = "delete err: " + String(err); badge(); });
       });
+      badge();
     });
   }
   tick();

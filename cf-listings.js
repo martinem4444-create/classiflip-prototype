@@ -643,6 +643,10 @@
         var homeErr = validateHomeSpecs(homeSpecs, carCategory);
         if (homeErr) { fail(homeErr); return; }
       }
+      var svcSpecs = null;
+      if (carCategory === 'Services') {
+        svcSpecs = collectSvcSpecs();
+      }
       /* Boost-at-post (v1.12): the Cars form's private-seller option
          is now Boost $2.99 (replacing the stale '$5 bump to top',
          which bought nothing — the real path never read the plan).
@@ -734,6 +738,7 @@
       if (carCategory !== 'Cars' && carCategory !== 'Homes' && carCategory !== 'Rentals') newRow.condition = document.getElementById('adCondition').value;
       if (carSpecs) newRow.specs = carSpecs;
       if (homeSpecs) newRow.specs = homeSpecs;
+      if (svcSpecs) newRow.specs = svcSpecs;
       /* Tags (Oct 29): free, max 5, any seller. Omit when empty so
          pre-migration rows (no tags column yet) still insert. */
       try {
@@ -1269,6 +1274,7 @@
           _pkgReassert();
         }
         pkgRefresh();
+        svcRefresh();
       };
       _ucpfWrapped.__cfPkgWrapped = true;
       updateCarPostingFields = _ucpfWrapped;
@@ -1441,16 +1447,17 @@
         reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
-        carSectionsHtml(x) + homeSectionsHtml(x) +
+        carSectionsHtml(x) + homeSectionsHtml(x) + svcSectionsHtml(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
-        carSellerBlockHtml(x) +
+        carSellerBlockHtml(x) + svcContactSlotHtml(x) +
         '<div id="cfMoreSeller"></div>' +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
       try { loadMoreFromSeller(x); } catch (e) {}
       try { fillDealerCall(x); } catch (e) {}
+      try { fillSvcExtras(x); } catch (e) {}
       try { fillDealerBrand(x); } catch (e) {}
     } catch (err) { /* Never crash the page from a deep link. */ }
   }
@@ -1513,16 +1520,17 @@
         reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
-        carSectionsHtml(x) + homeSectionsHtml(x) +
+        carSectionsHtml(x) + homeSectionsHtml(x) + svcSectionsHtml(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
-        carSellerBlockHtml(x) +
+        carSellerBlockHtml(x) + svcContactSlotHtml(x) +
         '<div id="cfMoreSeller"></div>' +
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
       try { loadMoreFromSeller(x); } catch (e) {}
       try { fillDealerCall(x); } catch (e) {}
+      try { fillSvcExtras(x); } catch (e) {}
       try { fillDealerBrand(x); } catch (e) {}
     } catch (err) {
       /* Never crash the page from this guard. */
@@ -1913,6 +1921,150 @@
       var tel = String(res.data.business_phone).replace(/[^+\d]/g, '');
       if (!tel) return;
       slot.innerHTML = '<a class="primary" href="tel:' + escAttr(tel) + '" style="display:inline-block;margin-top:10px;text-decoration:none;padding:10px 16px">Call dealership</a>';
+    } catch (e) {}
+  }
+
+  /* ---- Services Pro Unlimited extras (Nov 14, 2026) ----
+     Spec: ClassiFlip_Services_Fields_Spec.md. Pro holders get
+     ad-level extras in listings.specs (svc_* keys) plus their
+     published business contact surfaced on the ad itself. Gating:
+     post time reads the poster's OWN orders (pkgFetchOrders); read
+     time reads the public cf_seller_pro view, so a lapsed month
+     hides the extras everywhere and a renewal restores them — the
+     data in specs is never deleted. */
+  function svcIsProOrder(o) {
+    return !!o && pkgFamilyOf(o.package) === 'services' && String(o.package).indexOf('Pro Unlimited') !== -1;
+  }
+  function _chk(id) { var n = document.getElementById(id); return !!(n && n.checked); }
+  function svcRefresh() {
+    /* Post-form reveal; runs beside pkgRefresh in the same wrap. */
+    try {
+      var box = document.getElementById('svcSpecsField');
+      if (!box) return;
+      var catEl = document.getElementById('adCategory');
+      if (!catEl || catEl.value !== 'Services' || !isLoggedIn()) {
+        box.classList.remove('show'); window.__cfSvcPro = false; return;
+      }
+      var client = getClient(); if (!client) { box.classList.remove('show'); return; }
+      client.auth.getUser().then(function (ur) {
+        var u = ur && ur.data && ur.data.user;
+        if (!u) { box.classList.remove('show'); window.__cfSvcPro = false; return; }
+        pkgFetchOrders(client, u.id).then(function (orders) {
+          var pro = (orders || []).some(svcIsProOrder);
+          window.__cfSvcPro = pro;
+          var c2 = document.getElementById('adCategory');
+          box.classList.toggle('show', pro && !!c2 && c2.value === 'Services');
+          if (pro) svcEnsureRows();
+        }).catch(function () {});
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  function svcRowHtml(name, price) {
+    return '<div class="svc-row" style="display:flex;gap:8px;margin-bottom:6px"><input class="svc-name" maxlength="60" placeholder="Service" value="' + escAttr(name || '') + '" style="flex:1.4;min-width:0"><input class="svc-price" maxlength="24" placeholder="Price" value="' + escAttr(price || '') + '" style="flex:1;min-width:0"></div>';
+  }
+  function svcEnsureRows() {
+    var wrap = document.getElementById('svcPriceRows');
+    if (!wrap || wrap.children.length) return;
+    wrap.innerHTML = svcRowHtml('', '') + svcRowHtml('', '');
+    var add = document.getElementById('svcAddRow');
+    if (add && !add.__cfSvcBound) {
+      add.__cfSvcBound = true;
+      add.addEventListener('click', function () {
+        if (wrap.children.length >= 8) return;
+        var d = document.createElement('div');
+        d.innerHTML = svcRowHtml('', '');
+        wrap.appendChild(d.firstChild);
+        if (wrap.children.length >= 8) add.style.display = 'none';
+      });
+    }
+  }
+  function collectSvcSpecs() {
+    if (!window.__cfSvcPro) return null;
+    var sp = {};
+    var rows = [];
+    document.querySelectorAll('#svcPriceRows .svc-row').forEach(function (r) {
+      var n = r.querySelector('.svc-name'), pr = r.querySelector('.svc-price');
+      var name = n ? n.value.trim() : '', price = pr ? pr.value.trim() : '';
+      if (name) rows.push({ service: name.slice(0, 60), price: price.slice(0, 24) });
+    });
+    if (rows.length) sp.svc_price_list = rows.slice(0, 8);
+    if (_chk('svcLicensed')) sp.svc_licensed = true;
+    if (_chk('svcInsured')) sp.svc_insured = true;
+    var yrs = _cn('svcYears'); if (yrs != null && yrs >= 0) sp.svc_years = yrs;
+    var certs = _cv('svcCerts'); if (certs) sp.svc_certs = certs.slice(0, 80);
+    var areas = _cv('svcAreas').split(',').map(function (a) { return a.trim(); }).filter(Boolean).slice(0, 6);
+    if (areas.length) sp.svc_areas = areas;
+    if (_chk('svcEmergency')) sp.svc_emergency = true;
+    var note = _cv('svcAvailNote'); if (note) sp.svc_avail_note = note.slice(0, 60);
+    var url = _cv('svcBookingUrl');
+    if (url) { if (!/^https?:\/\//i.test(url)) url = 'https://' + url; sp.svc_booking_url = url; }
+    var pays = [];
+    document.querySelectorAll('.svc-pay:checked').forEach(function (c) { pays.push(c.value); });
+    if (pays.length) sp.svc_payments = pays;
+    return Object.keys(sp).length ? sp : null;
+  }
+  function svcSectionsHtml(x) {
+    if (!x || x.category !== 'Services') return '';
+    return '<div id="cfSvcSlot"></div>';
+  }
+  function svcContactSlotHtml(x) {
+    if (!x || x.category !== 'Services') return '';
+    return '<span id="cfSvcContactSlot"></span>';
+  }
+  async function fillSvcExtras(x) {
+    var slot = document.getElementById('cfSvcSlot');
+    if (!slot || !x || x.category !== 'Services' || !x.seller_id) return;
+    var client = getClient();
+    if (!client) return;
+    try {
+      var pr = await client.from('cf_seller_pro').select('svc_pro').eq('seller_id', x.seller_id).maybeSingle();
+      if (!pr || pr.error || !pr.data || !pr.data.svc_pro) return;
+      var sp = x.specs || {};
+      var inner = '';
+      var badges = [];
+      if (sp.svc_licensed) badges.push('Licensed \u2713');
+      if (sp.svc_insured) badges.push('Insured \u2713');
+      if (sp.svc_years != null && sp.svc_years !== '') badges.push(sp.svc_years + ' yrs in business');
+      if (sp.svc_emergency) badges.push('Emergency / 24-7');
+      if (badges.length) inner += '<div class="car-chips" style="margin:0 0 10px">' + badges.map(function (b) { return '<span>' + safe(b) + '</span>'; }).join('') + '</div>';
+      if (Array.isArray(sp.svc_price_list)) {
+        sp.svc_price_list.forEach(function (r) {
+          if (r && r.service) inner += specRow(r.service, r.price || '');
+        });
+      }
+      if (sp.svc_certs) inner += specRow('Certifications', sp.svc_certs);
+      if (sp.svc_avail_note) inner += specRow('Availability', sp.svc_avail_note);
+      if (Array.isArray(sp.svc_areas) && sp.svc_areas.length) {
+        inner += '<div style="margin-top:10px"><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Service area</div><div class="car-chips">' + sp.svc_areas.map(function (a) { return '<span>' + safe(a) + '</span>'; }).join('') + '</div></div>';
+      }
+      if (Array.isArray(sp.svc_payments) && sp.svc_payments.length) {
+        inner += '<div style="margin-top:10px"><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Payment methods</div><div class="car-chips">' + sp.svc_payments.map(function (a) { return '<span>' + safe(a) + '</span>'; }).join('') + '</div></div>';
+      }
+      if (inner) {
+        slot.innerHTML = '<div class="spec-card"><h4>Service details</h4><div class="spec-rows">' + inner + '</div></div>';
+      }
+      var cslot = document.getElementById('cfSvcContactSlot');
+      if (cslot) {
+        var out = '';
+        var bp = await client.from('business_profiles').select('business_phone,website,hours').eq('id', x.seller_id).maybeSingle();
+        var d = (bp && !bp.error && bp.data) ? bp.data : null;
+        if (d && d.business_phone) {
+          var tel = String(d.business_phone).replace(/[^+\d]/g, '');
+          if (tel) out += '<a class="primary" href="tel:' + escAttr(tel) + '" style="display:inline-block;margin-top:10px;text-decoration:none;padding:10px 16px">Call business</a> ';
+        }
+        if (sp.svc_booking_url) {
+          out += '<a class="primary" href="' + escAttr(sp.svc_booking_url) + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;text-decoration:none;padding:10px 16px;background:var(--surface-2);color:var(--ink);border:1px solid var(--line)">Book / Get a quote</a>';
+        }
+        if (d && d.website) {
+          var w = String(d.website);
+          var wref = /^https?:\/\//i.test(w) ? w : 'https://' + w;
+          out += '<div class="meta" style="margin-top:10px"><span>Website: <a href="' + escAttr(wref) + '" target="_blank" rel="noopener">' + safe(w) + '</a></span></div>';
+        }
+        if (d && typeof d.hours === 'string' && d.hours) {
+          out += '<div class="meta" style="margin-top:6px"><span>Hours: ' + safe(d.hours) + '</span></div>';
+        }
+        cslot.innerHTML = out;
+      }
     } catch (e) {}
   }
 

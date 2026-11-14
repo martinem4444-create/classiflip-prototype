@@ -1483,6 +1483,128 @@
     return null;
   }
 
+  /* ---- Services Pro Unlimited editor (Nov 14, 2026) ----
+     The Cars/Homes editor pattern, for the Services extras: a
+     dynamically built block in #mEditor, shown only for Services
+     ads while the seller holds an Active Pro Unlimited package,
+     prefilled from specs and re-collected on save. */
+  function svcProHeldD() {
+    try {
+      var ords = (realEdit && realEdit.orders) || [];
+      var now = new Date();
+      return ords.some(function (o) {
+        return o && o.status === 'Active' && (!o.expires_at || new Date(o.expires_at) > now) &&
+          categoryOfPackageD(o.package) === 'Services' && String(o.package).indexOf('Pro Unlimited') !== -1;
+      });
+    } catch (e) { return false; }
+  }
+  function parseSvcSpecs(raw) {
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    try { return JSON.parse(raw) || {}; } catch (e) { return {}; }
+  }
+  function editorSvcBox() {
+    var box = el('cfEdSvcBox');
+    if (box) return box;
+    var descEl = el('edDesc');
+    if (!descEl || !descEl.closest) return null;
+    var fld = descEl.closest('.fld');
+    if (!fld || !fld.parentNode) return null;
+    box = document.createElement('div');
+    box.id = 'cfEdSvcBox';
+    var pays = ['Cash', 'Interac e-Transfer', 'Credit card', 'Debit', 'Cheque'];
+    box.innerHTML =
+      '<div style="font-weight:800;margin:16px 0 4px">\uD83D\uDEE0\uFE0F Pro Unlimited extras</div>' +
+      '<div class="fld"><label>Services &amp; prices (up to 8)</label><div id="cfEdS_priceRows"></div><button type="button" id="cfEdS_addRow" style="margin-top:6px">+ Add a service</button></div>' +
+      '<div class="f2">' +
+      '<div class="fld"><label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:400"><input type="checkbox" id="cfEdS_licensed"> Licensed</label></div>' +
+      '<div class="fld"><label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:400"><input type="checkbox" id="cfEdS_insured"> Insured</label></div>' +
+      '</div>' +
+      '<div class="f2">' + _ef('cfEdS_years', 'Years in business', '<input id="cfEdS_years" type="number" min="0" max="99">') + _ef('cfEdS_certs', 'Certifications', '<input id="cfEdS_certs" maxlength="80">') + '</div>' +
+      _ef('cfEdS_areas', 'Service areas (up to 6, comma-separated)', '<input id="cfEdS_areas" maxlength="160">') +
+      '<div class="f2">' +
+      '<div class="fld"><label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:400"><input type="checkbox" id="cfEdS_emergency"> Emergency / 24-7 service</label></div>' +
+      _ef('cfEdS_note', 'Availability note', '<input id="cfEdS_note" maxlength="60">') +
+      '</div>' +
+      _ef('cfEdS_booking', 'Booking / quote link', '<input id="cfEdS_booking">') +
+      '<div class="fld"><label>Payment methods accepted</label><div>' + pays.map(function (u) { return '<label style="display:inline-flex;gap:6px;align-items:center;margin:0 10px 6px 0;font-weight:400"><input type="checkbox" name="cfEdS_pay" value="' + u + '"> ' + u + '</label>'; }).join('') + '</div></div>';
+    fld.parentNode.insertBefore(box, fld.nextSibling);
+    var add = el('cfEdS_addRow');
+    if (add) add.addEventListener('click', function () {
+      var wrap = el('cfEdS_priceRows');
+      if (!wrap || wrap.children.length >= 8) return;
+      wrap.appendChild(svcEdRow('', ''));
+      if (wrap.children.length >= 8) add.style.display = 'none';
+    });
+    return box;
+  }
+  function svcEdRow(name, price) {
+    var d = document.createElement('div');
+    d.className = 'svc-ed-row';
+    d.style.cssText = 'display:flex;gap:8px;margin-bottom:6px';
+    var n = document.createElement('input');
+    n.className = 'svc-ed-name'; n.maxLength = 60; n.placeholder = 'Service'; n.value = name || '';
+    n.style.cssText = 'flex:1.4;min-width:0';
+    var pr = document.createElement('input');
+    pr.className = 'svc-ed-price'; pr.maxLength = 24; pr.placeholder = 'Price'; pr.value = price || '';
+    pr.style.cssText = 'flex:1;min-width:0';
+    d.appendChild(n); d.appendChild(pr);
+    return d;
+  }
+  function fillEditorSvcFields(ad) {
+    var box = editorSvcBox();
+    if (!box) return;
+    if (!ad || ad.category !== 'Services' || !svcProHeldD()) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    var sp = parseSvcSpecs(ad.specs);
+    function set(id, v) { var n = el(id); if (n) n.value = (v == null ? '' : String(v)); }
+    function chk(id, v) { var n = el(id); if (n) n.checked = !!v; }
+    set('cfEdS_years', sp.svc_years); set('cfEdS_certs', sp.svc_certs);
+    set('cfEdS_areas', Array.isArray(sp.svc_areas) ? sp.svc_areas.join(', ') : '');
+    set('cfEdS_note', sp.svc_avail_note); set('cfEdS_booking', sp.svc_booking_url);
+    chk('cfEdS_licensed', sp.svc_licensed); chk('cfEdS_insured', sp.svc_insured);
+    chk('cfEdS_emergency', sp.svc_emergency);
+    var pays = Array.isArray(sp.svc_payments) ? sp.svc_payments : [];
+    var boxes = box.querySelectorAll('input[name="cfEdS_pay"]');
+    for (var i = 0; i < boxes.length; i++) boxes[i].checked = pays.indexOf(boxes[i].value) >= 0;
+    var wrap = el('cfEdS_priceRows');
+    if (wrap) {
+      wrap.innerHTML = '';
+      var list = Array.isArray(sp.svc_price_list) ? sp.svc_price_list : [];
+      if (list.length) list.slice(0, 8).forEach(function (r) { wrap.appendChild(svcEdRow(r.service, r.price)); });
+      else { wrap.appendChild(svcEdRow('', '')); wrap.appendChild(svcEdRow('', '')); }
+      var add = el('cfEdS_addRow'); if (add) add.style.display = wrap.children.length >= 8 ? 'none' : '';
+    }
+  }
+  function collectEditorSvcSpecs() {
+    var box = el('cfEdSvcBox');
+    if (!box || box.style.display === 'none') return null;
+    function v(id) { var n = el(id); return n ? String(n.value).trim() : ''; }
+    function ck(id) { var n = el(id); return !!(n && n.checked); }
+    var sp = {};
+    var rows = [];
+    box.querySelectorAll('.svc-ed-row').forEach(function (r) {
+      var n = r.querySelector('.svc-ed-name'), pr = r.querySelector('.svc-ed-price');
+      var name = n ? n.value.trim() : '', price = pr ? pr.value.trim() : '';
+      if (name) rows.push({ service: name.slice(0, 60), price: price.slice(0, 24) });
+    });
+    if (rows.length) sp.svc_price_list = rows.slice(0, 8);
+    if (ck('cfEdS_licensed')) sp.svc_licensed = true;
+    if (ck('cfEdS_insured')) sp.svc_insured = true;
+    var yrs = v('cfEdS_years').replace(/[,\s]/g, '');
+    if (yrs !== '') { var yn = Number(yrs); if (!isNaN(yn) && yn >= 0) sp.svc_years = yn; }
+    var certs = v('cfEdS_certs'); if (certs) sp.svc_certs = certs.slice(0, 80);
+    var areas = v('cfEdS_areas').split(',').map(function (a) { return a.trim(); }).filter(Boolean).slice(0, 6);
+    if (areas.length) sp.svc_areas = areas;
+    if (ck('cfEdS_emergency')) sp.svc_emergency = true;
+    var note = v('cfEdS_note'); if (note) sp.svc_avail_note = note.slice(0, 60);
+    var url = v('cfEdS_booking');
+    if (url) { if (!/^https?:\/\//i.test(url)) url = 'https://' + url; sp.svc_booking_url = url; }
+    var pays = [];
+    box.querySelectorAll('input[name="cfEdS_pay"]:checked').forEach(function (c) { pays.push(c.value); });
+    if (pays.length) sp.svc_payments = pays;
+    return Object.keys(sp).length ? sp : null;
+  }
   function fillEditorCarFields(ad) {
     var box = editorCarBox();
     if (!box) return;
@@ -2413,6 +2535,7 @@
     realEdit.category = category;
     fillEditorCarFields({ category: category, specs: null });
     fillEditorHomeFields({ category: category, specs: null });
+    fillEditorSvcFields({ category: category, specs: null });
     syncPostExtraD(category);
     syncPostSubD(category);
     syncPostCapD(category);
@@ -2461,6 +2584,7 @@
     if (grid) grid.innerHTML = '<div class="ptile add" title="Add photo" data-cf-add-photo>+</div>';
     fillEditorCarFields({ category: startCat, specs: null });
     fillEditorHomeFields({ category: startCat, specs: null });
+    fillEditorSvcFields({ category: startCat, specs: null });
     syncPostExtraD(startCat);
     syncPostSubD(startCat);
     syncPostCapD(startCat);
@@ -2557,6 +2681,7 @@
     }
     fillEditorCarFields(ad);
     fillEditorHomeFields(ad);
+    fillEditorSvcFields(ad);
     var grid = el('pgrid');
     if (grid) {
       var tiles = photos.map(function (u, i) {
@@ -2604,6 +2729,10 @@
       edHomeSpecs = collectEditorHomeSpecs(st.category);
       var edHomeErr = validateHomeSpecsD(edHomeSpecs, st.category);
       if (edHomeErr) { say(edHomeErr); return; }
+    }
+    var edSvcSpecs = null;
+    if (st.category === 'Services') {
+      edSvcSpecs = collectEditorSvcSpecs();
     }
     var grid = el('pgrid');
     var tiles = grid ? grid.querySelectorAll('.ptile:not(.add)') : [];
@@ -2700,6 +2829,7 @@
       if (tagList) newRow.tags = tagList;
       if (edCarSpecs) newRow.specs = edCarSpecs;
       if (edHomeSpecs) newRow.specs = edHomeSpecs;
+      if (edSvcSpecs) newRow.specs = edSvcSpecs;
       /* Package quota: when the category's default package is a
          finite plan and it is already full, the ad parks on the
          order and goes live at renewal - the marketplace rule. */
@@ -2718,7 +2848,7 @@
         } catch (e10) {}
       }
       var ins = await client.from('listings').insert([newRow]).select('id').single();
-      if (ins.error && (edCarSpecs || edHomeSpecs) && /specs/i.test(ins.error.message || '')) {
+      if (ins.error && (edCarSpecs || edHomeSpecs || edSvcSpecs) && /specs/i.test(ins.error.message || '')) {
         delete newRow.specs;
         ins = await client.from('listings').insert([newRow]).select('id').single();
       }
@@ -2806,8 +2936,9 @@
     };
     if (edCarSpecs) upd.specs = edCarSpecs;
     if (edHomeSpecs) upd.specs = edHomeSpecs;
+    if (edSvcSpecs) upd.specs = edSvcSpecs;
     var res = await client.from('listings').update(upd).eq('id', st.id);
-    if (res.error && (edCarSpecs || edHomeSpecs) && /specs/i.test(res.error.message || '')) {
+    if (res.error && (edCarSpecs || edHomeSpecs || edSvcSpecs) && /specs/i.test(res.error.message || '')) {
       /* Specs column missing: save everything else (same graceful
          pattern as the post path). */
       try { console.warn('[ClassiFlip] listings.specs update failed - saving without specs.'); } catch (e8) {}

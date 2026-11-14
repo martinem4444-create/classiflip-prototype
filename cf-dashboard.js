@@ -840,7 +840,7 @@
        the marketplace home and made them hunt for Post an ad; the
        ?post=1 deep link makes index open the form on arrival). */
     var postBtn = el('postBtn');
-    if (postBtn) postBtn.onclick = function () { location.href = 'index.html?post=1'; };
+    if (postBtn) postBtn.onclick = function () { try { openRealPost(); } catch (e) { location.href = 'index.html?post=1'; } };
 
     /* Admin queue — only for is_admin users. */
     var adminSect = el('adminSect');
@@ -2276,9 +2276,15 @@
   function closeRealEditor() {
     realEdit = null;
     var save = el('edSave');
-    if (save) save.onclick = null; /* falls back to the demo saveEditor() */
+    if (save) { save.onclick = null; save.textContent = 'Save changes'; } /* falls back to the demo saveEditor() */
+    var ttl = el('edTitle'); if (ttl) ttl.textContent = 'Edit ad';
     var sub = el('edSub');
     if (sub) sub.textContent = 'Changes go live instantly. Drafts auto-save.';
+    var hint = el('photoHint');
+    if (hint) hint.textContent = 'Free accounts: up to 8 photos \u00B7 Business: up to 20';
+    var extra = el('cfEdPostExtra'); if (extra) extra.style.display = 'none';
+    var pv = document.querySelector('#mEditor [onclick*="openAdPreview"]');
+    if (pv) pv.style.display = '';
     var cat = el('edCat');
     if (cat) { cat.disabled = false; cat.style.opacity = ''; cat.style.background = ''; }
   }
@@ -2289,6 +2295,193 @@
       '<img src="' + esc(isNew ? previewKey : url) + '">' +
       '<button class="star" title="Cover photo">&#9733;</button>' +
       '<button class="rm" title="Remove photo">&times;</button></div>';
+  }
+
+  /* ---- Post a NEW ad from the dashboard (Nov 14, 2026) ----
+     The dashboard editor gains a "new" mode next to its edit mode:
+     the Post button opens the same editor with a category picker,
+     the Cars/Homes field boxes, a condition + tags row (below),
+     package-aware photo caps and the marketplace's insert rules
+     (pending queue, auto-moderation attempt, admin email, package
+     quota attach). Boost stays on the ad card after posting - the
+     dashboard's native flow. Jobs keep their own posting flow on
+     the marketplace, so Jobs is not in this category list. */
+  var POST_CATS_D = ['Cars', 'Homes', 'Rentals', 'Electronics', 'Fashion', 'Home & Garden', 'Sports & Outdoors', 'Pets', 'Kids & Baby', 'Services', 'Free Stuff'];
+
+  function categoryOfPackageD(name) {
+    var n = String(name || '');
+    if (/dealer/i.test(n)) return 'Cars';
+    if (/agent/i.test(n)) return 'Homes';
+    if (/rental/i.test(n)) return 'Rentals';
+    if (/service/i.test(n)) return 'Services';
+    if (/job/i.test(n)) return 'Jobs';
+    return null;
+  }
+  function packageLimitForD(order) {
+    var n = String((order && order.package) || '').toLowerCase();
+    if (/unlimited/.test(n)) return null;
+    if (/starter/.test(n)) return 10;
+    if (/plus/.test(n)) return 30;
+    if (/single|solo/.test(n)) return 1;
+    return null;
+  }
+  function pkgDefaultForD(orders, category) {
+    var now = new Date();
+    var cands = (orders || []).filter(function (o) {
+      return o && o.status === 'Active' && categoryOfPackageD(o.package) === category &&
+        (!o.expires_at || new Date(o.expires_at) > now);
+    });
+    if (!cands.length) return null;
+    var pref = null;
+    try { pref = localStorage.getItem('cfOrdersDefaultOrderId'); } catch (e) {}
+    if (pref) {
+      for (var i = 0; i < cands.length; i++) if (String(cands[i].id) === String(pref)) return cands[i];
+    }
+    return cands[0];
+  }
+  function capForPostD(orders, category) {
+    var has = function (re) {
+      return (orders || []).some(function (o) {
+        return o && o.status === 'Active' && re.test(String(o.package || '')) &&
+          (!o.expires_at || new Date(o.expires_at) > new Date());
+      });
+    };
+    if (category === 'Cars') return has(/dealer/i) ? 20 : 8;
+    if (category === 'Homes') return has(/agent/i) ? 40 : 8;
+    if (category === 'Rentals') return has(/rental/i) ? 40 : 8;
+    return 8;
+  }
+  function fmtPkgDateD(iso) {
+    try {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Toronto' });
+    } catch (e) { return ''; }
+  }
+  function postExtraBox() {
+    var box = el('cfEdPostExtra');
+    if (box) return box;
+    var locEl = el('edLoc');
+    if (!locEl || !locEl.closest) return null;
+    var fld = locEl.closest('.fld');
+    if (!fld || !fld.parentNode) return null;
+    box = document.createElement('div');
+    box.id = 'cfEdPostExtra';
+    box.style.display = 'none';
+    box.innerHTML =
+      '<div class="f2">' +
+      '<div class="fld" id="cfEdCondWrap"><label>Condition</label><select id="cfEdCondition"><option>Like new</option><option>Good</option><option>Used</option><option>New</option></select></div>' +
+      '<div class="fld"><label>Tags <span style="color:var(--mu);font-weight:400">(optional, up to 6)</span></label><input id="cfEdTags" maxlength="150" placeholder="e.g. leather, vintage \u2014 separate with commas"></div>' +
+      '</div>';
+    fld.parentNode.insertBefore(box, fld.nextSibling);
+    return box;
+  }
+  function syncPostExtraD(category) {
+    var box = postExtraBox();
+    if (!box) return;
+    box.style.display = (realEdit && realEdit.mode === 'new') ? '' : 'none';
+    var cw = el('cfEdCondWrap');
+    if (cw) cw.style.display = (category === 'Cars' || category === 'Homes' || category === 'Rentals') ? 'none' : '';
+  }
+  function syncPostSubD(category) {
+    var sub = el('edSub');
+    if (!sub || !realEdit) return;
+    var ord = pkgDefaultForD(realEdit.orders, category);
+    var txt;
+    if (ord) {
+      txt = 'Posting under your ' + (ord.package || 'package');
+      if (ord.amount != null && !isNaN(Number(ord.amount))) txt += ' \u2014 $' + Math.round(Number(ord.amount)) + '/mo';
+      if (ord.expires_at) txt += ', active until ' + fmtPkgDateD(ord.expires_at);
+      txt += '.';
+    } else {
+      txt = 'Your ad goes to the approval queue when you post.';
+    }
+    if (category === 'Cars') {
+      var dOrd = pkgDefaultForD(realEdit.orders, 'Cars');
+      txt += (dOrd && /dealer/i.test(String(dOrd.package || ''))) ? ' Posting as an automotive dealer.' : ' Posting as a private seller.';
+    }
+    sub.textContent = txt;
+  }
+  function syncPostCapD(category) {
+    if (!realEdit) return;
+    realEdit.limit = capForPostD(realEdit.orders, category);
+    var hint = el('photoHint');
+    if (hint) hint.textContent = 'Up to ' + realEdit.limit + ' photos for this ad \u00B7 tap \u2605 for cover';
+  }
+  function onPostCatChangeD() {
+    if (!realEdit || realEdit.mode !== 'new') return;
+    var cat = el('edCat');
+    var category = cat ? cat.value : realEdit.category;
+    realEdit.category = category;
+    fillEditorCarFields({ category: category, specs: null });
+    fillEditorHomeFields({ category: category, specs: null });
+    syncPostExtraD(category);
+    syncPostSubD(category);
+    syncPostCapD(category);
+  }
+  async function openRealPost() {
+    var client = getClient();
+    if (!client) { say('Please log in first.'); return; }
+    var user = await getUser(client);
+    if (!user) { say('Please log in first.'); return; }
+    var isAdv = false;
+    try {
+      var pr = await client.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      if (pr && pr.data && pr.data.role === 'advertiser') isAdv = true;
+    } catch (e) {}
+    var myOrders = [];
+    try {
+      var orr = await client.from('orders')
+        .select('id,package,amount,status,expires_at,created_at')
+        .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(50);
+      if (orr && orr.data) myOrders = orr.data;
+    } catch (e2) {}
+    var startCat = 'Cars';
+    for (var ci = 0; ci < POST_CATS_D.length; ci++) {
+      if (pkgDefaultForD(myOrders, POST_CATS_D[ci])) { startCat = POST_CATS_D[ci]; break; }
+    }
+    realEdit = { id: null, mode: 'new', uid: user.id, origUrls: [], newFiles: {}, limit: 8, category: startCat, isAdvertiser: isAdv, orders: myOrders, origSellerType: '' };
+    var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = 'Post an ad';
+    var name = el('edName'); if (name) name.value = '';
+    var price = el('edPrice'); if (price) price.value = '';
+    var desc = el('edDesc'); if (desc) desc.value = '';
+    var loc = el('edLoc'); if (loc) loc.value = 'Mississauga, ON';
+    var cat = el('edCat');
+    if (cat) {
+      cat.innerHTML = POST_CATS_D.map(function (c) { return '<option>' + c + '</option>'; }).join('');
+      cat.value = startCat;
+      cat.disabled = false; cat.style.opacity = ''; cat.style.background = '';
+      if (!cat.dataset.cfPostBound) {
+        cat.dataset.cfPostBound = '1';
+        cat.addEventListener('change', onPostCatChangeD);
+      }
+    }
+    postExtraBox();
+    var tags = el('cfEdTags'); if (tags) tags.value = '';
+    var cond = el('cfEdCondition'); if (cond) cond.value = 'Like new';
+    var grid = el('pgrid');
+    if (grid) grid.innerHTML = '<div class="ptile add" title="Add photo" data-cf-add-photo>+</div>';
+    fillEditorCarFields({ category: startCat, specs: null });
+    fillEditorHomeFields({ category: startCat, specs: null });
+    syncPostExtraD(startCat);
+    syncPostSubD(startCat);
+    syncPostCapD(startCat);
+    var save = el('edSave');
+    if (save) { save.textContent = 'Post ad'; save.onclick = function () { realSave(); }; }
+    var pv = document.querySelector('#mEditor [onclick*="openAdPreview"]');
+    if (pv) pv.style.display = 'none';
+    try { if (typeof openM === 'function') openM('mEditor'); } catch (e3) {}
+  }
+  function notifyAdminPendingAdD(client, payload) {
+    try {
+      client.auth.getSession().then(function (res) {
+        var token = res && res.data && res.data.session ? res.data.session.access_token : null;
+        if (!token || !client.supabaseUrl) return;
+        fetch(client.supabaseUrl + '/functions/v1/notify-admin-pending-ad', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': client.supabaseKey, 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(payload)
+        }).catch(function () {});
+      }).catch(function () {});
+    } catch (e) {}
   }
 
   async function openRealEditor(id) {
@@ -2325,7 +2518,7 @@
       var pr = await client.from('profiles').select('role').eq('id', user.id).maybeSingle();
       if (pr && pr.data && pr.data.role === 'advertiser') { limit = 20; isAdv = true; }
     } catch (e2) {}
-    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit, category: ad.category || '', isAdvertiser: isAdv };
+    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit, category: ad.category || '', isAdvertiser: isAdv, origSellerType: (parseCarSpecs(ad.specs).seller_type || '') };
     var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = 'Edit ad';
     var edSub = el('edSub');
     /* Rejected-editor guidance (Oct 29, best-solution build):
@@ -2381,6 +2574,11 @@
     var client = getClient();
     if (!client) return;
     var st = realEdit;
+    var isNew = !!(st && st.mode === 'new');
+    if (isNew) {
+      var catSel = el('edCat');
+      if (catSel && catSel.value) st.category = catSel.value;
+    }
     var title = (el('edName') ? el('edName').value : '').trim();
     var priceRaw = (el('edPrice') ? el('edPrice').value : '').replace(/[$,\s]/g, '');
     var price = parseFloat(priceRaw);
@@ -2392,6 +2590,12 @@
     var edCarSpecs = null;
     if (st.category === 'Cars') {
       edCarSpecs = collectEditorCarSpecs();
+      if (isNew) {
+        var dOrd2 = pkgDefaultForD(st.orders, 'Cars');
+        edCarSpecs.seller_type = (dOrd2 && /dealer/i.test(String(dOrd2.package || ''))) ? 'dealer' : 'private';
+      } else if (st.origSellerType) {
+        edCarSpecs.seller_type = st.origSellerType;
+      }
       var edCarErr = validateCarSpecsD(edCarSpecs);
       if (edCarErr) { say(edCarErr); return; }
     }
@@ -2469,6 +2673,92 @@
       cover = uploaded[slotN] ? uploaded[slotN].url : null;
     }
     if (!cover && finalUrls.length) cover = finalUrls[0];
+    if (isNew) {
+      var user2 = null;
+      try { user2 = await getUser(client); } catch (e9) {}
+      var condVal = '';
+      if (st.category !== 'Cars' && st.category !== 'Homes' && st.category !== 'Rentals') {
+        var condEl = el('cfEdCondition');
+        condVal = condEl ? condEl.value : 'Like new';
+      }
+      var tagList = null;
+      var tagsEl = el('cfEdTags');
+      if (tagsEl && tagsEl.value.trim()) {
+        var seenT = {}, outT = [];
+        tagsEl.value.split(',').forEach(function (piece) {
+          var t = piece.trim().replace(/^#+/, '').toLowerCase();
+          if (t && t.length <= 24 && !seenT[t]) { seenT[t] = 1; if (outT.length < 6) outT.push(t); }
+        });
+        if (outT.length) tagList = outT;
+      }
+      var newRow = {
+        seller_id: st.uid, title: title, description: el('edDesc') ? el('edDesc').value : '',
+        price: price, category: st.category, condition: condVal,
+        location: el('edLoc') ? el('edLoc').value : '', status: 'pending',
+        boosted: false, photo_url: cover
+      };
+      if (tagList) newRow.tags = tagList;
+      if (edCarSpecs) newRow.specs = edCarSpecs;
+      if (edHomeSpecs) newRow.specs = edHomeSpecs;
+      /* Package quota: when the category's default package is a
+         finite plan and it is already full, the ad parks on the
+         order and goes live at renewal - the marketplace rule. */
+      var quotaFull = false;
+      var defOrd = pkgDefaultForD(st.orders, st.category);
+      var defLimit = defOrd ? packageLimitForD(defOrd) : null;
+      if (defOrd && defLimit != null) {
+        try {
+          var cnt = await client.from('listings').select('id', { count: 'exact', head: true })
+            .eq('seller_id', st.uid).eq('category', st.category)
+            .in('status', ['active', 'pending']).gte('created_at', defOrd.created_at);
+          if (cnt && typeof cnt.count === 'number' && cnt.count >= defLimit) {
+            newRow.pending_pkg_order_id = defOrd.id;
+            quotaFull = true;
+          }
+        } catch (e10) {}
+      }
+      var ins = await client.from('listings').insert([newRow]).select('id').single();
+      if (ins.error && (edCarSpecs || edHomeSpecs) && /specs/i.test(ins.error.message || '')) {
+        delete newRow.specs;
+        ins = await client.from('listings').insert([newRow]).select('id').single();
+      }
+      if (ins.error && /pending_pkg_order_id/i.test(ins.error.message || '')) {
+        delete newRow.pending_pkg_order_id;
+        quotaFull = false;
+        ins = await client.from('listings').insert([newRow]).select('id').single();
+      }
+      if (ins.error || !ins.data || !ins.data.id) {
+        say('Could not post: ' + (ins.error ? ins.error.message : 'Something went wrong.'));
+        return;
+      }
+      var newId = ins.data.id;
+      if (finalUrls.length) {
+        var photoRows = finalUrls.map(function (u, idx) { return { listing_id: newId, photo_url: u, position: idx }; });
+        var phIns = await client.from('listing_photos').insert(photoRows);
+        if (phIns.error) {
+          try { await client.from('listings').delete().eq('id', newId); } catch (e11) {}
+          try { await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }).concat(thumbPaths)); } catch (e12) {}
+          say('Could not post: ' + phIns.error.message);
+          return;
+        }
+      }
+      var autoApproved = false;
+      try {
+        if (user2 && window.CFAutoMod && typeof window.CFAutoMod.tryAutoApprove === 'function') {
+          autoApproved = await window.CFAutoMod.tryAutoApprove(client, user2, newId, {
+            title: title, description: newRow.description, category: st.category, price: price, photo_url: cover
+          });
+        }
+      } catch (e13) { autoApproved = false; }
+      if (!autoApproved) {
+        notifyAdminPendingAdD(client, { listing_id: newId, title: title, category: st.category, price: price });
+      }
+      closeRealEditor();
+      try { if (typeof closeM === 'function') closeM('mEditor'); } catch (e14) {}
+      say(autoApproved ? 'Ad posted \u2014 live now' : (quotaFull ? 'Ad posted \u2014 it goes live when your package renews' : 'Ad posted \u2014 pending approval'));
+      refresh();
+      return;
+    }
     var removed = st.origUrls.filter(function (u) { return finalUrls.indexOf(u) === -1; });
     try {
       if (removed.length) {

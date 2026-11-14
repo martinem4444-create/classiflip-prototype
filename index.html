@@ -1119,5 +1119,32 @@ window.addEventListener('focus',updateMsgsDot);
    rather than say something untrue. */
 (function(){var n=document.getElementById('fairNote'),s=document.getElementById('sortFilter');if(!n||!s)return;function sync(){n.style.display=(s.value==='featured')?'flex':'none';}s.addEventListener('change',sync);sync();})();
 </script>
+<script>/* CF dashboard deep link (Nov 14, 2026): the dashboard Post button
+   lands on index.html?post=1 — open the post form directly once the
+   signed-in session lands, instead of leaving the seller on the
+   marketplace home. Logged-out arrivals get the account modal.
+   This lives in the document itself so it cannot be stranded by a
+   browser-cached copy of cf-listings.js; the param is stripped when
+   it fires so a refresh never reopens the form. */
+(function(){try{
+  if(!/[?&]post=1(&|$)/.test(location.search))return;
+  var tries=0;
+  var t=setInterval(function(){
+    tries++;
+    var pm=document.getElementById('postModal');
+    if(pm&&pm.classList.contains('open')){clearInterval(t);return;}
+    var li=false;try{li=(typeof loggedIn!=='undefined'&&!!loggedIn);}catch(e){}
+    if(li){
+      clearInterval(t);
+      try{history.replaceState(null,'',location.pathname+location.hash);}catch(e){}
+      openModal('postModal');
+    }else if(tries>=60){
+      clearInterval(t);
+      try{history.replaceState(null,'',location.pathname+location.hash);}catch(e){}
+      try{setAccountMode('create');var an=document.getElementById('accountNotice');if(an)an.textContent='Log in or create an account to post your ad.';}catch(e){}
+      openModal('accountModal');
+    }
+  },250);
+}catch(e){}})();</script>
 </body>
 </html>

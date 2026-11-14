@@ -1706,9 +1706,16 @@
           } catch (e) {}
           allAdsList.innerHTML = allAds.map(function (x) {
             var s2 = aSellers[x.seller_id] || {};
+            /* Admin All Ads (Nov 13, 2026, Martin's ask): always show the
+               seller's email next to the display name, so an ad is easy to
+               spot when its owner calls. Admin-only surface; public ads
+               still show no seller email. */
+            var sellerLabel = s2.display_name || '';
+            if (s2.email) sellerLabel += (sellerLabel ? ' · ' : '') + s2.email;
+            if (!sellerLabel) sellerLabel = x.seller_id || '';
             return '<div class="lcard"><div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + '</div>' +
               '<div class="p">' + money(x.price) + '</div>' +
-              '<div class="s">' + esc(s2.display_name || s2.email || x.seller_id || '') + ' · ' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div></div>' +
+              '<div class="s">' + esc(sellerLabel) + ' · ' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div></div>' +
               '<div class="acts"><button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button></div></div>';
           }).join('');
         }

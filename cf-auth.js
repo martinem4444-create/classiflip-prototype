@@ -58,13 +58,25 @@
   function afterSignIn(user) {
     var md = user.user_metadata || {};
     try {
-      var p = client.from('profiles').upsert({
-        id: user.id,
-        email: user.email,
-        display_name: md.display_name || null,
-        role: (md.role === 'advertiser' ? 'advertiser' : 'private')
-      }, { onConflict: 'id' });
-      if (p && typeof p.then === 'function') p.catch(function () {});
+      /* Role is insert-only (Nov 14, 2026): package activation flips
+         a private buyer's profile to 'advertiser' (DB trigger on
+         orders), and this sign-in refresh must not stomp it back to
+         the signup choice. Only a brand-new profile (no row yet)
+         gets the signup role; an existing row keeps its role. */
+      client.from('profiles').select('role').eq('id', user.id).maybeSingle()
+        .then(function (res) {
+          var payload = {
+            id: user.id,
+            email: user.email,
+            display_name: md.display_name || null
+          };
+          if (res && !res.error && !res.data) {
+            payload.role = (md.role === 'advertiser' ? 'advertiser' : 'private');
+          }
+          var p = client.from('profiles').upsert(payload, { onConflict: 'id' });
+          if (p && typeof p.then === 'function') p.catch(function () {});
+        })
+        .catch(function () {});
     } catch (e) {}
     loggedIn = true;
     updateAccountUI();

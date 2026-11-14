@@ -3208,6 +3208,6 @@
     if (b) cfWlExport();
   });
 
-  window.CFDashboard = { refresh: refresh };
+  window.CFDashboard = { refresh: refresh, post: function () { openRealPost(); } };
   refresh();
 })();

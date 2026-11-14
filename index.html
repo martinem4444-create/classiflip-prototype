@@ -1147,13 +1147,19 @@ window.addEventListener('focus',updateMsgsDot);
     }
   },250);
 }catch(e){}})();</script>
-<script>/* CF price-drop alerts sync v1 (Nov 14, 2026): hearts stay
-   instant in-page; for signed-in users this layer mirrors them into
-   the saved_items table (so the morning price-drop digest knows who
-   to email) and hydrates the hearts from the account on sign-in.
-   Sample ads (non-UUID ids) never sync. */
+<script>/* CF price-drop alerts sync v2 (Nov 14, 2026): hearts stay
+   instant in-page; for signed-in users this layer reconciles the
+   page's saved set with the saved_items table every few seconds
+   (so the morning price-drop digest knows who to email) and
+   hydrates the hearts from the account on sign-in. Sample ads
+   (non-UUID ids) never sync. v2 replaces v1's click-mirror, which
+   silently failed to write; set reconciliation is self-healing
+   across every toggle path. Recent write errors are kept on
+   window.__cfSyncErrors for diagnosis. */
 (function () {
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  window.__cfSyncErrors = [];
+  function note(kind, msg) { try { window.__cfSyncErrors.push(kind + ": " + msg); if (window.__cfSyncErrors.length > 20) window.__cfSyncErrors.shift(); } catch (e) {} }
   function client() { return (window.CFAuth && window.CFAuth.client) || null; }
   function sessionUser() {
     var c = client(); if (!c) return Promise.resolve(null);
@@ -1163,50 +1169,60 @@ window.addEventListener('focus',updateMsgsDot);
   }
   function paintSaved() {
     try {
-      document.querySelectorAll('[data-save]').forEach(function (b) {
-        var on = saved.has(String(b.getAttribute('data-save')));
-        b.classList.toggle('saved', on);
-        var sp = b.querySelector('span'); if (sp) sp.textContent = on ? '\u2665' : '\u2661';
-        b.setAttribute('aria-label', on ? 'Remove from favourites' : 'Save to favourites');
+      document.querySelectorAll("[data-save]").forEach(function (b) {
+        var on = saved.has(String(b.getAttribute("data-save")));
+        b.classList.toggle("saved", on);
+        var sp = b.querySelector("span"); if (sp) sp.textContent = on ? "\u2665" : "\u2661";
+        b.setAttribute("aria-label", on ? "Remove from favourites" : "Save to favourites");
       });
-      var sc = document.getElementById('savedCount'); if (sc) sc.textContent = saved.size;
-      if (savedOnly && typeof render === 'function') render();
+      var sc = document.getElementById("savedCount"); if (sc) sc.textContent = saved.size;
+      if (savedOnly && typeof render === "function") render();
     } catch (e) {}
   }
-  var hydratedFor = '';
-  function hydrate() {
+  var hydratedFor = "";
+  var syncedFor = "";
+  var snapshot = {};
+  var busy = false;
+  function tick() {
+    if (busy) return;
     sessionUser().then(function (u) {
-      if (!u || hydratedFor === u.id) return;
-      hydratedFor = u.id;
+      if (!u) { hydratedFor = ""; syncedFor = ""; snapshot = {}; return; }
       var c = client(); if (!c) return;
-      c.from('saved_items').select('listing_id').eq('user_id', u.id).then(function (res) {
-        if (res && !res.error && res.data) {
-          res.data.forEach(function (r) { saved.add(String(r.listing_id)); });
+      if (hydratedFor !== u.id) {
+        busy = true;
+        c.from("saved_items").select("listing_id").eq("user_id", u.id).then(function (res) {
+          busy = false;
+          if (res && res.error) { note("hydrate", res.error.message || res.error); return; }
+          snapshot = {};
+          (res.data || []).forEach(function (r) {
+            saved.add(String(r.listing_id));
+            snapshot[String(r.listing_id)] = true;
+          });
+          hydratedFor = u.id; syncedFor = u.id;
           paintSaved();
-        }
-      }).catch(function () {});
+        }, function (err) { busy = false; note("hydrate", String(err)); });
+        return;
+      }
+      var current = {};
+      try { saved.forEach(function (id) { id = String(id); if (UUID.test(id)) current[id] = true; }); } catch (e) { return; }
+      Object.keys(current).forEach(function (id) {
+        if (snapshot[id]) return;
+        snapshot[id] = true;
+        c.from("saved_items").upsert({ user_id: u.id, listing_id: id }, { onConflict: "user_id,listing_id", ignoreDuplicates: true })
+          .then(function (res) { if (res && res.error) { delete snapshot[id]; note("insert " + id, res.error.message || res.error); } },
+                function (err) { delete snapshot[id]; note("insert " + id, String(err)); });
+      });
+      Object.keys(snapshot).forEach(function (id) {
+        if (current[id]) return;
+        delete snapshot[id];
+        c.from("saved_items").delete().eq("user_id", u.id).eq("listing_id", id)
+          .then(function (res) { if (res && res.error) { snapshot[id] = true; note("delete " + id, res.error.message || res.error); } },
+                function (err) { snapshot[id] = true; note("delete " + id, String(err)); });
+      });
     });
   }
-  /* The page's own toggle handler was registered earlier, so by the
-     time this listener runs the button already shows the new state;
-     mirror that state to the account. */
-  document.addEventListener('click', function (e) {
-    var b = e.target && e.target.closest ? e.target.closest('[data-save]') : null;
-    if (!b) return;
-    var id = String(b.getAttribute('data-save') || '');
-    if (!UUID.test(id)) return;
-    var on = b.classList.contains('saved');
-    sessionUser().then(function (u) {
-      if (!u) return;
-      var c = client(); if (!c) return;
-      var q = on
-        ? c.from('saved_items').upsert({ user_id: u.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true })
-        : c.from('saved_items').delete().eq('user_id', u.id).eq('listing_id', id);
-      if (q && typeof q.catch === 'function') q.catch(function () {});
-    });
-  });
-  hydrate();
-  setInterval(hydrate, 5000);
+  tick();
+  setInterval(tick, 2500);
 })();
 </script>
 </body>

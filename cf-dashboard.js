@@ -687,7 +687,7 @@
     if (listSeller) {
       listSeller.classList.remove('hidden');
       if (!listings.length) {
-        listSeller.innerHTML = '<div class="notice">No ads yet — post one from the Marketplace and it will show up here once approved.</div>';
+        listSeller.innerHTML = '<div class="notice">No ads yet — post one with the Post button above and it will show up here once approved.</div>';
       } else {
         var viewBar = '<div class="adviewbar"><span class="lbl">My ads</span>' +
           '<button class="btn gho' + (dashView === 'list' ? ' on' : '') + '" data-cf-view="list">List</button>' +
@@ -835,9 +835,12 @@
       }
     }
 
-    /* Post button goes to the real post flow on the marketplace. */
+    /* Post button goes straight into the marketplace post form
+       (Nov 14, 2026 — Steve's catch: the old link landed sellers on
+       the marketplace home and made them hunt for Post an ad; the
+       ?post=1 deep link makes index open the form on arrival). */
     var postBtn = el('postBtn');
-    if (postBtn) postBtn.onclick = function () { location.href = 'index.html'; };
+    if (postBtn) postBtn.onclick = function () { location.href = 'index.html?post=1'; };
 
     /* Admin queue — only for is_admin users. */
     var adminSect = el('adminSect');

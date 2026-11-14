@@ -881,12 +881,14 @@
             '<p>Send <b>$2.99</b> by Interac e-Transfer to <b>mm905media@gmail.com</b> with <b>' + safe(boostCode) + '</b> in the message.<br>' +
             (autoApproved ? 'Your ad is live now — Martin activates your boost, and it then runs 7 days, pinned first in its category.</p>' : 'Your ad is still pending approval — Martin activates your boost once the ad is approved, and it then runs 7 days, pinned first in its category.</p>') +
             '<p>Boost ref: <b>' + safe(boostCode) + '</b> · Ad: ' + safe(title) + '</p>' +
-            '<button class="primary" id="cfPostBoostDone">Done</button>' +
+            '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px"><button class="primary" id="cfPostBoostDone">Done</button><button class="ghost" id="cfPostBoostAnother">Post another ad</button></div>' +
             '</div>';
           if (typeof closeModals === 'function') closeModals();
           if (typeof openModal === 'function') openModal('detailModal');
           var _bd = document.getElementById('cfPostBoostDone');
           if (_bd && typeof closeModals === 'function') _bd.addEventListener('click', function () { closeModals(); });
+          var _ba = document.getElementById('cfPostBoostAnother');
+          if (_ba && typeof openModal === 'function') _ba.addEventListener('click', function () { if (typeof closeModals === 'function') closeModals(); openModal('postModal'); });
           try { playMarketplaceBoostSound(); } catch (e4) {}
         } catch (e) {}
       } else {
@@ -913,12 +915,16 @@
               : '<p>Every ad gets a quick human check before it goes public — that is how ClassiFlip stays free of spam and scams. Once your ad is approved it appears on the marketplace, and we will email you. There is nothing else you need to do.</p>') +
             (boostErr ? '<p style="color:var(--muted)">Note: the Boost reservation did not go through — you can boost the ad from your dashboard once it is live.</p>' : '') +
             '<p>Ad: <b>' + safe(title) + '</b></p>' +
-            '<button class="primary" id="cfPostDoneBtn">Done</button>' +
+            '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px"><button class="primary" id="cfPostAnotherBtn">Post another ad</button><button class="ghost" id="cfPostDashBtn">Back to dashboard</button><button class="ghost" id="cfPostDoneBtn">Done</button></div>' +
             '</div>';
           if (typeof closeModals === 'function') closeModals();
           if (typeof openModal === 'function') openModal('detailModal');
           var _pd = document.getElementById('cfPostDoneBtn');
           if (_pd && typeof closeModals === 'function') _pd.addEventListener('click', function () { closeModals(); });
+          var _pa = document.getElementById('cfPostAnotherBtn');
+          if (_pa && typeof openModal === 'function') _pa.addEventListener('click', function () { if (typeof closeModals === 'function') closeModals(); openModal('postModal'); });
+          var _pg = document.getElementById('cfPostDashBtn');
+          if (_pg) _pg.addEventListener('click', function () { location.href = 'dashboard.html'; });
         } catch (e) {}
       }
     } catch (err) {
@@ -1323,6 +1329,38 @@
     posting = true;
     postAd().then(function () { posting = false; }, function () { posting = false; });
   }, true);
+
+  /* Dashboard deep link (Nov 14, 2026 — Steve's catch): the dashboard
+     Post button lands on index.html?post=1, so open the post form
+     directly once the signed-in session is live instead of leaving
+     the seller on the marketplace home to hunt for the button. A
+     logged-out arrival gets the account modal, mirroring the
+     quick-post buttons. The param is stripped as soon as it fires
+     so a refresh never reopens the form. */
+  try {
+    if (/[?&]post=1(&|$)/.test(location.search)) {
+      var cfPostTries = 0;
+      var cfPostTimer = setInterval(function () {
+        cfPostTries++;
+        var cfReady = false;
+        try { cfReady = !!(getClient() && isLoggedIn()); } catch (e) {}
+        if (cfReady) {
+          clearInterval(cfPostTimer);
+          try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+          if (typeof openModal === 'function') openModal('postModal');
+        } else if (cfPostTries >= 30) {
+          clearInterval(cfPostTimer);
+          try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+          try {
+            if (typeof setAccountMode === 'function') setAccountMode('create');
+            var cfAn = document.getElementById('accountNotice');
+            if (cfAn) cfAn.textContent = 'Log in or create an account to post your ad.';
+          } catch (e) {}
+          if (typeof openModal === 'function') openModal('accountModal');
+        }
+      }, 300);
+    }
+  } catch (e) {}
 
   /* Detail gallery (v1.7): multi-photo ads render every real photo
      as a thumb. The page's own gallery-thumb handler swaps the main

@@ -1813,6 +1813,15 @@
               return '<img src="' + esc(p) + '" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px">';
             }).join('') + '</div>'
           : '';
+        var fullSpecs = carSpecsAdminHtml(x) + homeSpecsAdminHtml(x);
+        var bigStrip = photos.length > 1
+          ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">' + photos.map(function (p) {
+              return '<img src="' + esc(p) + '" alt="" loading="lazy" style="width:150px;height:113px;object-fit:cover;border-radius:10px">';
+            }).join('') + '</div>'
+          : '';
+        var fullDetail = (fullSpecs || bigStrip)
+          ? '<div data-cf-adetail="' + esc(x.id) + '" hidden>' + bigStrip + fullSpecs + '</div>'
+          : '';
         return '<div class="lcard">' +
           (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
           '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor('pending') + '</div>' +
@@ -1823,7 +1832,7 @@
           }).join('') + '</div>' : '') +
           strip +
           (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
-                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + carSummaryLine(x) + homeSummaryLine(x) + '</div>' +
+                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + carSummaryLine(x) + homeSummaryLine(x) + fullDetail + '</div>' +
           '<div class="acts" style="width:300px;flex:none"><div style="margin-bottom:6px"><select data-cf-reject-reason="' + esc(x.id) + '" aria-label="Reject reason" style="width:100%;margin-bottom:4px;padding:6px;border:1px solid var(--line);border-radius:8px">' +
           '<option value="Wrong category — please post a new ad under Services">Wrong category — post a new ad under Services</option>' +
           '<option value="Wrong category — please post a new ad in the correct category">Wrong category — correct category</option>' +
@@ -1831,7 +1840,7 @@
           '<option value="Prohibited item">Prohibited item</option>' +
           '<option value="Duplicate ad">Duplicate ad</option></select>' +
           '<input data-cf-reject-custom="' + esc(x.id) + '" placeholder="Or type a custom reason…" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:8px"></div>' +
-          '<a class="btn gho" href="index.html?listing=' + esc(x.id) + '" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">View ad</a>' +
+          (fullDetail ? '<button class="btn gho" data-cf-viewad="' + esc(x.id) + '">View ad</button>' : '') +
           '<button class="btn pri" data-cf-approve="' + esc(x.id) + '">Approve</button>' +
           '<button class="btn gho danger" data-cf-reject="' + esc(x.id) + '">Reject</button></div></div>';
       }).join('');
@@ -2249,6 +2258,12 @@
         if (errEl) { errEl.textContent = rmsg; errEl.classList.remove('hidden'); }
         else say(rmsg);
       }
+      return;
+    }
+    var viewAd = e.target.closest ? e.target.closest('[data-cf-viewad]') : null;
+    if (viewAd) {
+      var vd = document.querySelector('[data-cf-adetail="' + viewAd.dataset.cfViewad + '"]');
+      if (vd) { vd.hidden = !vd.hidden; viewAd.textContent = vd.hidden ? 'View ad' : 'Hide ad'; }
       return;
     }
     var approve = e.target.closest ? e.target.closest('[data-cf-approve]') : null;

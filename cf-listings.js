@@ -1438,7 +1438,6 @@
       window.__cfActiveListing = x;
       document.getElementById('detailTitle').textContent = x.__pendingPreview ? 'Pending ad \u2014 how users will see it' : 'Listing details';
       document.getElementById('detailBody').innerHTML =
-        (x.__adminBar ? adminBarHtml(x) : '') +
         '<div class="detail">' + galleryWithBrand(x) + '<div class="detail-info">' +
                 (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
         '<h3>' + safe(x.title) + '</h3>' +
@@ -1470,71 +1469,6 @@
      openRealDetail, demo rows via the page's own openListingDetail.
      Called after a successful refresh (real rows) and once at init
      (demo rows, when there is no live client at all). */
-  /* Admin action bar inside a pending ad's preview (Nov 15, 2026):
-     Martin's flow — open the pending ad from the queue, review it as
-     a user, approve or reject on the spot without returning to the
-     dashboard tab. Renders only when the deep-link fetch confirmed
-     the viewer is an admin and the ad is not active; the updates
-     mirror the dashboard's approve/reject exactly (same columns,
-     custom reason wins over the preset). */
-  function adminBarHtml(x) {
-    var opts = [
-      'Wrong category \u2014 please post a new ad under Services',
-      'Wrong category \u2014 please post a new ad in the correct category',
-      'Photos or description missing or unclear',
-      'Prohibited item',
-      'Duplicate ad'
-    ];
-    return '<div class="cf-adminbar" style="border:2px solid #E8590C;border-radius:12px;padding:12px;margin-bottom:12px">' +
-      '<div style="font-weight:800;margin-bottom:8px">Admin \u2014 this ad is pending approval</div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-      '<select data-cf-admin-reason style="flex:1 1 260px;max-width:430px;padding:7px;border:1px solid var(--line);border-radius:8px">' +
-      opts.map(function (o) { return '<option value="' + escAttr(o) + '">' + safe(o) + '</option>'; }).join('') +
-      '</select>' +
-      '<input data-cf-admin-custom placeholder="Or type a custom reason\u2026" style="flex:1 1 200px;padding:7px;border:1px solid var(--line);border-radius:8px">' +
-      '<button type="button" class="primary" data-cf-admin-approve="' + escAttr(x.id) + '">Approve</button>' +
-      '<button type="button" data-cf-admin-reject="' + escAttr(x.id) + '" style="padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:none;color:#C92A2A;font-weight:700;cursor:pointer">Reject</button>' +
-      '</div></div>';
-  }
-  document.addEventListener('click', function (e) {
-    var ap = e.target && e.target.closest ? e.target.closest('[data-cf-admin-approve]') : null;
-    var rj = !ap && e.target && e.target.closest ? e.target.closest('[data-cf-admin-reject]') : null;
-    if (!ap && !rj) return;
-    var btn = ap || rj;
-    var id = btn.getAttribute('data-cf-admin-approve') || btn.getAttribute('data-cf-admin-reject');
-    var client = null;
-    try { client = getClient(); } catch (err) {}
-    if (!client || !id) return;
-    var bar = btn.closest ? btn.closest('.cf-adminbar') : null;
-    btn.disabled = true;
-    var finish = function (msg) {
-      if (bar) bar.innerHTML = '<strong>' + msg + '</strong>';
-      if (ap) { var dt = document.getElementById('detailTitle'); if (dt) dt.textContent = 'Listing details'; }
-    };
-    if (ap) {
-      client.from('listings').update({ status: 'active', rejection_reason: null }).eq('id', id).then(function (res) {
-        if (res.error && res.error.message && res.error.message.indexOf('rejection_reason') !== -1) {
-          return client.from('listings').update({ status: 'active' }).eq('id', id);
-        }
-        return res;
-      }).then(function (res2) {
-        if (res2 && res2.error) { btn.disabled = false; finish('Approve failed: ' + safe(res2.error.message)); }
-        else finish('\u2713 Approved \u2014 this ad is now live.');
-      });
-    } else {
-      var reason = '';
-      try {
-        var sel = bar ? bar.querySelector('[data-cf-admin-reason]') : null;
-        var cus = bar ? bar.querySelector('[data-cf-admin-custom]') : null;
-        reason = (cus && cus.value.trim()) || (sel && sel.value) || '';
-      } catch (err2) {}
-      client.from('listings').update({ status: 'rejected', rejection_reason: reason || null }).eq('id', id).then(function (res) {
-        if (res && res.error) { btn.disabled = false; finish('Reject failed: ' + safe(res.error.message)); }
-        else finish('\u2715 Rejected \u2014 the seller sees your reason in their dashboard.');
-      });
-    }
-  });
-
   function maybeOpenDeepLink() {
     try {
       var m = /[?&]listing=([^&]+)/.exec(location.search || '');
@@ -1567,15 +1501,6 @@
             } catch (e2) {}
             var nx = mapRow(r.data, photosById, null, null);
             if (r.data.status && r.data.status !== 'active') nx.__pendingPreview = true;
-            nx.__adminBar = false;
-            try {
-              var sess = await dlClient.auth.getSession();
-              var uid = sess && sess.data && sess.data.session && sess.data.session.user ? sess.data.session.user.id : null;
-              if (uid && r.data.status !== 'active') {
-                var pr2 = await dlClient.from('profiles').select('is_admin').eq('id', uid).maybeSingle();
-                if (pr2 && pr2.data && pr2.data.is_admin) nx.__adminBar = true;
-              }
-            } catch (e5) {}
             listings.push(nx);
             window.__cfDeepLinkDone = raw;
             try { openRealDetail(nx); } catch (e3) {}

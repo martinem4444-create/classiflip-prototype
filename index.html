@@ -221,6 +221,10 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 #car_vin{text-transform:uppercase}
 </style>
 <style>/* CF mobile caret fix v16 (Nov 15, 2026): the marketplace post form injects its spec, tag and service sub-fields at 13-14px; iOS WebKit (including Chrome on iPhone) auto-zooms into sub-16px fields and the caret dances/lands offset. Force every modal form control to 16px - the same cure as the v12 chat-input fix and the dashboard caret fix. */ .modal input,.modal select,.modal textarea{font-size:16px!important}</style>
+<style>/* CF focus glide margins v17 (Nov 15, 2026) */ .modal input,.modal textarea,.modal select{scroll-margin-top:84px;scroll-margin-bottom:45vh}</style>
+<script>/* CF modal focus glide v17 (Nov 15, 2026): on touch devices, when a field inside a modal gains focus, wait for the keyboard to settle, then glide once so the field sits centered - replaces iOS WebKit's two-stage caret jump (caret paints on top of the field, then snaps in) with a single smooth motion. Desktop (fine pointer) is untouched. */
+(function(){var fine=false;try{fine=window.matchMedia('(pointer:fine)').matches;}catch(e){}if(fine)return;document.addEventListener('focusin',function(e){var t=e.target;if(!t||!t.closest||!t.closest('.modal'))return;if(!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))return;setTimeout(function(){if(document.activeElement!==t)return;try{t.scrollIntoView({block:'center',behavior:'smooth'});}catch(err){try{t.scrollIntoView();}catch(e2){}}},380);});})();
+</script>
 </head>
 <body>
   <header class="topbar">

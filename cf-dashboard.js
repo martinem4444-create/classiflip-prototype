@@ -1086,6 +1086,38 @@
   }
   /* Read-only spec groups for the admin approval queue. VIN shows
      here (admin) — it is never rendered on public surfaces. */
+  /* Compact one-line spec summaries for the pending queue (Nov 15,
+     2026): the full spec sections made every Cars/Homes pending card
+     a full screen tall — a scroll fest at 100 pending ads. The card
+     now shows this summary; the admin opens the ad itself (View ad,
+     ?listing= deep link) to review it exactly as users will see it. */
+  function carSummaryLine(x) {
+    var sp = parseCarSpecs(x && x.specs);
+    if (!Object.keys(sp).length) return '';
+    var parts = [];
+    if (sp.year) parts.push(String(sp.year));
+    var mm = [sp.make, sp.model].filter(Boolean).join(' ');
+    if (mm) parts.push(mm + (sp.trim ? ' ' + sp.trim : ''));
+    if (sp.body_type) parts.push(carLabelD('body_type', sp.body_type));
+    if (sp.km != null && sp.km !== '') { var kv = Number(String(sp.km).replace(/[,\s]/g, '')); if (!isNaN(kv)) parts.push(kv.toLocaleString('en-CA') + ' km'); }
+    if (sp.transmission) parts.push(carLabelD('transmission', sp.transmission));
+    if (sp.fuel) parts.push(carLabelD('fuel', sp.fuel));
+    if (!parts.length) return '';
+    return '<div style="margin-top:6px;font-size:13px">' + esc(parts.join(' \u00b7 ')) + '</div>';
+  }
+  function homeSummaryLine(x) {
+    var sp = parseHomeSpecs(x && x.specs);
+    if (!Object.keys(sp).length) return '';
+    var parts = [];
+    if (sp.property_type) parts.push(homeLabelD('property_type', sp.property_type));
+    if (sp.bedrooms != null && sp.bedrooms !== '') parts.push(sp.bedrooms + ' bd');
+    if (sp.bathrooms != null && sp.bathrooms !== '') parts.push(sp.bathrooms + ' ba');
+    if (sp.sqft) { var sv = Number(sp.sqft); if (!isNaN(sv)) parts.push(sv.toLocaleString('en-CA') + ' sq ft'); }
+    if (sp.parking) parts.push(homeLabelD('parking', sp.parking));
+    if (sp.available_date) parts.push('Avail. ' + sp.available_date);
+    if (!parts.length) return '';
+    return '<div style="margin-top:6px;font-size:13px">' + esc(parts.join(' \u00b7 ')) + '</div>';
+  }
   function carSpecsAdminHtml(x) {
     var sp = parseCarSpecs(x && x.specs);
     if (!Object.keys(sp).length) return '';
@@ -1791,7 +1823,7 @@
           }).join('') + '</div>' : '') +
           strip +
           (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
-                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + carSpecsAdminHtml(x) + homeSpecsAdminHtml(x) + '</div>' +
+                : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + carSummaryLine(x) + homeSummaryLine(x) + '</div>' +
           '<div class="acts"><div style="margin-bottom:6px"><select data-cf-reject-reason="' + esc(x.id) + '" aria-label="Reject reason" style="width:100%;margin-bottom:4px;padding:6px;border:1px solid var(--line);border-radius:8px">' +
           '<option value="Wrong category — please post a new ad under Services">Wrong category — post a new ad under Services</option>' +
           '<option value="Wrong category — please post a new ad in the correct category">Wrong category — correct category</option>' +
@@ -1799,6 +1831,7 @@
           '<option value="Prohibited item">Prohibited item</option>' +
           '<option value="Duplicate ad">Duplicate ad</option></select>' +
           '<input data-cf-reject-custom="' + esc(x.id) + '" placeholder="Or type a custom reason…" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:8px"></div>' +
+          '<a class="btn gho" href="index.html?listing=' + esc(x.id) + '" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">View ad</a>' +
           '<button class="btn pri" data-cf-approve="' + esc(x.id) + '">Approve</button>' +
           '<button class="btn gho danger" data-cf-reject="' + esc(x.id) + '">Reject</button></div></div>';
       }).join('');

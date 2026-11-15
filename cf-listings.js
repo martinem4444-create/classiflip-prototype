@@ -1436,7 +1436,7 @@
     try {
       activeListingId = x.id;
       window.__cfActiveListing = x;
-      document.getElementById('detailTitle').textContent = 'Listing details';
+      document.getElementById('detailTitle').textContent = x.__pendingPreview ? 'Pending ad \u2014 how users will see it' : 'Listing details';
       document.getElementById('detailBody').innerHTML =
         '<div class="detail">' + galleryWithBrand(x) + '<div class="detail-info">' +
                 (x.boostedEffective ? '<div class="prototype-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED</div>' : '') +
@@ -1477,7 +1477,37 @@
       if (window.__cfDeepLinkDone === raw) return;
       var x = null;
       try { x = listings.find(function (y) { return String(y.id) === raw; }); } catch (e) { x = null; }
-      if (!x) return;
+      if (!x) {
+        /* Not in the loaded array: a pending (or otherwise unloaded)
+           ad opened from the admin queue's View ad link. Fetch the
+           row directly — RLS lets the owner/admin read it; anon gets
+           nothing and this fails soft. Once per id. (Nov 15, 2026) */
+        if (window.__cfDeepLinkFetch === raw) return;
+        window.__cfDeepLinkFetch = raw;
+        var dlClient = null;
+        try { dlClient = getClient(); } catch (e) { dlClient = null; }
+        if (!dlClient) return;
+        (async function () {
+          try {
+            var r = await dlClient.from('listings').select('*').eq('id', raw).maybeSingle();
+            if (!r || r.error || !r.data) return;
+            var photosById = {};
+            try {
+              var pr = await dlClient.from('listing_photos').select('listing_id,photo_url,position').eq('listing_id', raw).order('position', { ascending: true });
+              (pr.data || []).forEach(function (p) {
+                if (!photosById[p.listing_id]) photosById[p.listing_id] = [];
+                if (p.photo_url) photosById[p.listing_id].push(p.photo_url);
+              });
+            } catch (e2) {}
+            var nx = mapRow(r.data, photosById, null, null);
+            if (r.data.status && r.data.status !== 'active') nx.__pendingPreview = true;
+            listings.push(nx);
+            window.__cfDeepLinkDone = raw;
+            try { openRealDetail(nx); } catch (e3) {}
+          } catch (e4) {}
+        })();
+        return;
+      }
       window.__cfDeepLinkDone = raw;
       if (x.live) { try { openRealDetail(x); } catch (e) {} }
       else if (typeof openListingDetail === 'function') { try { openListingDetail(x); } catch (e) {} }

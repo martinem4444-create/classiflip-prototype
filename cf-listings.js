@@ -1812,13 +1812,14 @@
   };
   var CAR_KEYS = ['year', 'make', 'model', 'trim', 'body_type', 'km', 'vehicle_type', 'colour', 'seats', 'doors', 'availability', 'transmission', 'drivetrain', 'fuel', 'engine_l', 'cylinders', 'accidents', 'safety_certified', 'warranty', 'report_url', 'report_available', 'stock_number', 'vin'];
   var HOME_KEYS = ['property_type', 'bedrooms', 'bathrooms', 'sqft', 'parking', 'laundry', 'lot_sqft', 'year_built', 'basement', 'heating', 'cooling', 'tour_url', 'taxes_annual', 'condo_fee_monthly', 'mls_number', 'available_date', 'lease_term', 'furnished', 'utilities_included', 'pets', 'viewings_ok'];
+  var SVC_KEYS = ['svc_licensed', 'svc_insured', 'svc_years', 'svc_emergency', 'svc_certs', 'svc_avail_note', 'svc_booking_url', 'svc_areas', 'svc_payments', 'svc_price_list'];
   function parseSpecs(v) {
     var o = null;
     if (v && typeof v === 'object') o = v;
     else if (typeof v === 'string' && v) { try { o = JSON.parse(v); } catch (e) { o = null; } }
     if (!o || typeof o !== 'object') return {};
     var out = {};
-    CAR_KEYS.concat(HOME_KEYS).forEach(function (k) { if (o[k] !== undefined && o[k] !== null && o[k] !== '') out[k] = o[k]; });
+    CAR_KEYS.concat(HOME_KEYS, SVC_KEYS).forEach(function (k) { if (o[k] !== undefined && o[k] !== null && o[k] !== '') out[k] = o[k]; });
     return out;
   }
   function carLabel(group, slug) {

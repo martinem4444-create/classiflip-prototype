@@ -1488,9 +1488,10 @@
      dynamically built block in #mEditor, shown only for Services
      ads while the seller holds an Active Pro Unlimited package,
      prefilled from specs and re-collected on save. */
+  var svcOrdersD = null;
   function svcProHeldD() {
     try {
-      var ords = (realEdit && realEdit.orders) || [];
+      var ords = (realEdit && realEdit.orders) || svcOrdersD || [];
       var now = new Date();
       return ords.some(function (o) {
         return o && o.status === 'Active' && (!o.expires_at || new Date(o.expires_at) > now) &&
@@ -2642,6 +2643,12 @@
       var pr = await client.from('profiles').select('role').eq('id', user.id).maybeSingle();
       if (pr && pr.data && pr.data.role === 'advertiser') { limit = 20; isAdv = true; }
     } catch (e2) {}
+    try {
+      var orr2 = await client.from('orders')
+        .select('id,package,amount,status,expires_at,created_at')
+        .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(50);
+      if (orr2 && orr2.data) svcOrdersD = orr2.data;
+    } catch (e4) {}
     realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit, category: ad.category || '', isAdvertiser: isAdv, origSellerType: (parseCarSpecs(ad.specs).seller_type || '') };
     var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = 'Edit ad';
     var edSub = el('edSub');

@@ -1387,13 +1387,13 @@
   function detailGalleryMarkup(x) {
     var photos = (x.photos && x.photos.length) ? x.photos : [];
     if (photos.length === 1) {
-      return '<div class="detail-gallery"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of 1"><img src="' + escAttr(photos[0]) + '" alt="" loading="lazy"></div></div>';
+      return '<div class="detail-gallery"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of 1"><img src="' + escAttr(photos[0]) + '" alt="" loading="eager"></div></div>';
     }
     if (photos.length === 0) return galleryMarkup(x);
     var thumbs = photos.map(function (p, i) {
-      return '<button class="gallery-thumb gallery-tone-' + ((i % 5) + 1) + (i === 0 ? ' active' : '') + (i >= 5 ? ' gal-hidden' : '') + '" data-gallery-image="' + (i + 1) + '" data-gallery-icon="' + escAttr(x.icon) + '" data-gallery-photo="' + escAttr(p) + '" aria-label="Show image ' + (i + 1) + ' of ' + photos.length + '"><img src="' + escAttr(p) + '" alt="" loading="lazy"></button>';
+      return '<button class="gallery-thumb gallery-tone-' + ((i % 5) + 1) + (i === 0 ? ' active' : '') + (i >= 5 ? ' gal-hidden' : '') + '" data-gallery-image="' + (i + 1) + '" data-gallery-icon="' + escAttr(x.icon) + '" data-gallery-photo="' + escAttr(p) + '" aria-label="Show image ' + (i + 1) + ' of ' + photos.length + '"><img src="' + escAttr(thumbUrlFor(p)) + '" alt="" loading="eager"></button>';
     }).join('');
-    return '<div class="detail-gallery"><div class="detail-visual-wrap"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of ' + photos.length + '"><img src="' + escAttr(photos[0]) + '" alt="" loading="lazy"></div><button type="button" class="gal-arrow prev" data-gal-nav="-1" aria-label="Previous photo">&#8249;</button><button type="button" class="gal-arrow next" data-gal-nav="1" aria-label="Next photo">&#8250;</button><span class="gal-count" id="galleryCount">1 / ' + photos.length + '</span></div><div class="gallery-thumbs" aria-label="Listing image gallery">' + thumbs + '</div></div>';
+    return '<div class="detail-gallery"><div class="detail-visual-wrap"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of ' + photos.length + '"><img src="' + escAttr(photos[0]) + '" alt="" loading="eager"></div><button type="button" class="gal-arrow prev" data-gal-nav="-1" aria-label="Previous photo">&#8249;</button><button type="button" class="gal-arrow next" data-gal-nav="1" aria-label="Next photo">&#8250;</button><span class="gal-count" id="galleryCount">1 / ' + photos.length + '</span></div><div class="gallery-thumbs" aria-label="Listing image gallery">' + thumbs + '</div></div>';
   }
 
   /* Dealer-page detail opener (v1.11): the same real-row detail
@@ -1455,6 +1455,7 @@
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
+      try { (x.photos || []).forEach(function (p) { var im = new Image(); im.src = p; }); } catch (e) {}
       try { loadMoreFromSeller(x); } catch (e) {}
       try { fillDealerCall(x); } catch (e) {}
       try { fillSvcExtras(x); } catch (e) {}
@@ -1528,6 +1529,7 @@
         '</div></div>';
       if (typeof closeModals === 'function') closeModals();
       if (typeof openModal === 'function') openModal('detailModal');
+      try { (x.photos || []).forEach(function (p) { var im = new Image(); im.src = p; }); } catch (e) {}
       try { loadMoreFromSeller(x); } catch (e) {}
       try { fillDealerCall(x); } catch (e) {}
       try { fillSvcExtras(x); } catch (e) {}

@@ -220,6 +220,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 #dealerDeskField .dd-head{font-weight:800;font-size:13.5px;margin-bottom:8px}
 #car_vin{text-transform:uppercase}
 </style>
+<style>/* CF mobile caret fix v16 (Nov 15, 2026): the marketplace post form injects its spec, tag and service sub-fields at 13-14px; iOS WebKit (including Chrome on iPhone) auto-zooms into sub-16px fields and the caret dances/lands offset. Force every modal form control to 16px - the same cure as the v12 chat-input fix and the dashboard caret fix. */ .modal input,.modal select,.modal textarea{font-size:16px!important}</style>
 </head>
 <body>
   <header class="topbar">

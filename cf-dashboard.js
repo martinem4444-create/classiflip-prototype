@@ -1824,7 +1824,7 @@
           strip +
           (desc ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word">' + esc(desc) + '</div>'
                 : '<div style="margin-top:8px;font-size:13px;color:var(--mu)">No description provided.</div>') + carSummaryLine(x) + homeSummaryLine(x) + '</div>' +
-          '<div class="acts"><div style="margin-bottom:6px"><select data-cf-reject-reason="' + esc(x.id) + '" aria-label="Reject reason" style="width:100%;margin-bottom:4px;padding:6px;border:1px solid var(--line);border-radius:8px">' +
+          '<div class="acts" style="width:300px;flex:none"><div style="margin-bottom:6px"><select data-cf-reject-reason="' + esc(x.id) + '" aria-label="Reject reason" style="width:100%;margin-bottom:4px;padding:6px;border:1px solid var(--line);border-radius:8px">' +
           '<option value="Wrong category — please post a new ad under Services">Wrong category — post a new ad under Services</option>' +
           '<option value="Wrong category — please post a new ad in the correct category">Wrong category — correct category</option>' +
           '<option value="Photos or description missing or unclear">Photos / description unclear</option>' +

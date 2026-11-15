@@ -200,6 +200,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 .top .snav a:hover,.top nav a:hover{color:#fff}
 .top .snav a.act,.top nav a.act{color:#fff}
 </style>
+<style>/* CF mobile caret fix v1 (Nov 15, 2026): iOS Safari auto-zooms into any text field under 16px, which shifts the layout mid-tap and lands the caret offset from the finger. The dashboard form controls were styled 13-14px. Force every dashboard form control to 16px (same cure as the v12 chat-input fix). */ input,select,textarea{font-size:16px!important}</style>
 </head>
 <body>
 <div class="top">

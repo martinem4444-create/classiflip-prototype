@@ -902,7 +902,10 @@ openModal('detailModal');
   const boosted=listings.filter(x=>x.boostedEffective).sort(fcfsCompare);
   const samples=listings.filter(x=>x.featured&&!x.boostedEffective);
   const feats=boosted.concat(samples).slice(0,10);
+  /* Instant paint (Nov 14, 2026): while only demo rows are in hand, show the last visit's real boosted slides from cache instead of samples; the live render below takes over the moment real rows land. */
+  if(!feats.some(function(x){return x.live;})){try{var __c=JSON.parse(localStorage.getItem('cf-hero-cache')||'[]');if(__c.length&&track.dataset.sig!=='cache'){track.dataset.sig='cache';track.innerHTML=__c.map(function(x,i){return '<div class="hcar-slide" data-view="'+x.id+'"><span class="hcar-tag">BOOSTED</span><img src="'+cfT(x.photo||'')+'" alt="" '+(i===0?'loading="eager" fetchpriority="high"':'loading="eager"')+' decoding="async"><div class="hcar-cap"><div class="t">'+safe(x.title)+'</div><div class="p">'+money(x.price)+'</div></div></div>';}).join('');if(dots)dots.innerHTML=__c.map(function(_,i){return '<button data-dot="'+i+'" aria-label="Slide '+(i+1)+'" class="'+(i===0?'on':'')+'"></button>';}).join('');}if(__c.length)return;}catch(e){}}
   const __sig=feats.map(x=>x.id+'|'+(x.photo||'')).join(',');if(track.dataset.sig===__sig&&track.children.length)return;track.dataset.sig=__sig;
+  try{var __live=feats.filter(function(x){return x.live;});if(__live.length)localStorage.setItem('cf-hero-cache',JSON.stringify(__live.map(function(x){return {id:x.id,photo:x.photo||'',title:x.title,price:x.price};})));}catch(e){}
   track.innerHTML=feats.map((x,i)=>`<div class="hcar-slide" data-view="${x.id}"><span class="hcar-tag">BOOSTED</span><img src="${cfT(x.photo||'')}" alt="" ${i===0?'loading="eager" fetchpriority="high"':'loading="eager"'} decoding="async"><div class="hcar-cap"><div class="t">${safe(x.title)}</div><div class="p">${money(x.price)}</div></div></div>`).join('');
   dots.innerHTML=feats.map((_,i)=>`<button data-dot="${i}" aria-label="Slide ${i+1}" class="${i===0?'on':''}"></button>`).join('');
   let cur=0;const n=feats.length;let timer=null;

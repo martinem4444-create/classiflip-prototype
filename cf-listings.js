@@ -1389,7 +1389,7 @@
     if (photos.length === 1) {
       return '<div class="detail-gallery"><div class="detail-visual gallery-tone-1" id="galleryMain" aria-label="Image 1 of 1"><img src="' + escAttr(photos[0]) + '" alt="" loading="eager"></div></div>';
     }
-    if (photos.length === 0) return galleryMarkup(x);
+    if (photos.length === 0) return (typeof cfNoPhotoGallery === 'function') ? cfNoPhotoGallery() : galleryMarkup(x);
     var thumbs = photos.map(function (p, i) {
       return '<button class="gallery-thumb gallery-tone-' + ((i % 5) + 1) + (i === 0 ? ' active' : '') + (i >= 5 ? ' gal-hidden' : '') + '" data-gallery-image="' + (i + 1) + '" data-gallery-icon="' + escAttr(x.icon) + '" data-gallery-photo="' + escAttr(p) + '" aria-label="Show image ' + (i + 1) + ' of ' + photos.length + '"><img src="' + escAttr(thumbUrlFor(p)) + '" alt="" loading="eager"></button>';
     }).join('');

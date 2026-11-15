@@ -743,7 +743,7 @@
               }).join('') + '<br><span style="color:var(--mu)">Email the buyer to arrange the viewing.</span></div>' : '';
           if (dashView === 'grid') {
             return '<div class="gtile"><div class="gph">' +
-              (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '&#128722;') + '</div>' +
+              (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<svg width="34" height="34" style="width:34px;height:34px" viewBox="0 0 24 24" fill="none" stroke="#16365f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>') + '</div>' +
               '<div class="gb"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
               '<div class="p">' + money(x.price) + '</div>' +
               '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · ' + shortDate(x.created_at) + '</div>' +
@@ -753,7 +753,7 @@
               '<div class="acts">' + viewBtn + boostBtn + editBtn + soldBtn + delBtn + '</div></div></div>';
           }
           return '<div class="lcard">' +
-            (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
+            (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph"><svg width="34" height="34" style="width:34px;height:34px" viewBox="0 0 24 24" fill="none" stroke="#16365f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>') +
             '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor(x.status) + boostPill + '</div>' +
             '<div class="p">' + money(x.price) + '</div>' +
             '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.condition || '') + ' · ' + esc(x.location || '') + ' · posted ' + shortDate(x.created_at) + '</div>' +
@@ -1823,7 +1823,7 @@
           ? '<div data-cf-adetail="' + esc(x.id) + '" hidden>' + bigStrip + fullSpecs + '</div>'
           : '';
         return '<div class="lcard">' +
-          (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph">&#128722;</div>') +
+          (x.photo_url ? '<img src="' + esc(x.photo_url) + '" alt="">' : '<div class="ph"><svg width="34" height="34" style="width:34px;height:34px" viewBox="0 0 24 24" fill="none" stroke="#16365f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>') +
           '<div class="inf"><div class="t">' + esc(x.title) + ' ' + pillFor('pending') + '</div>' +
           '<div class="p">' + money(x.price) + '</div>' +
           '<div class="s">' + esc(x.category || '') + ' · ' + esc(x.location || '') + ' · seller ' + esc(s.display_name || s.email || x.seller_id || '') + ' · ' + shortDate(x.created_at) + '</div>' +

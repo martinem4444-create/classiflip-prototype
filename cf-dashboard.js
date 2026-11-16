@@ -2544,7 +2544,26 @@
       '<div class="fld"><label>Tags <span style="color:var(--mu);font-weight:400">(optional, up to 6)</span></label><input id="cfEdTags" maxlength="150" placeholder="e.g. leather, vintage \u2014 separate with commas"></div>' +
       '</div>';
     fld.parentNode.insertBefore(box, fld.nextSibling);
+    /* Tags parity (Nov 15, 2026): Enter in the tags box adds the
+       comma, exactly like the marketplace form's #adTags handler —
+       Martin typed a tag, hit Enter, and nothing happened. */
+    box.addEventListener('keydown', function (e) {
+      if (!e || !e.target || e.target.id !== 'cfEdTags' || e.key !== 'Enter') return;
+      e.preventDefault();
+      var tv = e.target.value.trim();
+      if (tv && tv.charAt(tv.length - 1) !== ',') e.target.value = tv + ', ';
+    });
     return box;
+  }
+  /* Free Stuff posts carry no price (Nov 15, 2026, Martin: "free
+     means free — no price"): for that category the price field
+     hides entirely and the save below stores 0 without asking. */
+  function syncFreePriceD() {
+    var p = el('edPrice');
+    if (!p) return;
+    var wrap = p.closest ? p.closest('.fld') : null;
+    var isFree = !!(realEdit && realEdit.category === 'Free Stuff');
+    if (wrap) wrap.style.display = isFree ? 'none' : '';
   }
   function syncPostExtraD(category) {
     var box = postExtraBox();
@@ -2589,6 +2608,7 @@
     syncPostExtraD(category);
     syncPostSubD(category);
     syncPostCapD(category);
+    syncFreePriceD();
   }
   async function openRealPost() {
     var client = getClient();
@@ -2638,6 +2658,7 @@
     syncPostExtraD(startCat);
     syncPostSubD(startCat);
     syncPostCapD(startCat);
+    syncFreePriceD();
     var save = el('edSave');
     if (save) { save.textContent = 'Post ad'; save.onclick = function () { realSave(); }; }
     var pv = document.querySelector('#mEditor [onclick*="openAdPreview"]');
@@ -2747,6 +2768,7 @@
     }
     var save = el('edSave');
     if (save) save.onclick = function () { realSave(); };
+    syncFreePriceD();
     try { if (typeof openM === 'function') openM('mEditor'); } catch (e3) {}
   }
 
@@ -2764,6 +2786,7 @@
     var priceRaw = (el('edPrice') ? el('edPrice').value : '').replace(/[$,\s]/g, '');
     var price = parseFloat(priceRaw);
     if (!title) { say('Give the ad a title first.'); return; }
+    if (st.category === 'Free Stuff') price = 0;
     if (isNaN(price) || price < 0) { say('Enter a valid price.'); return; }
     /* Cars fields v1: the category is locked in the editor, so a
        Cars ad always carries specs — re-collect and re-validate
@@ -3074,6 +3097,178 @@
     }).join('');
   }
 
+  /* Dashboard photo cropper (Nov 15, 2026): parity with the
+     marketplace post form. Until now a photo picked in this editor
+     locked in raw — no framing step — while the marketplace walks
+     every photo through the 4:3 cropper. Same flow here: pick,
+     drag to position, zoom, Use this crop (1200x900 JPEG) or Skip.
+     The save path already uploads each tile's preview data URL, so
+     a confirmed crop flows through unchanged, thumbs included. */
+  var dCropQueue = [], dCropCurrent = null, dCropImg = null,
+      dCropZoom = 1, dCropOX = 0, dCropOY = 0, dCropDrag = null,
+      dCropUi = null;
+  function dCropBuild() {
+    if (dCropUi) return dCropUi;
+    var st = document.createElement('style');
+    st.textContent =
+      '.dcrop-back{position:fixed;inset:0;background:rgba(6,17,34,.66);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px}' +
+      '.dcrop-back.open{display:flex}' +
+      '.dcrop-card{background:#fff;border-radius:18px;width:min(480px,100%);max-height:92vh;overflow:auto;padding:20px}' +
+      '.dcrop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}' +
+      '.dcrop-head h3{margin:0;font-size:19px;color:#0a2540}' +
+      '.dcrop-x{border:0;background:none;font-size:24px;line-height:1;cursor:pointer;color:#5a6b7d;padding:4px 8px}' +
+      '.dcrop-stage{width:100%;max-width:420px;margin:0 auto;aspect-ratio:4/3;position:relative;overflow:hidden;border-radius:14px;background:#111;touch-action:none}' +
+      '.dcrop-stage img{position:absolute;left:50%;top:50%;cursor:grab;user-select:none;-webkit-user-drag:none;max-width:none;will-change:transform}' +
+      '.dcrop-hint{margin:10px 0 0;text-align:center;color:#5a6b7d;font-size:13px}' +
+      '.dcrop-zoom{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:13px;color:#1c2b3a}' +
+      '.dcrop-zoom input{flex:1;accent-color:#f97316}' +
+      '.dcrop-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}' +
+      '.dcrop-btn{border-radius:9px;padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;border:1px solid #d5dce4;background:#fff;color:#0a2540}' +
+      '.dcrop-btn.primary{background:#f97316;border-color:#f97316;color:#fff}';
+    document.head.appendChild(st);
+    var back = document.createElement('div');
+    back.className = 'dcrop-back';
+    back.id = 'dCropBack';
+    back.innerHTML =
+      '<div class="dcrop-card">' +
+      '<div class="dcrop-head"><h3 id="dCropTitle">Crop photo</h3><button type="button" class="dcrop-x" id="dCropClose" aria-label="Close">&times;</button></div>' +
+      '<div class="dcrop-stage" id="dCropStage"><img id="dCropImg" alt=""></div>' +
+      '<p class="dcrop-hint">Drag the photo to position it. The wide frame shown is exactly what buyers will see.</p>' +
+      '<div class="dcrop-zoom"><span>Zoom</span><input type="range" id="dCropZoom" min="100" max="300" value="100" aria-label="Zoom"><span id="dCropZoomVal">100%</span></div>' +
+      '<div class="dcrop-actions"><button type="button" class="dcrop-btn" id="dCropSkip">Skip photo</button><button type="button" class="dcrop-btn primary" id="dCropUse">Use this crop</button></div>' +
+      '</div>';
+    document.body.appendChild(back);
+    dCropUi = back;
+    document.getElementById('dCropZoom').addEventListener('input', function (e) {
+      dCropZoom = Number(e.target.value) / 100; dCropClamp(); dCropRender();
+    });
+    var stage = document.getElementById('dCropStage');
+    stage.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      dCropDrag = { x: e.clientX - dCropOX, y: e.clientY - dCropOY };
+      if (stage.setPointerCapture) { try { stage.setPointerCapture(e.pointerId); } catch (err) {} }
+    });
+    stage.addEventListener('pointermove', function (e) {
+      if (!dCropDrag) return;
+      dCropOX = e.clientX - dCropDrag.x; dCropOY = e.clientY - dCropDrag.y;
+      dCropClamp(); dCropRender();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      stage.addEventListener(ev, function () { dCropDrag = null; });
+    });
+    document.getElementById('dCropUse').addEventListener('click', dCropUse);
+    document.getElementById('dCropSkip').addEventListener('click', dCropSkip);
+    document.getElementById('dCropClose').addEventListener('click', dCropSkip);
+    return back;
+  }
+  function dCropDims() {
+    var s = document.getElementById('dCropStage');
+    return { w: (s && s.clientWidth) || 320, h: (s && s.clientHeight) || 240 };
+  }
+  function dCropBase() {
+    if (!dCropImg) return 1;
+    var d = dCropDims();
+    return Math.max(d.w / (dCropImg.naturalWidth || 1), d.h / (dCropImg.naturalHeight || 1));
+  }
+  function dCropClamp() {
+    if (!dCropImg) return;
+    var d = dCropDims(), b = dCropBase() * dCropZoom,
+        dw = (dCropImg.naturalWidth || 1) * b, dh = (dCropImg.naturalHeight || 1) * b;
+    dCropOX = Math.max(-(dw - d.w) / 2, Math.min((dw - d.w) / 2, dCropOX));
+    dCropOY = Math.max(-(dh - d.h) / 2, Math.min((dh - d.h) / 2, dCropOY));
+  }
+  function dCropRender() {
+    var img = document.getElementById('dCropImg');
+    if (!img || !dCropImg) return;
+    var b = dCropBase() * dCropZoom;
+    img.style.width = ((dCropImg.naturalWidth || 1) * b) + 'px';
+    img.style.height = ((dCropImg.naturalHeight || 1) * b) + 'px';
+    img.style.transform = 'translate(-50%,-50%) translate(' + dCropOX + 'px,' + dCropOY + 'px)';
+    var zv = document.getElementById('dCropZoomVal');
+    if (zv) zv.textContent = Math.round(dCropZoom * 100) + '%';
+  }
+  function dCropClose() {
+    if (dCropUi) dCropUi.classList.remove('open');
+    if (dCropCurrent && dCropCurrent.url) { try { URL.revokeObjectURL(dCropCurrent.url); } catch (e) {} }
+    dCropCurrent = null; dCropImg = null;
+  }
+  function dCropNext() {
+    if (dCropCurrent) return;
+    if (!realEdit) { dCropQueue = []; return; }
+    if (!dCropQueue.length) return;
+    var item = dCropQueue.shift();
+    var img = new Image();
+    img.onload = function () {
+      dCropCurrent = item; dCropImg = img;
+      dCropZoom = 1; dCropOX = 0; dCropOY = 0;
+      var z = document.getElementById('dCropZoom'); if (z) z.value = 100;
+      var view = document.getElementById('dCropImg'); if (view) view.src = item.url;
+      var t = document.getElementById('dCropTitle');
+      if (t) t.textContent = 'Crop photo' + (dCropQueue.length ? ' \u2014 ' + dCropQueue.length + ' more after this' : '');
+      dCropBuild().classList.add('open');
+      setTimeout(dCropRender, 0);
+    };
+    img.onerror = function () { dCropNext(); };
+    img.src = item.url;
+  }
+  function dCropSkip() { dCropClose(); dCropNext(); }
+  function dCropUse() {
+    if (!dCropImg) return;
+    var d = dCropDims(), b = dCropBase() * dCropZoom,
+        dw = (dCropImg.naturalWidth || 1) * b, dh = (dCropImg.naturalHeight || 1) * b,
+        left = d.w / 2 - dw / 2 + dCropOX, top = d.h / 2 - dh / 2 + dCropOY,
+        sx = Math.max(0, (0 - left) / b), sy = Math.max(0, (0 - top) / b),
+        sw = Math.min(d.w / b, (dCropImg.naturalWidth || 1) - sx),
+        sh = Math.min(d.h / b, (dCropImg.naturalHeight || 1) - sy);
+    var c = document.createElement('canvas');
+    c.width = 1200; c.height = 900;
+    c.getContext('2d').drawImage(dCropImg, sx, sy, sw, sh, 0, 0, 1200, 900);
+    var dataUrl = c.toDataURL('image/jpeg', 0.82);
+    dCropClose();
+    dCropAddTile(dataUrl);
+    dCropNext();
+  }
+  function dCropAddTile(dataUrl) {
+    if (!realEdit) return;
+    var g = el('pgrid'); if (!g) return;
+    var count = g.querySelectorAll('.ptile:not(.add)').length;
+    if (count >= realEdit.limit) {
+      say('Photo limit reached for this account.');
+      dCropQueue = []; dCropClose();
+      return;
+    }
+    realEdit.newFiles[dataUrl] = dataUrlToBlob(dataUrl);
+    var addTile = g.querySelector('.ptile.add');
+    var tile = document.createElement('div');
+    tile.className = 'ptile';
+    tile.dataset.preview = dataUrl;
+    tile.innerHTML = '<img src="' + dataUrl + '"><button class="star" title="Cover photo">&#9733;</button><button class="rm" title="Remove photo">&times;</button>';
+    if (addTile) g.insertBefore(tile, addTile); else g.appendChild(tile);
+  }
+  function dCropEnqueue(files) {
+    dCropBuild();
+    var g = el('pgrid');
+    var count = g ? g.querySelectorAll('.ptile:not(.add)').length : 0;
+    var room = realEdit ? Math.max(0, realEdit.limit - count - dCropQueue.length - (dCropCurrent ? 1 : 0)) : 0;
+    var added = 0;
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (!f || !f.type || f.type.indexOf('image/') !== 0) continue;
+      if (added >= room) { say('Photo limit reached for this account.'); break; }
+      dCropQueue.push({ url: URL.createObjectURL(f) });
+      added++;
+    }
+    dCropNext();
+  }
+  /* Escape skips the current photo — capture phase so it beats
+     the editor's own Escape-closes-the-editor handler below. */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && dCropUi && dCropUi.classList.contains('open')) {
+      e.stopPropagation();
+      dCropSkip();
+    }
+  }, true);
+
   document.addEventListener('click', function (e) {
     var t = e.target && e.target.closest ? e.target : null;
     if (!t) return;
@@ -3095,28 +3290,12 @@
       document.body.appendChild(fi);
       fi.addEventListener('change', function () {
         var files = fi.files || [];
+        var imgs = [];
         for (var k = 0; k < files.length; k++) {
-          (function (file) {
-            var g2 = el('pgrid');
-            var c2 = g2 ? g2.querySelectorAll('.ptile:not(.add)').length : 0;
-            if (c2 >= realEdit.limit) { say('Photo limit reached for this account.'); return; }
-            var rd = new FileReader();
-            rd.onload = function () {
-              var preview = rd.result;
-              realEdit.newFiles[preview] = file;
-              var g3 = el('pgrid');
-              if (!g3) return;
-              var addTile = g3.querySelector('.ptile.add');
-              var tile = document.createElement('div');
-              tile.className = 'ptile';
-              tile.dataset.preview = preview;
-              tile.innerHTML = '<img src="' + preview + '"><button class="star" title="Cover photo">&#9733;</button><button class="rm" title="Remove photo">&times;</button>';
-              if (addTile) g3.insertBefore(tile, addTile); else g3.appendChild(tile);
-            };
-            rd.readAsDataURL(file);
-          })(files[k]);
+          if (files[k] && files[k].type && files[k].type.indexOf('image/') === 0) imgs.push(files[k]);
         }
         try { document.body.removeChild(fi); } catch (e5) {}
+        if (imgs.length) dCropEnqueue(imgs);
       });
       fi.click();
       return;

@@ -324,20 +324,28 @@
   function mapRow(r, photosById, boostedIds, boostSort) {
     var price = Number(r.price);
     if (isNaN(price)) price = 0;
+    /* Category aliases (Nov 15, 2026): the dashboard post form
+       saves its own category names; the marketplace chips,
+       icons and displayPrice speak the marketplace names.
+       Normalize at load so a dashboard-posted ad files under
+       the right chip — most importantly Free Stuff -> Free,
+       which also makes its price render FREE instead of $0. */
+    var CAT_ALIAS = { 'Free Stuff': 'Free', 'Fashion': 'Clothes', 'Home & Garden': 'Home', 'Sports & Outdoors': 'Sports' };
+    var rowCat = CAT_ALIAS[r.category] || r.category;
     var photos = (photosById && photosById[r.id]) || (r.photo_url ? [r.photo_url] : []);
     var sp = parseSpecs(r.specs);
     return {
       id: r.id,
       title: r.title || '',
       price: price,
-      category: r.category || 'General',
-      condition: r.condition || ((r.category === 'Cars' && sp.vehicle_type) ? (CAR_LABELS.vehicle_type[sp.vehicle_type] || 'Good') : 'Good'),
+      category: rowCat || 'General',
+      condition: r.condition || ((rowCat === 'Cars' && sp.vehicle_type) ? (CAR_LABELS.vehicle_type[sp.vehicle_type] || 'Good') : 'Good'),
       specs: sp,
       carSearch: carSearchOf(sp),
       homeSearch: homeSearchOf(sp),
       location: r.location || 'Mississauga, ON',
       desc: r.description || '',
-      icon: ICON_MAP[r.category] || 'laptop',
+      icon: ICON_MAP[rowCat] || 'laptop',
       tags: Array.isArray(r.tags) ? r.tags.slice(0, 5) : [],
       photo: r.photo_url || '',
       photos: photos,

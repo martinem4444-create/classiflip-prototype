@@ -201,6 +201,37 @@
     }
   } catch (e) {}
 
+  /* Account autofill (Nov 15, 2026 - Martin's ruling): a signed-in
+     buyer's reserve form starts with their account email + profile
+     name already filled in, both still editable. Only EMPTY fields
+     are filled (the founding-claim carry-over above wins, and
+     anything the buyer typed is never stomped). Logged-out
+     reserves are untouched - the typed email is their identity. */
+  try {
+    var aClient = getClient();
+    if (aClient && aClient.auth && aClient.auth.getSession) {
+      aClient.auth.getSession().then(async function (s) {
+        try {
+          var sess = s && s.data && s.data.session;
+          var aUser = sess && sess.user;
+          if (!aUser) return;
+          var em = el('orderEmail');
+          if (em && !em.value && aUser.email) em.value = String(aUser.email).slice(0, 120);
+          var nm = el('orderName');
+          if (nm && !nm.value) {
+            var dn = '';
+            try {
+              var pr = await aClient.from('profiles').select('display_name').eq('id', aUser.id).maybeSingle();
+              if (pr && !pr.error && pr.data && pr.data.display_name) dn = String(pr.data.display_name);
+            } catch (e2) {}
+            if (!dn && aUser.user_metadata && aUser.user_metadata.display_name) dn = String(aUser.user_metadata.display_name);
+            if (dn) nm.value = dn.slice(0, 80);
+          }
+        } catch (e3) {}
+      }).catch(function () {});
+    }
+  } catch (e) {}
+
   var submit = el('orderSubmit');
   if (submit) submit.addEventListener('click', async function () {
     var business = el('orderBusiness').value.trim();

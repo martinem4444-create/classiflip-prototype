@@ -645,7 +645,8 @@
           '<div class="stat"><div class="n" id="ovAds">…</div><div class="l">Total ads</div></div>' +
           '<div class="stat" data-cf-ovgo="approvals" style="cursor:pointer"><div class="n" id="ovPendingAds">…</div><div class="l">Pending ads · tap to review</div></div>' +
           '<div class="stat" data-cf-ovgo="orders" style="cursor:pointer"><div class="n" id="ovPendingOrders">…</div><div class="l">Pending packages · tap to activate</div></div>' +
-          '<div class="stat"><div class="n" id="ovWaitlist">…</div><div class="l" id="ovWaitlistLabel">Waitlist signups</div></div>';
+          '<div class="stat"><div class="n" id="ovWaitlist">…</div><div class="l" id="ovWaitlistLabel">Waitlist signups</div></div>' +
+          '<div class="stat" data-cf-ovgo="reports" style="cursor:pointer"><div class="n" id="ovReported">…</div><div class="l">Reported ads · tap to view</div></div>';
       } else {
         statsSeller.innerHTML =
           '<div class="stat"><div class="n">' + nActive + '</div><div class="l">Active listings</div></div>' +
@@ -1738,6 +1739,28 @@
       setOv('ovAds', await client.from('listings').select('id', { count: 'exact', head: true }), false);
       setOv('ovPendingAds', await client.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending'), true);
       setOv('ovPendingOrders', await client.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'Pending'), true);
+    } catch (e) {}
+
+    /* Reported ads count (Nov 16, 2026, Martin's ask): distinct ads
+       carrying at least one OPEN report — the same number the
+       Reports tab badge shows. Rows are fetched, not head-counted,
+       because the chip counts ads, not reports. Fails soft to a
+       dash if the reports table is unavailable. */
+    try {
+      var rrp = await client.from('listing_reports').select('listing_id').eq('status', 'open').limit(500);
+      var ovr = el('ovReported');
+      if (ovr) {
+        if (rrp && !rrp.error && rrp.data) {
+          var seenRep = {};
+          rrp.data.forEach(function (r) { if (r.listing_id) seenRep[r.listing_id] = 1; });
+          var nRep = Object.keys(seenRep).length;
+          ovr.textContent = String(nRep);
+          var repCard = ovr.closest ? ovr.closest('.stat') : null;
+          if (repCard) repCard.classList.toggle('hot', nRep > 0);
+        } else {
+          ovr.textContent = '—';
+        }
+      }
     } catch (e) {}
 
     /* Waitlist counter (Nov 3, 2026): today / this week / total from

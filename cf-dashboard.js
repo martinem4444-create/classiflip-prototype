@@ -2309,6 +2309,7 @@
         rReason = (rCus && rCus.value.trim()) || (rSel && rSel.value) || '';
       } catch (e) {}
       client.from('listings').update({ status: 'rejected', rejection_reason: rReason || null }).eq('id', rId).then(function (res) {
+        if (!res.error) notifyBuyer('notify-ad-rejected', { listing_id: rId });
         done(!res.error, res.error ? 'Reject failed: ' + res.error.message + ' — run supabase/cf-reject-reason-migration.sql first?' : 'Ad rejected — reason sent to seller: ' + (rReason || 'none'));
       });
     } else if (act) {

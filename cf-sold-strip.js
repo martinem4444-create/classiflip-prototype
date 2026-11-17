@@ -30,7 +30,7 @@
   var rowEl = document.getElementById('soldRow');
   if (!sectionEl || !rowEl) return;
 
-  var MAX_CARDS = 6;
+  var MAX_CARDS = 3; /* Martin's call Nov 16, 2026: keep the sold strip to one tidy row of three */
 
   function esc(s) {
     return String(s == null ? '' : s)

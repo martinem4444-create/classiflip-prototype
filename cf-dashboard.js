@@ -646,7 +646,8 @@
           '<div class="stat" data-cf-ovgo="approvals" style="cursor:pointer"><div class="n" id="ovPendingAds">…</div><div class="l">Pending ads · tap to review</div></div>' +
           '<div class="stat" data-cf-ovgo="orders" style="cursor:pointer"><div class="n" id="ovPendingOrders">…</div><div class="l">Pending packages · tap to activate</div></div>' +
           '<div class="stat"><div class="n" id="ovWaitlist">…</div><div class="l" id="ovWaitlistLabel">Waitlist signups</div></div>' +
-          '<div class="stat" data-cf-ovgo="reports" style="cursor:pointer"><div class="n" id="ovReported">…</div><div class="l">Reported ads · tap to view</div></div>';
+          '<div class="stat" data-cf-ovgo="reports" style="cursor:pointer"><div class="n" id="ovReported">…</div><div class="l">Reported ads · tap to view</div></div>' +
+          '<div class=\"stat\" data-cf-ovgo=\"boosts\" style=\"cursor:pointer\"><div class=\"n\" id=\"ovPendingBoosts\">…</div><div class=\"l\">Pending boosts · tap to activate</div></div>';
       } else {
         statsSeller.innerHTML =
           '<div class="stat"><div class="n">' + nActive + '</div><div class="l">Active listings</div></div>' +
@@ -1739,6 +1740,11 @@
       setOv('ovAds', await client.from('listings').select('id', { count: 'exact', head: true }), false);
       setOv('ovPendingAds', await client.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending'), true);
       setOv('ovPendingOrders', await client.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'Pending'), true);
+      /* Pending boosts count (Nov 16, 2026, Martin's ask): same chip
+         pattern as Reported ads — head-count of boosts rows still
+         'Pending'; the Boosts admin tab badge carries the same
+         number from the full read below. */
+      setOv('ovPendingBoosts', await client.from('boosts').select('id', { count: 'exact', head: true }).eq('status', 'Pending'), true);
     } catch (e) {}
 
     /* Reported ads count (Nov 16, 2026, Martin's ask): distinct ads

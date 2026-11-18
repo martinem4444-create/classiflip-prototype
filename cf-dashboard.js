@@ -2508,7 +2508,17 @@
      quota attach). Boost stays on the ad card after posting - the
      dashboard's native flow. Jobs keep their own posting flow on
      the marketplace, so Jobs is not in this category list. */
-  var POST_CATS_D = ['Cars', 'Homes', 'Rentals', 'Electronics', 'Fashion', 'Home & Garden', 'Sports & Outdoors', 'Pets', 'Kids & Baby', 'Services', 'Free Stuff'];
+  var POST_CATS_D = ['Cars', 'Homes', 'Rentals', 'Services', 'Clothes', 'Computers', 'Electronics', 'Home', 'Sports', 'Tools', 'Free'];
+  /* Category taxonomy unified Nov 17, 2026 (Martin): ONE list on
+     both post forms — marketplace names win (Home, not Home &
+     Garden; Clothes, not Fashion; Sports, not Sports & Outdoors;
+     Free, not Free Stuff). Pets + Kids & Baby removed from the
+     picker (no marketplace categories for them; Kids & Baby is
+     demand-gated — add it only if kids/baby ads pile up in Home).
+     Jobs stays out of this picker by design (its own flow).
+     Computers + Tools added — dashboard posters could not pick
+     them before. Old ads saved under the retired names still
+     display via CAT_ALIAS in cf-listings.js. */
 
   function categoryOfPackageD(name) {
     var n = String(name || '');
@@ -2592,7 +2602,7 @@
     var p = el('edPrice');
     if (!p) return;
     var wrap = p.closest ? p.closest('.fld') : null;
-    var isFree = !!(realEdit && realEdit.category === 'Free Stuff');
+    var isFree = !!(realEdit && (realEdit.category === 'Free' || realEdit.category === 'Free Stuff'));
     if (wrap) wrap.style.display = isFree ? 'none' : '';
   }
   function syncPostExtraD(category) {
@@ -2816,7 +2826,7 @@
     var priceRaw = (el('edPrice') ? el('edPrice').value : '').replace(/[$,\s]/g, '');
     var price = parseFloat(priceRaw);
     if (!title) { say('Give the ad a title first.'); return; }
-    if (st.category === 'Free Stuff') price = 0;
+    if (st.category === 'Free' || st.category === 'Free Stuff') price = 0;
     if (isNaN(price) || price < 0) { say('Enter a valid price.'); return; }
     /* Cars fields v1: the category is locked in the editor, so a
        Cars ad always carries specs — re-collect and re-validate

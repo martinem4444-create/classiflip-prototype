@@ -1789,6 +1789,7 @@
     try { await renderAdminReports(client); } catch (e) {}
     try { await renderAdminCarRequests(client); } catch (e) {}
     try { await renderAdminViewingRequests(client); } catch (e) {}
+    try { await renderAdminRevenue(client); } catch (e) {}
 
     var adsList = el('adminAdsList'), ordersList = el('adminOrdersList'), expList = el('adminExpiringList');
     if (adsList) adsList.innerHTML = '<div class="notice">Loading pending ads…</div>';
@@ -3518,6 +3519,113 @@
       }).join('');
     }
     box.innerHTML = counts + controls + list;
+  }
+  /* Revenue tab (Nov 17, 2026, Martin's ask): running dollar totals
+     for packages + boosts, broken down by category and by month.
+     Admin-only end to end (runs inside renderAdmin). REVENUE counts
+     rows that were actually activated (paid): orders/boosts in
+     Active, Expiring soon, or Expired. Pending reserves are shown
+     separately as pipeline and are NOT counted as revenue. Months
+     are Toronto months via torontoParts. Amounts print with cents
+     (boosts are $2.99, so the whole-dollar money() helper won't do). */
+  function money2(n) {
+    try {
+      return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+    } catch (e) { return '$' + Number(n || 0).toFixed(2); }
+  }
+  function pkgCategory(pkg) {
+    var s = String(pkg || '').toLowerCase();
+    if (s.indexOf('dealer') >= 0) return 'Cars \u2014 Dealers';
+    if (s.indexOf('agent') >= 0) return 'Homes \u2014 Agents';
+    if (s.indexOf('rental') >= 0) return 'Rentals';
+    if (s.indexOf('service') >= 0) return 'Services';
+    if (s.indexOf('job') >= 0) return 'Jobs';
+    return 'Other packages';
+  }
+  function monthKeyToronto(iso) {
+    try {
+      var p = torontoParts(new Date(iso));
+      return p.year + '-' + ('0' + p.month).slice(-2);
+    } catch (e) { return 'unknown'; }
+  }
+  var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function monthLabel(key) {
+    if (key === 'unknown') return 'Date unknown';
+    var bits = key.split('-');
+    return MONTH_NAMES[(+bits[1]) - 1] + ' ' + bits[0];
+  }
+  async function renderAdminRevenue(client) {
+    var box = el('adminRevenueBox');
+    if (!box) return;
+    box.innerHTML = '<div class=\"notice\">Loading revenue\u2026</div>';
+    var orr = await client.from('orders').select('id,package,amount,status,created_at').order('created_at', { ascending: false }).limit(1000);
+    if (orr.error) { box.innerHTML = '<div class=\"notice\">Revenue unavailable \u2014 the orders read failed. The rest of Admin still works.</div>'; return; }
+    var brr = await client.from('boosts').select('id,listing_id,amount,status,created_at').order('created_at', { ascending: false }).limit(1000);
+    var orders = orr.data || [];
+    var boosts = (brr && !brr.error && brr.data) || [];
+    /* Boost category comes from the boosted ad itself. */
+    var catByListing = {};
+    try {
+      var ids = [];
+      boosts.forEach(function (b) { if (b.listing_id && ids.indexOf(b.listing_id) < 0) ids.push(b.listing_id); });
+      for (var i = 0; i < ids.length; i += 100) {
+        var lr = await client.from('listings').select('id,category').in('id', ids.slice(i, i + 100));
+        if (lr && !lr.error && lr.data) lr.data.forEach(function (l) { catByListing[l.id] = l.category || 'Other'; });
+      }
+    } catch (e) {}
+    var SOLD = { 'Active': 1, 'Expiring soon': 1, 'Expired': 1 };
+    var nowKey = monthKeyToronto(new Date().toISOString());
+    var tot = { all: 0, mtd: 0, pkg: 0, pkgN: 0, bst: 0, bstN: 0, pipe: 0, pipeN: 0 };
+    var byCat = {}, byBoostCat = {}, byMonth = {};
+    function bump(map, key, amt) { if (!map[key]) map[key] = { n: 0, amt: 0 }; map[key].n += 1; map[key].amt += amt; }
+    function bumpMonth(key, kind, amt) { if (!byMonth[key]) byMonth[key] = { pkg: 0, pkgN: 0, bst: 0, bstN: 0 }; byMonth[key][kind] += amt; byMonth[key][kind + 'N'] += 1; }
+    orders.forEach(function (o) {
+      var amt = Number(o.amount) || 0;
+      if (o.status === 'Pending') { tot.pipe += amt; tot.pipeN += 1; return; }
+      if (!SOLD[o.status]) return;
+      tot.all += amt; tot.pkg += amt; tot.pkgN += 1;
+      var mk = monthKeyToronto(o.created_at);
+      if (mk === nowKey) tot.mtd += amt;
+      bump(byCat, pkgCategory(o.package), amt);
+      bumpMonth(mk, 'pkg', amt);
+    });
+    boosts.forEach(function (b) {
+      var amt = Number(b.amount) || 0;
+      if (b.status === 'Pending') { tot.pipe += amt; tot.pipeN += 1; return; }
+      if (!SOLD[b.status]) return;
+      tot.all += amt; tot.bst += amt; tot.bstN += 1;
+      var mk = monthKeyToronto(b.created_at);
+      if (mk === nowKey) tot.mtd += amt;
+      bump(byBoostCat, catByListing[b.listing_id] || 'Other', amt);
+      bumpMonth(mk, 'bst', amt);
+    });
+    function rows(map, emptyMsg) {
+      var keys = Object.keys(map).sort(function (a, b) { return map[b].amt - map[a].amt; });
+      if (!keys.length) return '<p class=\"hint\">' + emptyMsg + '</p>';
+      var h = '';
+      keys.forEach(function (k) {
+        h += '<div class=\"lcard\"><div class=\"inf\"><div class=\"t\">' + esc(k) + '</div><div class=\"s\">' + map[k].n + (map[k].n === 1 ? ' sale' : ' sales') + '</div></div><div class=\"p\">' + money2(map[k].amt) + '</div></div>';
+      });
+      return h;
+    }
+    var monthKeys = Object.keys(byMonth).sort().reverse();
+    var monthHtml = '';
+    if (!monthKeys.length) monthHtml = '<p class=\"hint\">No sales yet.</p>';
+    monthKeys.forEach(function (k) {
+      var m = byMonth[k];
+      monthHtml += '<div class=\"lcard\"><div class=\"inf\"><div class=\"t\">' + esc(monthLabel(k)) + '</div><div class=\"s\">Packages ' + money2(m.pkg) + ' (' + m.pkgN + ') \u00b7 Boosts ' + money2(m.bst) + ' (' + m.bstN + ')</div></div><div class=\"p\">' + money2(m.pkg + m.bst) + '</div></div>';
+    });
+    box.innerHTML =
+      '<div class=\"stats\">' +
+      '<div class=\"stat\"><div class=\"n\">' + money2(tot.all) + '</div><div class=\"l\">Total revenue \u00b7 all time</div></div>' +
+      '<div class=\"stat\"><div class=\"n\">' + money2(tot.mtd) + '</div><div class=\"l\">This month \u00b7 ' + esc(monthLabel(nowKey)) + '</div></div>' +
+      '<div class=\"stat\"><div class=\"n\">' + money2(tot.pkg) + '</div><div class=\"l\">Packages \u00b7 ' + tot.pkgN + ' sold</div></div>' +
+      '<div class=\"stat\"><div class=\"n\">' + money2(tot.bst) + '</div><div class=\"l\">Boosts \u00b7 ' + tot.bstN + ' sold</div></div>' +
+      '</div>' +
+      '<p class=\"hint\">Revenue counts packages and boosts that were activated (paid). Pending reserves are pipeline, not revenue: <strong>' + money2(tot.pipe) + '</strong> across ' + tot.pipeN + ' pending. Test sales are included until Reset 2 clears them on Dec 28.</p>' +
+      '<h3 style=\"margin:16px 0 8px\">Packages by category</h3>' + rows(byCat, 'No package sales yet.') +
+      '<h3 style=\"margin:16px 0 8px\">Boosts by category</h3>' + rows(byBoostCat, 'No boost sales yet.') +
+      '<h3 style=\"margin:16px 0 8px\">Month by month</h3>' + monthHtml;
   }
   async function renderAdminWaitlist(client) {
     var box = el('adminWaitlistBox');

@@ -261,11 +261,19 @@
         return;
       }
     }
+    if (submit.disabled) return;
     var client = getClient();
     if (!client) {
       notice('Checkout needs the live site connection — please open the live site to reserve.');
       return;
     }
+    /* Duplicate guard (Nov 17, 2026): lock the button NOW, before any
+       await — a double-click (or a second click after the Done panel
+       shows) must never create a twin order. Re-enabled only on a
+       notice-and-return path or an error, never after success. */
+    submit.disabled = true;
+    var origLabel = submit.textContent;
+    submit.textContent = 'Reserving\u2026';
     /* Site pause switch: non-admin package reserves are blocked
        while paused (admins can still reserve/test). Missing table
        = not paused, as before. */
@@ -274,12 +282,10 @@
       if (ps && !ps.error && ps.data && ps.data.paused) {
         var isAdm = false;
         try { var uu = await client.auth.getUser(); var uid2 = uu && uu.data && uu.data.user && uu.data.user.id; if (uid2) { var pr2 = await client.from('profiles').select('is_admin').eq('id', uid2).maybeSingle(); isAdm = !!(pr2 && !pr2.error && pr2.data && pr2.data.is_admin); } } catch (e2) {}
-        if (!isAdm) { notice('Site is under maintenance — posting ads is disabled at the moment. Feel free to browse.'); return; }
+        if (!isAdm) { notice('Site is under maintenance — posting ads is disabled at the moment. Feel free to browse.'); submit.disabled = false; submit.textContent = origLabel; return; }
       }
     } catch (e3) {}
-    submit.disabled = true;
-    var orig = submit.textContent;
-    submit.textContent = 'Reserving…';
+    var reserveOk = false;
     try {
       var buyerId = null;
       try {
@@ -298,6 +304,27 @@
         category: category,
         term: isFounding(pkgKey) ? FOUNDING_TERM : null
       };
+      /* Duplicate guard: an identical Pending reserve (same email,
+         same package, same business) already exists -> show that
+         order instead of inserting a twin. */
+      try {
+        var dup = await client.from('orders').select('order_number')
+          .eq('buyer_email', email).eq('package', row.package)
+          .eq('business_name', business).eq('status', 'Pending').limit(1);
+        if (dup && !dup.error && dup.data && dup.data.length) {
+          var existing = dup.data[0].order_number || 'CF-????';
+          el('orderNumberBig').textContent = existing;
+          el('orderNumberBig2').textContent = existing;
+          el('orderAmountBig').textContent = money(PACKAGES[pkgKey][1]) + ' CAD';
+          el('orderSummary').textContent = PACKAGES[pkgKey][0] + ' \u00b7 ' + business + ' \u00b7 already reserved as ' + existing + ' (status: Pending) \u2014 no need to reserve twice; we will email you when it is activated.';
+          el('orderDone').style.display = 'block';
+          notice('');
+          el('orderDone').scrollIntoView({ behavior: 'smooth' });
+          reserveOk = true;
+          submit.textContent = 'Reserved \u2713';
+          return;
+        }
+      } catch (eDup) {}
       var res = await client.from('orders').insert([row]).select('order_number').single();
       if (res.error && row.term && /term/i.test(res.error.message || '')) {
         /* The orders.term migration has not been run yet — reserve
@@ -320,11 +347,12 @@
          via Resend. Silent on failure by design — the reserve stands
          regardless. Logged-out reserves send no email (no token). */
       notifyAdminNewOrder({ order_number: num, package: PACKAGES[pkgKey][0], amount: PACKAGES[pkgKey][1], business_name: business, buyer_name: name, buyer_email: email, buyer_phone: phone, term: isFounding(pkgKey) ? FOUNDING_TERM_TEXT : '' });
+      reserveOk = true;
     } catch (err) {
       notice('Could not reserve: ' + (err && err.message ? err.message : 'Something went wrong.'));
     }
-    submit.disabled = false;
-    submit.textContent = orig;
+    if (reserveOk) { submit.textContent = 'Reserved \u2713'; }
+    else { submit.disabled = false; submit.textContent = origLabel; }
   });
 
   /* Package-reserve admin email (Oct 26, 2026): fire-and-forget ping
@@ -452,6 +480,7 @@
 
   var boostSubmit = el('boostReserveSubmit');
   if (boostSubmit) boostSubmit.addEventListener('click', async function () {
+    if (boostSubmit.disabled) return;
     var sel = el('boostListing');
     var listingId = sel ? sel.value : '';
     if (!listingId) {
@@ -463,6 +492,9 @@
       boostNotice('Checkout needs the live site connection — please open the live site to reserve.');
       return;
     }
+    boostSubmit.disabled = true;
+    var boostOrig = boostSubmit.textContent;
+    boostSubmit.textContent = 'Reserving\u2026';
     var user = null;
     try {
       var u = await client.auth.getUser();
@@ -470,6 +502,8 @@
     } catch (e) {}
     if (!user) {
       boostShow('boostReserveSignedOut');
+      boostSubmit.disabled = false;
+      boostSubmit.textContent = boostOrig;
       return;
     }
     try {
@@ -477,13 +511,30 @@
       if (psb && !psb.error && psb.data && psb.data.paused) {
         var isAdmB = false;
         try { var prb = await client.from('profiles').select('is_admin').eq('id', user.id).maybeSingle(); isAdmB = !!(prb && !prb.error && prb.data && prb.data.is_admin); } catch (eB) {}
-        if (!isAdmB) { boostNotice('Site is under maintenance — posting ads is disabled at the moment. Feel free to browse.'); return; }
+        if (!isAdmB) { boostNotice('Site is under maintenance — posting ads is disabled at the moment. Feel free to browse.'); boostSubmit.disabled = false; boostSubmit.textContent = boostOrig; return; }
       }
     } catch (eC) {}
-    boostSubmit.disabled = true;
-    var orig = boostSubmit.textContent;
-    boostSubmit.textContent = 'Reserving…';
+    var boostOk = false;
     try {
+      /* Duplicate guard: a Pending boost already exists for this ad ->
+         show that boost instead of inserting a twin. */
+      try {
+        var bdup = await client.from('boosts').select('payment_ref')
+          .eq('listing_id', listingId).eq('buyer_id', user.id)
+          .eq('status', 'Pending').limit(1);
+        if (bdup && !bdup.error && bdup.data && bdup.data.length) {
+          var existingBst = bdup.data[0].payment_ref || 'BST-????';
+          el('boostBstBig').textContent = existingBst;
+          el('boostBstBig2').textContent = existingBst;
+          el('boostAdTitle').textContent = boostAdsById[listingId] || 'This ad';
+          boostShow('boostReserveDone');
+          boostNotice('');
+          el('boostReserveDone').scrollIntoView({ behavior: 'smooth' });
+          boostOk = true;
+          boostSubmit.textContent = 'Reserved \u2713';
+          return;
+        }
+      } catch (eBDup) {}
       var ins = await client.from('boosts').insert([{
         listing_id: listingId, buyer_id: user.id,
         amount: BOOST_PRICE, payment_method: 'etransfer', status: 'Pending'
@@ -501,10 +552,11 @@
       boostShow('boostReserveDone');
       boostNotice('');
       el('boostReserveDone').scrollIntoView({ behavior: 'smooth' });
+      boostOk = true;
     } catch (err) {
       boostNotice('Could not reserve the boost: ' + (err && err.message ? err.message : 'Something went wrong.'));
     }
-    boostSubmit.disabled = false;
-    boostSubmit.textContent = orig;
+    if (boostOk) { boostSubmit.textContent = 'Reserved \u2713'; }
+    else { boostSubmit.disabled = false; boostSubmit.textContent = boostOrig; }
   });
 })();

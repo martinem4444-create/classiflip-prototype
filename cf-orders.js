@@ -347,6 +347,7 @@
          via Resend. Silent on failure by design — the reserve stands
          regardless. Logged-out reserves send no email (no token). */
       notifyAdminNewOrder({ order_number: num, package: PACKAGES[pkgKey][0], amount: PACKAGES[pkgKey][1], business_name: business, buyer_name: name, buyer_email: email, buyer_phone: phone, term: isFounding(pkgKey) ? FOUNDING_TERM_TEXT : '' });
+      notifyBuyerReserveConfirmation({ order_number: num });
       reserveOk = true;
     } catch (err) {
       notice('Could not reserve: ' + (err && err.message ? err.message : 'Something went wrong.'));
@@ -369,6 +370,29 @@
         var token = s && s.data && s.data.session && s.data.session.access_token;
         if (!token) return;
         fetch('https://dbgmyvjaavpmernaxnav.functions.supabase.co/notify-admin-new-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(order)
+        }).catch(function () {});
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  /* Buyer reserve-confirmation email (Nov 18, 2026): fire-and-forget
+     ping to the notify-buyer-reserve-confirmation Edge Function right
+     after a successful reserve, beside the admin alert. The function
+     reads the order row itself and emails the BUYER their safety-net
+     confirmation (spot reserved, order number, create-your-account
+     with this email). Signed-in callers only (JWT bearer); failures
+     are swallowed on purpose — the reserve stands regardless. */
+  function notifyBuyerReserveConfirmation(order) {
+    try {
+      var client = getClient();
+      if (!client) return;
+      client.auth.getSession().then(function (s) {
+        var token = s && s.data && s.data.session && s.data.session.access_token;
+        if (!token) return;
+        fetch('https://dbgmyvjaavpmernaxnav.functions.supabase.co/notify-buyer-reserve-confirmation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify(order)

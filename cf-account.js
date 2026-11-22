@@ -1,8 +1,20 @@
-/* ClassiFlip account settings v1 — cf-account.js (Oct 26, 2026).
+/* ClassiFlip account settings v1.1 — cf-account.js (Oct 26, 2026;
+ * header cleanup Nov 21, 2026).
  *
  * WHAT IT DOES (approved spec: ClassiFlip_Account_Settings_Spec.md):
  * - Turns the header avatar + name into one button that opens an
- *   account menu: Profile · Settings · Dashboard · Sign out.
+ *   account menu: Profile · Dashboard · My Ads · My Store · Saved ·
+ *   Settings · Sign out.
+ * - Header cleanup (Nov 21, 2026, Martin's call): while signed in, the
+ *   standalone header Dashboard link and Saved button are hidden (the
+ *   html.cf-menu-clean CSS below, !important so cf-auth.js's show/hide
+ *   cannot resurrect them) — they live in the account menu now. The
+ *   header keeps Advertise, Messages and Post an ad. My Ads lands on
+ *   dashboard.html (its default tab IS My Ads); My Store links to the
+ *   seller's own storefront (seller.html?id=<user id>, href set when
+ *   the user is known); Saved links to index.html?saved=1, and the
+ *   boot hook in setAuthed clicks the homepage Saved button once so
+ *   the saved view opens on arrival.
  * - Desktop: dropdown menu under the button. Phone (<=900px): the
  *   same menu as a bottom sheet (CSS-only switch, no forked logic).
  * - Profile panel (D1: separate panel, not a tab): display_name is
@@ -121,6 +133,10 @@
       '.cf-acct-av{width:32px;height:32px;border-radius:50%;background:#2A4A7E;color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px;flex:none}' +
       '.cf-acct-nm{font-size:13px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
       '@media(max-width:480px){.cf-acct-nm{display:none}}' +
+      /* Header cleanup (Nov 21, 2026): while signed in, the standalone
+         header Dashboard link + Saved button move into the account
+         menu, so they are hidden in the header itself. */ +
+      'html.cf-menu-clean #dashLink,html.cf-menu-clean #savedBtn{display:none!important}' +
       /* Menu backdrop + menu (dropdown desktop, bottom sheet phone). */
       '.cf-acct-backdrop{position:fixed;inset:0;background:rgba(13,21,38,.45);z-index:1000;display:none}' +
       '.cf-acct-backdrop.on{display:block}' +
@@ -243,6 +259,11 @@
      dashboard demo business toggle must never leak into this display. */
   function renderHeader() {
     if (!authed || !currentUser) return;
+    try { document.documentElement.classList.add('cf-menu-clean'); } catch (e) {}
+    try {
+      var storeLink = document.getElementById('cfMenuStore');
+      if (storeLink) storeLink.href = 'seller.html?id=' + encodeURIComponent(currentUser.id);
+    } catch (e) {}
     var name = displayNameOf(currentUser, currentProfile);
     var text = headerText(currentUser, currentProfile);
     var init = initialOf(name, currentUser.email);
@@ -285,6 +306,7 @@
   }
 
   function unrenderHeader() {
+    try { document.documentElement.classList.remove('cf-menu-clean'); } catch (e) {}
     var btn = injectedButton();
     if (btn && btn.parentNode) btn.parentNode.removeChild(btn);
     /* Dashboard: the static .who button is hardcoded "Martin · Seller"
@@ -337,6 +359,20 @@
     var a = document.createElement('a');
     a.href = 'dashboard.html';
     a.textContent = 'Dashboard';
+    /* Header cleanup (Nov 21, 2026): My Ads = the dashboard's default
+       tab; My Store = the seller's own storefront (href set in
+       renderHeader/openMenu once the user id is known); Saved = the
+       homepage saved view, opened by the ?saved=1 boot hook. */
+    var aAds = document.createElement('a');
+    aAds.href = 'dashboard.html';
+    aAds.textContent = 'My Ads';
+    var aStore = document.createElement('a');
+    aStore.id = 'cfMenuStore';
+    aStore.href = 'seller.html';
+    aStore.textContent = 'My Store';
+    var aSaved = document.createElement('a');
+    aSaved.href = 'index.html?saved=1';
+    aSaved.textContent = 'Saved';
     /* Sign out: the data-cf-logout attribute lets cf-auth.js's own
        capture handler perform the sign-out. NO new sign-out code. */
     var b3 = document.createElement('button');
@@ -344,8 +380,11 @@
     b3.setAttribute('data-cf-logout', '1');
     b3.textContent = 'Sign out';
     menu.appendChild(b1);
-    menu.appendChild(b2);
     menu.appendChild(a);
+    menu.appendChild(aAds);
+    menu.appendChild(aStore);
+    menu.appendChild(aSaved);
+    menu.appendChild(b2);
     menu.appendChild(b3);
     menu.addEventListener('click', function (e) {
       var item = e.target && e.target.closest ? e.target.closest('[data-cf-acct-menu]') : null;
@@ -361,6 +400,10 @@
 
   function openMenu(anchor) {
     if (!authed) return;
+    try {
+      var sl = document.getElementById('cfMenuStore');
+      if (sl && currentUser) sl.href = 'seller.html?id=' + encodeURIComponent(currentUser.id);
+    } catch (e) {}
     var els = menuEls();
     if (!els.menu || !els.backdrop || !anchor) return;
     menuAnchor = anchor;
@@ -841,12 +884,38 @@
     }
   }
 
+  /* ---------- saved-view boot (header cleanup, Nov 21, 2026) ------- */
+
+  /* Arriving on the homepage with ?saved=1 (the account menu's Saved
+     link) opens the saved view: click the homepage's own Saved button
+     once its handler exists, then strip the param the same way the
+     homepage strips its other deep-link params. */
+  var savedBootDone = false;
+  function maybeOpenSaved() {
+    if (savedBootDone) return;
+    if (!/[?&]saved=1(&|$)/.test(location.search || '')) return;
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries++;
+      var btn = document.getElementById('savedBtn');
+      if (btn) {
+        savedBootDone = true;
+        clearInterval(iv);
+        try { btn.click(); } catch (e) {}
+        try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      } else if (tries > 16) {
+        clearInterval(iv);
+      }
+    }, 250);
+  }
+
   /* ---------- auth state ---------- */
 
   function setAuthed(user) {
     currentUser = user;
     authed = true;
     renderHeader();
+    maybeOpenSaved();
     loadProfile().then(function () { renderHeader(); });
   }
 

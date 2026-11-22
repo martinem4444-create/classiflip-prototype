@@ -333,7 +333,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
       <div class="marketplace-shell" id="marketplaceShell">
         <div class="marketplace-content">
           <aside class="safety-strip" aria-label="Marketplace safety tips"><h3>Buy and sell safely</h3><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Meet in a busy public place.</span></div><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Inspect the item before paying.</span></div><div class="safety-tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Pay in person and report suspicious ads.</span></div></aside>
-          <div class="filters"><select id="cityFilter" aria-label="City"><option value="All">All cities</option></select><select id="conditionFilter" aria-label="Condition"><option value="All">Any condition</option><option>New</option><option>Like new</option><option>Good</option><option>Used</option></select><select id="sortFilter" aria-label="Sort listings"><option value="featured">Boosted first</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select><span class="results-note" id="resultsNote">Loading listings…</span></div>
+          <div class="filters"><select id="provinceFilter" aria-label="Province"><option value="All">All provinces</option></select><select id="cityFilter" aria-label="City"><option value="All">All cities</option></select><select id="conditionFilter" aria-label="Condition"><option value="All">Any condition</option><option>New</option><option>Like new</option><option>Good</option><option>Used</option></select><select id="sortFilter" aria-label="Sort listings"><option value="featured">Boosted first</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select><span class="results-note" id="resultsNote">Loading listings…</span></div>
           <div class="fair-note" id="fairNote"><span class="fp-pill">FAIR PLAY</span><span>All ads rotate daily for fairness - every seller gets time at the top. Fresh ads show first; boosted ads stay pinned.</span></div>
           <div class="listing-grid" id="listingGrid"></div><div class="pagination" id="pagination" style="display:none"></div>
           <div class="map-wrap" id="mapWrap" hidden>
@@ -756,18 +756,35 @@ function openMessageThread(x){
     }
     const CITY_ALIASES={'tornoto':'Toronto','mississauga':'Mississauga','brampton':'Brampton','toronto':'Toronto','north york':'North York','etobicoke':'Etobicoke','scarborough':'Scarborough','vaughan':'Vaughan','markham':'Markham','richmond hill':'Richmond Hill','oakville':'Oakville','burlington':'Burlington','hamilton':'Hamilton','ajax':'Ajax','pickering':'Pickering','whitby':'Whitby','oshawa':'Oshawa','milton':'Milton','georgetown':'Georgetown','caledon':'Caledon','king city':'King City','aurora':'Aurora','newmarket':'Newmarket','east york':'East York','york':'York','downsview':'North York','rexdale':'Etobicoke','malton':'Mississauga','churchill meadows':'Mississauga','streetsville':'Mississauga','port credit':'Mississauga','erin mills':'Mississauga','meadowvale':'Mississauga','heartland':'Mississauga'};
     const GTA_ORDER=['Mississauga','Brampton','Toronto','North York','Etobicoke','Scarborough','Vaughan','Markham','Richmond Hill','Oakville','Burlington','Hamilton','Ajax','Pickering','Whitby','Oshawa','Milton','Newmarket','Aurora','Caledon'];
+    const PROV_NAMES={ON:'Ontario',QC:'Quebec',BC:'British Columbia',AB:'Alberta',MB:'Manitoba',SK:'Saskatchewan',NS:'Nova Scotia',NB:'New Brunswick',NL:'Newfoundland and Labrador',PE:'Prince Edward Island',NT:'Northwest Territories',NU:'Nunavut',YT:'Yukon'};
+    const PROV_ORDER=['Ontario','Alberta','British Columbia','Quebec','Manitoba','Saskatchewan','Nova Scotia','New Brunswick','Newfoundland and Labrador','Prince Edward Island','Northwest Territories','Nunavut','Yukon'];
+    /* Province lookup for cities sellers type without a province suffix (Nov 22, 2026, province-first picker): GTA + the big Canadian cities. A listing whose province cannot be derived shows only under 'All provinces' — never guessed into a province. */
+    const CITY_PROV={'mississauga':'ON','brampton':'ON','toronto':'ON','north york':'ON','etobicoke':'ON','scarborough':'ON','vaughan':'ON','markham':'ON','richmond hill':'ON','oakville':'ON','burlington':'ON','hamilton':'ON','ajax':'ON','pickering':'ON','whitby':'ON','oshawa':'ON','milton':'ON','georgetown':'ON','caledon':'ON','king city':'ON','aurora':'ON','newmarket':'ON','east york':'ON','york':'ON','downsview':'ON','rexdale':'ON','malton':'ON','churchill meadows':'ON','streetsville':'ON','port credit':'ON','erin mills':'ON','meadowvale':'ON','heartland':'ON','ottawa':'ON','london':'ON','kitchener':'ON','waterloo':'ON','windsor':'ON','kingston':'ON','barrie':'ON','guelph':'ON','sudbury':'ON','thunder bay':'ON','st. catharines':'ON','niagara falls':'ON','cambridge':'ON','calgary':'AB','edmonton':'AB','red deer':'AB','lethbridge':'AB','vancouver':'BC','victoria':'BC','kelowna':'BC','surrey':'BC','burnaby':'BC','richmond':'BC','abbotsford':'BC','montreal':'QC','quebec city':'QC','laval':'QC','gatineau':'QC','winnipeg':'MB','saskatoon':'SK','regina':'SK','halifax':'NS','dartmouth':'NS','moncton':'NB','fredericton':'NB','saint john':'NB',"st. john's":'NL','charlottetown':'PE','yellowknife':'NT','whitehorse':'YT','iqaluit':'NU'};
+    function cfProvOf(x){var loc=String(x.location||'');var m=loc.match(/,\s*([A-Za-z]{2})\b/);if(m){var c=m[1].toUpperCase();if(PROV_NAMES[c])return PROV_NAMES[c];}var low=loc.toLowerCase();var pns=Object.keys(PROV_NAMES).map(function(k){return PROV_NAMES[k];});for(var i=0;i<pns.length;i++){if(low.indexOf(pns[i].toLowerCase())>-1)return pns[i];}var city=String(loc.split(',')[0].split(' - ')[0].trim().toLowerCase());var cc=CITY_PROV[city];if(!cc&&CITY_ALIASES[city])cc=CITY_PROV[CITY_ALIASES[city].toLowerCase()];if(cc&&PROV_NAMES[cc])return PROV_NAMES[cc];return '';}
     function titleCity(s){return String(s||'').replace(/\w\S*/g,w=>w.charAt(0).toUpperCase()+w.slice(1));}
     function syncCityFilter(){
       const sel=document.getElementById('cityFilter');if(!sel)return;
+      const provSel=document.getElementById('provinceFilter');
       const cityOf=x=>{const p=String(x.location||'').split(',')[0].split(' - ')[0].trim().toLowerCase();return CITY_ALIASES[p]||titleCity(p);};
       const hoodOf=x=>{const raw=String(x.location||'');const base=cityOf(x).toLowerCase();if(raw.toLowerCase().indexOf(base)===0)return '';const p=raw.split(',')[0].split(' - ')[0].trim();return p&&p.toLowerCase()!==base?titleCity(p.toLowerCase()):'';};
-      const cities={},hoods={};
-      listings.forEach(x=>{if(!x.location)return;const c=cityOf(x);if(!c)return;cities[c]=(cities[c]||0)+1;const h=hoodOf(x);if(h)hoods[c+'||'+h]=(hoods[c+'||'+h]||0)+1;});
-      const names=Object.keys(cities).sort((a,b)=>{const ia=GTA_ORDER.indexOf(a),ib=GTA_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||(cities[b]-cities[a])||a.localeCompare(b);});
+      const cities={},hoods={},provs={},cityProv={};
+      listings.forEach(x=>{if(!x.location)return;const c=cityOf(x);if(!c)return;const pr=cfProvOf(x);if(pr){provs[pr]=(provs[pr]||0)+1;(cityProv[c]=cityProv[c]||{})[pr]=1;}cities[c]=(cities[c]||0)+1;const h=hoodOf(x);if(h)hoods[c+'||'+h]=(hoods[c+'||'+h]||0)+1;});
+      /* Province dropdown (Nov 22, 2026, province-first picker): provinces build themselves from live ads, same as cities — a province appears the moment its first ad posts. Restored from the browser on return visits; a saved province whose ads have all gone is skipped, not forced. */
+      if(provSel){
+        const pnames=Object.keys(provs).sort((a,b)=>{const ia=PROV_ORDER.indexOf(a),ib=PROV_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||(provs[b]-provs[a])||a.localeCompare(b);});
+        let phtml='<option value="All">All provinces</option>';
+        pnames.forEach(p=>{phtml+='<option value="'+p+'">'+p+' ('+provs[p]+')</option>';});
+        const psig=pnames.join(',');
+        if(provSel.dataset.sig!==psig){const cur=provSel.value;provSel.innerHTML=phtml;provSel.dataset.sig=psig;if(cur&&provSel.querySelector('option[value="'+CSS.escape(cur)+'"]'))provSel.value=cur;}
+        if(!provSel.dataset.restored){try{const sv=localStorage.getItem('cf-province');if(sv&&sv!=='All'&&provSel.querySelector('option[value="'+CSS.escape(sv)+'"]')){provSel.value=sv;provSel.dataset.restored='1';}else if(!sv){provSel.dataset.restored='1';}}catch(e){provSel.dataset.restored='1';}}
+      }
+      const provPick=provSel?provSel.value:'All';
+      const names=Object.keys(cities).filter(c=>provPick==='All'||(cityProv[c]&&cityProv[c][provPick])).sort((a,b)=>{const ia=GTA_ORDER.indexOf(a),ib=GTA_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||(cities[b]-cities[a])||a.localeCompare(b);});
       let html='<option value="All">All cities</option>';
       names.forEach(c=>{html+='<option value="'+c+'">'+c+' ('+cities[c]+')</option>';const hs=Object.keys(hoods).filter(k=>k.indexOf(c+'||')===0&&hoods[k]>=5).sort();hs.forEach(k=>{const h=k.split('||')[1];html+='<option value="'+k+'">&nbsp;&nbsp;'+h+' ('+hoods[k]+')</option>';});});
-      const sig=names.join(',')+'#'+Object.keys(hoods).join(',');
+      const sig=provPick+'|'+names.join(',')+'#'+Object.keys(hoods).join(',');
       if(sel.dataset.sig!==sig){const cur=sel.value;sel.innerHTML=html;sel.dataset.sig=sig;if(cur&&sel.querySelector('option[value="'+CSS.escape(cur)+'"]'))sel.value=cur;}
+      if(!sel.dataset.restored){try{const sv=localStorage.getItem('cf-city');if(sv&&sv!=='All'&&sel.querySelector('option[value="'+CSS.escape(sv)+'"]')){sel.value=sv;sel.dataset.restored='1';}else if(!sv){sel.dataset.restored='1';}}catch(e){sel.dataset.restored='1';}}
     }
     function render(){
       const q=document.getElementById('searchInput').value.trim().toLowerCase();
@@ -784,6 +801,7 @@ function openMessageThread(x){
          is how "Mississauga, ON" and "Churchill Meadows" both stay
          findable. */
       syncCityFilter();
+      const provPick=document.getElementById('provinceFilter')?document.getElementById('provinceFilter').value:'All';
       const citySel=document.getElementById('cityFilter').value;
       let cityPick='All',hoodPick='';
       if(citySel!=='All'){const sp=citySel.split('||');cityPick=sp[0];hoodPick=sp[1]||'';}
@@ -792,7 +810,7 @@ function openMessageThread(x){
       /* Single Google-style search (Oct 29 decision: keep one bar, wait for buyer feedback before any split): the one search term matches title + category + location together. Word-by-word since Nov 11, 2026 (Martin's "boots toronto" test): every typed word must appear SOMEWHERE in title + category + location + tags, in any order — before this, the whole phrase had to match in sequence, so "boots toronto" found nothing because the category sits between the title and the city in the matched text. */
       const hayOf=x=>`${x.title} ${x.category} ${x.location||''} ${(x.tags||[]).join(' ')} ${x.carSearch||''} ${x.homeSearch||''}`.toLowerCase();
       const qWords=q?q.split(/\s+/).filter(Boolean):[];
-      let rows=listings.filter(x=>(currentCategory==='All'||x.category===currentCategory)&&(condition==='All'||x.condition===condition)&&(citySel==='All'||(cityOf(x)===cityPick&&(!hoodPick||hoodOf(x)===hoodPick)))&&(!qWords.length||qWords.every(w=>hayOf(x).includes(w)))&&(!savedOnly||saved.has(String(x.id))));
+      let rows=listings.filter(x=>(currentCategory==='All'||x.category===currentCategory)&&(condition==='All'||x.condition===condition)&&(provPick==='All'||cfProvOf(x)===provPick)&&(citySel==='All'||(cityOf(x)===cityPick&&(!hoodPick||hoodOf(x)===hoodPick)))&&(!qWords.length||qWords.every(w=>hayOf(x).includes(w)))&&(!savedOnly||saved.has(String(x.id))));
       const sort=document.getElementById('sortFilter').value;if(sort==='low')rows.sort((a,b)=>a.price-b.price);if(sort==='high')rows.sort((a,b)=>b.price-a.price);
       /* Fair rotation (Nov 8, 2026, Martin's call; applies only to the default "Boosted first" sort — buyer-chosen price sorts skip it): the unboosted group is ordered fresh-first (ads under 24h old, newest first), then a daily rotation — a seeded shuffle keyed by Toronto day + listing id, identical for every visitor that day, so every seller gets time near the top and repost-gaming buys nothing. A round-robin then spreads each seller's ads: everyone's first ad shows before anyone's second. Boosted ads are untouched here; the FCFS pin below lifts them above everything, exactly as before. */
       if(sort==='featured'){
@@ -807,7 +825,7 @@ function openMessageThread(x){
       }
       /* FCFS boost ordering: boosted-effective real rows pin first within the viewed set, BEFORE pagination slicing, ordered by activation time ASC (oldest live boost on top; BST number breaks same-timestamp ties). Price sort applies ONLY within the unboosted group below (the stable sort above already ordered it). Demo rows are never boosted-effective. */
       rows.sort((a,b)=>{const ab=a.boostedEffective?1:0,bb=b.boostedEffective?1:0;if(ab!==bb)return bb-ab;if(ab)return fcfsCompare(a,b);return 0;});
-      const filterKey=currentCategory+'|'+condition+'|'+citySel+'|'+q+'|'+sort+'|'+savedOnly;if(filterKey!==lastFilterKey){lastFilterKey=filterKey;currentPage=1;}
+      const filterKey=currentCategory+'|'+condition+'|'+provPick+'|'+citySel+'|'+q+'|'+sort+'|'+savedOnly;if(filterKey!==lastFilterKey){lastFilterKey=filterKey;currentPage=1;}
       const totalPages=Math.max(1,Math.ceil(rows.length/PER_PAGE));if(currentPage>totalPages)currentPage=totalPages;
       const pageRows=rows.slice((currentPage-1)*PER_PAGE,currentPage*PER_PAGE);
       resultsNote.textContent=`${rows.length} listing${rows.length===1?'':'s'}`;
@@ -1113,7 +1131,7 @@ const _pb=['Rentals','Homes','Services'].includes(document.getElementById('adCat
     document.getElementById('searchInput').addEventListener('input',()=>{savedOnly=false;render()});
     document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('searchBtn').click()});
     (function(){var s=document.getElementById('searchInput');var scrub=function(){if(s.value.indexOf('@')>-1){s.value='';if(typeof render==='function')render();}};s.addEventListener('focus',function(){s.removeAttribute('readonly')});s.addEventListener('input',scrub);s.addEventListener('change',scrub);scrub();window.addEventListener('load',scrub);})();
-    document.getElementById('conditionFilter').addEventListener('change',render);document.getElementById('sortFilter').addEventListener('change',render);document.getElementById('cityFilter').addEventListener('change',render);
+    document.getElementById('conditionFilter').addEventListener('change',render);document.getElementById('sortFilter').addEventListener('change',render);document.getElementById('cityFilter').addEventListener('change',()=>{try{localStorage.setItem('cf-city',document.getElementById('cityFilter').value);}catch(e){}render();});(function(){var ps=document.getElementById('provinceFilter');if(ps)ps.addEventListener('change',()=>{document.getElementById('cityFilter').value='All';try{localStorage.setItem('cf-province',ps.value);localStorage.setItem('cf-city','All');}catch(e){}render();});})();
     document.getElementById('browseBtn').addEventListener('click',()=>document.getElementById('marketplace').scrollIntoView({behavior:'smooth'}));
     document.getElementById('savedBtn').addEventListener('click',()=>{savedOnly=!savedOnly;currentCategory='All';document.querySelectorAll('.cat').forEach(c=>c.classList.remove('active'));render();document.getElementById('listingTitle').textContent=savedOnly?'Saved listings':'Fresh near you';document.getElementById('marketplace').scrollIntoView({behavior:'smooth'})});
     document.getElementById('adCategory').addEventListener('change',e=>{if(e.currentTarget.value==='Jobs'){e.currentTarget.value='Cars';updateCarPostingFields();closeModals();openModal('jobPostModal');return}updateCarPostingFields()});

@@ -435,7 +435,7 @@
     try {
       var res = await client
         .from('listings')
-        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags,specs')
+        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags,specs,address_text,latitude,longitude,show_area_only')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       if (res.error) {
@@ -749,6 +749,20 @@
       if (svcSpecs) newRow.specs = svcSpecs;
       /* Tags (Oct 29): free, max 5, any seller. Omit when empty so
          pre-migration rows (no tags column yet) still insert. */
+      /* Photon address (Nov 22, 2026): Homes & Rentals only. The
+         columns ride only when the seller picked a suggestion
+         (window.__cfAddrPick, set by the Photon wiring at the bottom
+         of this file); show_area_only always rides for these two
+         categories. The graceful retry after the insert strips all
+         four if the migration has not been pasted yet. */
+      try {
+        if (newRow.category === 'Homes' || newRow.category === 'Rentals') {
+          var _aoEl = document.getElementById('adAreaOnly');
+          newRow.show_area_only = !!(_aoEl && _aoEl.checked);
+          var _pk2 = window.__cfAddrPick;
+          if (_pk2 && _pk2.text) { newRow.address_text = _pk2.text; newRow.latitude = _pk2.lat; newRow.longitude = _pk2.lng; }
+        }
+      } catch (e) {}
       try {
         var _tagsEl = document.getElementById('adTags');
         var _tags = _tagsEl ? parseTags(_tagsEl.value) : [];
@@ -769,6 +783,13 @@
            new column (same graceful pattern as tags). */
         try { console.warn('[ClassiFlip] listings.specs insert failed - posting without specs. Paste the Cars fields migration to store car details.'); } catch (e) {}
         delete newRow.specs;
+        ins = await client.from('listings').insert([newRow]).select().single();
+      }
+      if (ins.error && (newRow.address_text !== undefined || newRow.show_area_only !== undefined) && /address_text|latitude|longitude|show_area_only/i.test(ins.error.message || '')) {
+        /* Photon columns missing (migration not pasted yet): retry
+           without them - a post must never hard-fail on new columns. */
+        try { console.warn('[ClassiFlip] listings address columns insert failed - posting without address. Paste the Photon migration to store addresses.'); } catch (e) {}
+        delete newRow.address_text; delete newRow.latitude; delete newRow.longitude; delete newRow.show_area_only;
         ins = await client.from('listings').insert([newRow]).select().single();
       }
       if (ins.error && carSpecs && !('condition' in newRow) && /condition/i.test(ins.error.message || '')) {
@@ -1455,7 +1476,7 @@
         reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
-        carSectionsHtml(x) + homeSectionsHtml(x) + svcSectionsHtml(x) +
+        carSectionsHtml(x) + homeSectionsHtml(x) + addressSectionHtml(x) + svcSectionsHtml(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
         carSellerBlockHtml(x) + svcContactSlotHtml(x) +
@@ -1559,7 +1580,7 @@
         reportMarkup(x) +
         '<div class="meta"><span>' + safe(x.condition) + '</span><span>•</span><span>' + safe(x.location) + '</span></div>' +
         tagsMarkup(x) +
-        carSectionsHtml(x) + homeSectionsHtml(x) + svcSectionsHtml(x) +
+        carSectionsHtml(x) + homeSectionsHtml(x) + addressSectionHtml(x) + svcSectionsHtml(x) +
         '<p>' + safe(x.desc) + '</p>' +
                 ((x.category === 'Homes' || x.category === 'Rentals') ? locationCardMarkup(x) : '') +
         carSellerBlockHtml(x) + svcContactSlotHtml(x) +
@@ -2366,6 +2387,15 @@
   }
   /* Detail facts (spec 5.2): Basics + Property/Costs (Homes) or
      The Lease (Rentals); groups with no values hide entirely. */
+  /* Location section (Photon, Nov 22, 2026): sits right after the
+     Facts & features groups in the detail view. Exact address shows
+     only when the seller stored one and did not choose area-only. */
+  function addressSectionHtml(x) {
+    if (!x || (x.category !== 'Homes' && x.category !== 'Rentals')) return '';
+    if (x.show_area_only) return '<div class="spec-card"><div class="spec-rows"><div class="spec-row"><span class="k">Location</span><span class="v">' + safe(x.location || 'Mississauga') + ' \u2014 exact address hidden by the seller (area only)</span></div></div></div>';
+    if (x.address_text) return '<div class="spec-card"><div class="spec-rows"><div class="spec-row"><span class="k">Address</span><span class="v">' + safe(x.address_text) + '</span></div></div></div>';
+    return '';
+  }
   function homeSectionsHtml(x) {
     if (!x || (x.category !== 'Homes' && x.category !== 'Rentals') || !x.specs) return '';
     var sp = x.specs;
@@ -2720,4 +2750,67 @@
   /* Dealer-page deep link for demo rows (no live client): real rows
      are covered by the post-refresh call above. */
   try { maybeOpenDeepLink(); } catch (e) {}
+})();
+
+/* ============================================================
+   Photon address autocomplete (Nov 22, 2026)
+   Homes & Rentals post form: #adAddress type-ahead via Photon
+   (photon.komoot.io, free, no key, GTA-biased). Picking a
+   suggestion stores window.__cfAddrPick = {text, lat, lng},
+   which the submit handler in this file reads. Typing over a
+   pick clears it, so a hand-typed address never inherits stale
+   coordinates. Dealers/agents default to exact pins; the
+   #adAreaOnly checkbox is the privacy valve.
+   ============================================================ */
+(function () {
+  function wire() {
+    var inp = document.getElementById('adAddress');
+    var box = document.getElementById('addrSuggest');
+    if (!inp || !box || inp.__cfPhotonWired) return;
+    inp.__cfPhotonWired = true;
+    var timer = null;
+    function hide() { box.hidden = true; box.innerHTML = ''; }
+    function labelOf(pr) {
+      var line1 = ((pr.housenumber ? pr.housenumber + ' ' : '') + (pr.street || pr.name || '')).trim();
+      var parts = [line1, pr.city || pr.county || '', pr.postcode || ''].filter(Boolean);
+      return parts.join(', ');
+    }
+    inp.addEventListener('input', function () {
+      if (window.__cfAddrPick && inp.value.trim() !== window.__cfAddrPick.text) window.__cfAddrPick = null;
+      clearTimeout(timer);
+      var v = inp.value.trim();
+      if (v.length < 3) { hide(); return; }
+      timer = setTimeout(function () {
+        fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(v) + '&lat=43.5890&lon=-79.6441&limit=5&lang=en')
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var feats = (j && j.features) || [];
+            if (!feats.length) { hide(); return; }
+            box.innerHTML = '';
+            feats.forEach(function (f) {
+              var pr = f.properties || {};
+              var co = (f.geometry && f.geometry.coordinates) || [];
+              if (co.length < 2) return;
+              var lab = labelOf(pr);
+              if (!lab) return;
+              var b = document.createElement('button');
+              b.type = 'button';
+              b.textContent = lab;
+              b.addEventListener('mousedown', function (ev) {
+                ev.preventDefault();
+                inp.value = lab;
+                window.__cfAddrPick = { text: lab, lat: co[1], lng: co[0] };
+                hide();
+              });
+              box.appendChild(b);
+            });
+            box.hidden = !box.children.length;
+          })
+          .catch(function () { hide(); });
+      }, 300);
+    });
+    inp.addEventListener('blur', function () { setTimeout(hide, 150); });
+    document.addEventListener('click', function (e) { if (e.target !== inp && !box.contains(e.target)) hide(); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
 })();

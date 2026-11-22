@@ -2396,8 +2396,8 @@
      only when the seller stored one and did not choose area-only. */
   function addressSectionHtml(x) {
     if (!x || (x.category !== 'Homes' && x.category !== 'Rentals')) return '';
-    if (x.show_area_only) return '<div class="spec-card"><div class="spec-rows"><div class="spec-row"><span class="k">Location</span><span class="v">' + safe(x.location || 'Mississauga') + ' \u2014 exact address hidden by the seller (area only)</span></div></div></div>';
-    if (x.address_text) return '<div class="spec-card"><div class="spec-rows"><div class="spec-row"><span class="k">Address</span><span class="v">' + safe(x.address_text) + '</span></div></div></div>';
+    if (x.show_area_only) return '<div class="spec-card"><div style="font-size:13.5px;padding:4px 0"><div style="color:var(--mu);margin-bottom:2px">Location</div><div style="font-weight:600">' + safe(x.location || 'Mississauga') + ' \u2014 exact address hidden by the seller (area only)</div></div></div>';
+    if (x.address_text) return '<div class="spec-card"><div style="font-size:13.5px;padding:4px 0"><div style="color:var(--mu);margin-bottom:2px">Address</div><div style="font-weight:700">' + safe(x.address_text) + '</div></div></div>';
     return '';
   }
   function homeSectionsHtml(x) {

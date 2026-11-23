@@ -951,16 +951,20 @@ openModal('detailModal');
         props.forEach(x=>{
           const ll=cfLatLng(x);pts.push(ll);
           const hot=x.promotion||x.featured;
-          if(x.show_area_only&&(x.latitude!=null||x.lat!=null)){
-            const n2=cfIdNum(x.id),ox=((n2*37)%7)-3,oy=((n2*53)%7)-3;
-            const circ=L.circle([ll[0]+oy*0.0018,ll[1]+ox*0.0024],{radius:1000,color:'#F4511E',weight:2,fillColor:'#F4511E',fillOpacity:0.13}).addTo(cfMarkers);
-            circ.on('click',()=>selectMapPin(x.id));
-            return;
-          }
-          const icon=L.divIcon({className:'cf-lpin',iconSize:[0,0],html:'<span class="cf-pin'+(hot?' hot':'')+(String(mapSelId)===String(x.id)?' sel':'')+'" data-pin="'+x.id+'">'+shortPrice(x)+'</span>'});
-          const mk=L.marker(ll,{icon}).addTo(cfMarkers);
-          mk.on('click',()=>selectMapPin(x.id));
-          cfMarkerById[x.id]=mk;
+          try{
+            if(x.show_area_only){
+              /* Area-only ads ALWAYS get the fuzzy circle, never a pin (Nov 22, 2026 fix): with no saved coordinates cfLatLng falls back to the neighbourhood centre, so the circle still shows the area without exposing the house. The circle is registered in cfMarkerById so list clicks pan to it (L.circle has getLatLng). */
+              const n2=cfIdNum(x.id),ox=((n2*37)%7)-3,oy=((n2*53)%7)-3;
+              const circ=L.circle([ll[0]+oy*0.0018,ll[1]+ox*0.0024],{radius:1000,color:'#F4511E',weight:2,fillColor:'#F4511E',fillOpacity:0.18}).addTo(cfMarkers);
+              circ.on('click',()=>selectMapPin(x.id));
+              cfMarkerById[x.id]=circ;
+              return;
+            }
+            const icon=L.divIcon({className:'cf-lpin',iconSize:[0,0],html:'<span class="cf-pin'+(hot?' hot':'')+(String(mapSelId)===String(x.id)?' sel':'')+'" data-pin="'+x.id+'">'+shortPrice(x)+'</span>'});
+            const mk=L.marker(ll,{icon}).addTo(cfMarkers);
+            mk.on('click',()=>selectMapPin(x.id));
+            cfMarkerById[x.id]=mk;
+          }catch(e){}
         });
         setTimeout(()=>{try{cfMap.invalidateSize();if(pts.length>1)cfMap.fitBounds(pts,{padding:[36,36]});else if(pts.length===1)cfMap.setView(pts[0],13);}catch(e){}},60);
         setTimeout(()=>{try{cfMap.invalidateSize();}catch(e){}},450);
@@ -1001,6 +1005,8 @@ openModal('detailModal');
       if(!isMap)return;
       const pins=document.getElementById('mapPins'),list=document.getElementById('mapList');
       const props=rows.filter(x=>x.category==='Homes'||x.category==='Rentals');
+      try{cfRealMap(props);}catch(e){}
+      try{
       pins.innerHTML=props.map(x=>{
         const base=HOOD_POS[x.location]||HOOD_POS['Mississauga'];
         const n=cfIdNum(x.id),jx=((n*29)%9)-4,jy=((n*41)%9)-4;
@@ -1011,7 +1017,7 @@ openModal('detailModal');
       if(mapSelId&&props.some(x=>String(x.id)===String(mapSelId)))selectMapPin(mapSelId);
       else if(props.length)selectMapPin(props[0].id);
       else document.getElementById('mapCard').innerHTML='<div class="map-hint">No properties to show on the map.</div>';
-      try{cfRealMap(props);}catch(e){}
+      }catch(e){try{cfRealMap(props);}catch(e2){}}
     }
     document.addEventListener('click',e=>{
       const gm=e.target.closest('[data-goto-map]');

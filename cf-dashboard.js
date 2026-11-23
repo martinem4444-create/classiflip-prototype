@@ -1423,7 +1423,9 @@
       '<div class="f2">' + _ef('cfEdH_furnished', 'Furnished', _es('cfEdH_furnished', opts(L.furnished, ['unfurnished', 'partly', 'furnished']), null)) + _ef('cfEdH_pets', 'Pets', _es('cfEdH_pets', opts(L.pets, ['welcome', 'cats', 'dogs', 'no', 'ask']), 'Not stated')) + '</div>' +
       '<div class="fld"><label>Utilities included</label><div>' + ['heat', 'water', 'hydro', 'internet', 'parking'].map(function (u) { return '<label style="display:inline-flex;gap:6px;align-items:center;margin:0 10px 6px 0;font-weight:400"><input type="checkbox" name="cfEdH_util" value="' + u + '"> ' + L.utilities[u] + '</label>'; }).join('') + '</div></div>' +
       '</div>' +
-      '<div class="fld"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-weight:400"><input type="checkbox" id="cfEdH_viewings_ok" style="margin-top:3px"><span>Let buyers request a viewing with their name + email</span></label></div>';
+      '<div class="fld"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-weight:400"><input type="checkbox" id="cfEdH_viewings_ok" style="margin-top:3px"><span>Let buyers request a viewing with their name + email</span></label></div>' +
+      '<div class="fld"><label>Street address (for the map pin)</label><div style="position:relative"><input id="cfEdAddr" type="text" placeholder="Start typing the address\u2026" autocomplete="off"><div id="cfEdAddrSuggest" hidden style="position:absolute;left:0;right:0;top:100%;z-index:60;background:#fff;border:1px solid #ddd;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);overflow:hidden"></div></div><div style="font-size:12px;color:var(--mu);margin-top:4px">Pick the address from the list so the pin lands on the house.</div></div>' +
+      '<div class="fld"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-weight:400"><input type="checkbox" id="cfEdAreaOnly" style="margin-top:3px"><span>Show area only \u2014 hide my exact address (map shows a circle, not a pin)</span></label></div>';
     fld.parentNode.insertBefore(box, fld.nextSibling);
     return box;
   }
@@ -1448,10 +1450,73 @@
     var boxes = box.querySelectorAll('input[name="cfEdH_util"]');
     for (var i = 0; i < boxes.length; i++) boxes[i].checked = utils.indexOf(boxes[i].value) >= 0;
     var vok = el('cfEdH_viewings_ok'); if (vok) vok.checked = sp.viewings_ok == null ? true : !!sp.viewings_ok;
+    /* Photon address (edit fix, Nov 23, 2026): prefill the saved
+       address + area-only flag, and restore the verified pick so
+       an untouched address keeps its coordinates on save. */
+    var addrInp = el('cfEdAddr'); if (addrInp) addrInp.value = ad.address_text || '';
+    var aoChk = el('cfEdAreaOnly'); if (aoChk) aoChk.checked = !!ad.show_area_only;
+    window.__cfEdAddrPick = (ad.address_text && ad.latitude != null && ad.longitude != null)
+      ? { text: ad.address_text, lat: Number(ad.latitude), lng: Number(ad.longitude) } : null;
+    wireEditorPhoton();
     var sw = el('cfEdH_saleWrap'); if (sw) sw.style.display = ad.category === 'Homes' ? '' : 'none';
     var lw = el('cfEdH_leaseWrap'); if (lw) lw.style.display = ad.category === 'Rentals' ? '' : 'none';
     var aw = el('cfEdH_agentWrap');
     if (aw) aw.style.display = ((realEdit && realEdit.isAdvertiser) || sp.mls_number) ? '' : 'none';
+  }
+  /* Photon autocomplete for the EDITOR address field (Nov 23,
+     2026) — same rules as the post form: picking a suggestion
+     stores window.__cfEdAddrPick {text, lat, lng}; typing over a
+     pick clears it, so a hand-typed address never inherits stale
+     coordinates. Wired once; the input is JS-built above. */
+  function wireEditorPhoton() {
+    var inp = document.getElementById('cfEdAddr');
+    var box = document.getElementById('cfEdAddrSuggest');
+    if (!inp || !box || inp.__cfEdPhotonWired) return;
+    inp.__cfEdPhotonWired = true;
+    var timer = null;
+    function hide() { box.hidden = true; box.innerHTML = ''; }
+    function labelOf(pr) {
+      var line1 = ((pr.housenumber ? pr.housenumber + ' ' : '') + (pr.street || pr.name || '')).trim();
+      var parts = [line1, pr.city || pr.county || '', pr.postcode || ''].filter(Boolean);
+      return parts.join(', ');
+    }
+    inp.addEventListener('input', function () {
+      if (window.__cfEdAddrPick && inp.value.trim() !== window.__cfEdAddrPick.text) window.__cfEdAddrPick = null;
+      clearTimeout(timer);
+      var v = inp.value.trim();
+      if (v.length < 3) { hide(); return; }
+      timer = setTimeout(function () {
+        fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(v) + '&lat=43.5890&lon=-79.6441&limit=5&lang=en')
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var feats = (j && j.features) || [];
+            if (!feats.length) { hide(); return; }
+            box.innerHTML = '';
+            feats.forEach(function (f) {
+              var pr = f.properties || {};
+              var co = (f.geometry && f.geometry.coordinates) || [];
+              if (co.length < 2) return;
+              var lab = labelOf(pr);
+              if (!lab) return;
+              var b = document.createElement('button');
+              b.type = 'button';
+              b.textContent = lab;
+              b.style.cssText = 'display:block;width:100%;text-align:left;padding:10px 12px;background:#fff;border:0;border-bottom:1px solid #eee;cursor:pointer;font:inherit;color:#222';
+              b.addEventListener('mousedown', function (ev) {
+                ev.preventDefault();
+                inp.value = lab;
+                window.__cfEdAddrPick = { text: lab, lat: co[1], lng: co[0] };
+                hide();
+              });
+              box.appendChild(b);
+            });
+            box.hidden = !box.children.length;
+          })
+          .catch(function () { hide(); });
+      }, 300);
+    });
+    inp.addEventListener('blur', function () { setTimeout(hide, 150); });
+    document.addEventListener('click', function (e) { if (e.target !== inp && !box.contains(e.target)) hide(); });
   }
   function collectEditorHomeSpecs(cat) {
     function v(id) { var n = el(id); return n ? String(n.value).trim() : ''; }
@@ -2725,8 +2790,14 @@
     var user = await getUser(client);
     if (!user) { say('Please log in first.'); return; }
     var lr = await client.from('listings')
-      .select('id,title,description,price,category,location,status,photo_url,seller_id,rejection_reason,specs')
+      .select('id,title,description,price,category,location,status,photo_url,seller_id,rejection_reason,specs,address_text,latitude,longitude,show_area_only')
       .eq('id', id).maybeSingle();
+    if (lr && lr.error) {
+      /* Address columns missing (Photon migration not pasted yet). */
+      lr = await client.from('listings')
+        .select('id,title,description,price,category,location,status,photo_url,seller_id,rejection_reason,specs')
+        .eq('id', id).maybeSingle();
+    }
     if (lr && lr.error) {
       /* Specs column missing (Cars migration not pasted yet). */
       lr = await client.from('listings')
@@ -2759,7 +2830,7 @@
         .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(50);
       if (orr2 && orr2.data) svcOrdersD = orr2.data;
     } catch (e4) {}
-    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit, category: ad.category || '', isAdvertiser: isAdv, origSellerType: (parseCarSpecs(ad.specs).seller_type || '') };
+    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit, category: ad.category || '', isAdvertiser: isAdv, origSellerType: (parseCarSpecs(ad.specs).seller_type || ''), origAddr: { text: ad.address_text || '', lat: ad.latitude == null ? null : Number(ad.latitude), lng: ad.longitude == null ? null : Number(ad.longitude), area: !!ad.show_area_only } };
     var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = 'Edit ad';
     var edSub = el('edSub');
     /* Rejected-editor guidance (Oct 29, best-solution build):
@@ -2852,6 +2923,32 @@
     var edSvcSpecs = null;
     if (st.category === 'Services') {
       edSvcSpecs = collectEditorSvcSpecs();
+    }
+    /* Photon address (edit fix, Nov 23, 2026): Homes & Rentals
+       only. For edits, only CHANGED fields ride the patch, so a
+       price-only edit stays byte-identical to before and keeps
+       its auto-approve behaviour. A fresh pick carries coords; a
+       hand-typed address keeps the text but drops stale coords;
+       an emptied field clears all three. */
+    var edAddrFields = null;
+    if (st.category === 'Homes' || st.category === 'Rentals') {
+      var aInp = el('cfEdAddr');
+      var aTxt = aInp ? aInp.value.trim() : '';
+      var aArea = !!(el('cfEdAreaOnly') && el('cfEdAreaOnly').checked);
+      var aPick = window.__cfEdAddrPick;
+      var aLat = null, aLng = null;
+      if (aTxt && aPick && aPick.text === aTxt) { aLat = aPick.lat; aLng = aPick.lng; }
+      if (isNew) {
+        edAddrFields = { address_text: aTxt || null, latitude: aLat, longitude: aLng, show_area_only: aArea };
+      } else {
+        var oA = st.origAddr || { text: '', lat: null, lng: null, area: false };
+        edAddrFields = {};
+        if (aTxt !== oA.text) edAddrFields.address_text = aTxt || null;
+        if (aLat !== oA.lat) edAddrFields.latitude = aLat;
+        if (aLng !== oA.lng) edAddrFields.longitude = aLng;
+        if (aArea !== oA.area) edAddrFields.show_area_only = aArea;
+        if (!Object.keys(edAddrFields).length) edAddrFields = null;
+      }
     }
     var grid = el('pgrid');
     var tiles = grid ? grid.querySelectorAll('.ptile:not(.add)') : [];
@@ -2949,6 +3046,12 @@
       if (edCarSpecs) newRow.specs = edCarSpecs;
       if (edHomeSpecs) newRow.specs = edHomeSpecs;
       if (edSvcSpecs) newRow.specs = edSvcSpecs;
+      if (edAddrFields) {
+        newRow.address_text = edAddrFields.address_text;
+        newRow.latitude = edAddrFields.latitude;
+        newRow.longitude = edAddrFields.longitude;
+        newRow.show_area_only = edAddrFields.show_area_only;
+      }
       /* Package quota: when the category's default package is a
          finite plan and it is already full, the ad parks on the
          order and goes live at renewal - the marketplace rule. */
@@ -2974,6 +3077,10 @@
       if (ins.error && /pending_pkg_order_id/i.test(ins.error.message || '')) {
         delete newRow.pending_pkg_order_id;
         quotaFull = false;
+        ins = await client.from('listings').insert([newRow]).select('id').single();
+      }
+      if (ins.error && edAddrFields && /address_text|latitude|longitude|show_area_only/i.test(ins.error.message || '')) {
+        delete newRow.address_text; delete newRow.latitude; delete newRow.longitude; delete newRow.show_area_only;
         ins = await client.from('listings').insert([newRow]).select('id').single();
       }
       if (ins.error || !ins.data || !ins.data.id) {
@@ -3056,12 +3163,18 @@
     if (edCarSpecs) upd.specs = edCarSpecs;
     if (edHomeSpecs) upd.specs = edHomeSpecs;
     if (edSvcSpecs) upd.specs = edSvcSpecs;
+    if (edAddrFields) { Object.keys(edAddrFields).forEach(function (k) { upd[k] = edAddrFields[k]; }); }
     var res = await client.from('listings').update(upd).eq('id', st.id);
     if (res.error && (edCarSpecs || edHomeSpecs || edSvcSpecs) && /specs/i.test(res.error.message || '')) {
       /* Specs column missing: save everything else (same graceful
          pattern as the post path). */
       try { console.warn('[ClassiFlip] listings.specs update failed - saving without specs.'); } catch (e8) {}
       delete upd.specs;
+      res = await client.from('listings').update(upd).eq('id', st.id);
+    }
+    if (res.error && edAddrFields && /address_text|latitude|longitude|show_area_only/i.test(res.error.message || '')) {
+      /* Address columns missing: save everything else. */
+      delete upd.address_text; delete upd.latitude; delete upd.longitude; delete upd.show_area_only;
       res = await client.from('listings').update(upd).eq('id', st.id);
     }
     if (res.error) { say('Could not save: ' + res.error.message); return; }

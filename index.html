@@ -267,6 +267,42 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 #postModal .dialog-body,#jobPostModal .dialog-body{overflow-y:auto;flex:1;min-height:0;padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 }</style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<style>/* CF reskin v1 (Nov 25, 2026) — caps wordmark polish, logo spin, mobile header Option A, hero waitlist link + launch countdown, just-flipped ticker, boosted-badge sway, price-drop badge, 3-across wide grid. Concept keyframes (sway/tick) ported from the reskin concept; no demo data. */
+/* Logo spin on hover */
+.brand .brand-mark{transition:transform .6s ease}
+.brand:hover .brand-mark{transform:rotate(360deg)}
+/* Header Option A — MOBILE ONLY (max-width:900px): hide the Waitlist / Advertise / Stores ghostlinks in .nav-actions and the standalone Saved button. Bottom tab bar covers Stores/Advertise; the avatar dropdown covers Saved. Desktop untouched. */
+@media(max-width:900px){
+.nav-actions a.ghostlink[href="waitlist.html"],.nav-actions a.ghostlink[href="advertise.html"],.nav-actions a.ghostlink[href="stores.html"],.nav-actions #savedBtn{display:none!important}
+}
+/* Hero waitlist link (replaces the header Waitlist button removed on mobile; shown at all sizes) */
+.cf-waitlist-link{font-size:13.5px;font-weight:700;color:var(--orange);text-decoration:none;white-space:nowrap}
+.cf-waitlist-link:hover{text-decoration:underline}
+/* Launch countdown (hero launch area) */
+.cf-countdown{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:18px}
+.cf-cd-cell{background:var(--navy);color:#fff;border-radius:10px;padding:7px 10px;text-align:center;min-width:54px}
+.cf-cd-cell b{display:block;font-size:18px;line-height:1.1;font-variant-numeric:tabular-nums}
+.cf-cd-cell small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
+.cf-cd-note{color:var(--muted);font-size:12.5px;font-weight:600}
+.cf-cd-live{font-weight:800;color:var(--orange);font-size:17px}
+/* Just-flipped ticker (populated by cf-listings.js renderTicker; hidden until real listings land) */
+#cfTicker{display:flex;align-items:stretch;background:var(--orange);color:#fff;overflow:hidden;border-radius:12px;margin-top:20px}
+#cfTicker[hidden]{display:none!important}
+.cf-tick-label{flex:0 0 auto;align-self:center;background:#fff;color:var(--orange);border-radius:999px;padding:3px 10px;margin:8px 4px 8px 10px;font-weight:800;font-size:11px;letter-spacing:.06em;white-space:nowrap}
+.cf-tick-viewport{flex:1 1 auto;overflow:hidden;display:flex;align-items:center;min-width:0}
+.cf-tick-track{display:inline-flex;white-space:nowrap;padding:9px 0;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;animation:tick 28s linear infinite}
+.cf-tick-item{padding:0 18px}
+#cfTicker:hover .cf-tick-track{animation-play-state:paused}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* Boosted badge sway (concept @keyframes sway, +-3deg, origin top center) */
+@keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+.badge.cf-sway{transform-origin:top center;animation:sway 2.6s ease-in-out infinite}
+/* Price-drop badge (listings.prev_price; rendered by cfDropBadge in the reskin script) */
+.cf-drop-badge{position:absolute;left:10px;bottom:10px;z-index:2;background:#F4511E;color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:5px 9px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+/* 3-across results grid on wide desktop (smaller breakpoints untouched; the show-pricing 2-col layout keeps its higher-specificity rule) */
+@media(min-width:901px){.listing-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.brand .brand-mark{transition:none}.brand:hover .brand-mark{transform:none}.badge.cf-sway{animation:none}.cf-tick-track{animation:none}}
+</style>
 </head>
 <body>
   <header class="topbar">
@@ -290,7 +326,8 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
       <div class="hero-copy">
         <h1>Local finds. <em>Better flips.</em></h1>
         <p>A focused marketplace concept for neighbours to buy, sell and discover great value close to home.</p>
-        <div class="hero-actions"><button class="primary" id="browseBtn">Browse listings</button><div class="launch-tally" aria-label="Launching soon — be one of the first"><span class="tally-dot" aria-hidden="true"></span><span><strong>Launching soon</strong><small>Be one of the first</small></span></div></div>
+        <div class="hero-actions"><button class="primary" id="browseBtn">Browse listings</button><div class="launch-tally" aria-label="Launching soon — be one of the first"><span class="tally-dot" aria-hidden="true"></span><span><strong>Launching soon</strong><small>Be one of the first</small></span></div><a class="cf-waitlist-link" href="waitlist.html">Join the waitlist →</a></div>
+        <div class="cf-countdown" id="cfCountdown" aria-label="Countdown to launch, January 1, 2027"><span class="cf-cd-cell"><b data-cd="d">--</b><small>days</small></span><span class="cf-cd-cell"><b data-cd="h">--</b><small>hrs</small></span><span class="cf-cd-cell"><b data-cd="m">--</b><small>min</small></span><span class="cf-cd-cell"><b data-cd="s">--</b><small>sec</small></span><span class="cf-cd-note">to launch · Jan 1, 2027</span></div>
         <div class="trust">
           <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>Email verified</span>
           <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>Phone verified sellers</span>
@@ -306,6 +343,8 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 <div class="hcar-dots" id="hcarDots"></div>
 </div></div></div>
     </section>
+
+    <div id="cfTicker" class="cf-ticker" hidden aria-label="Just flipped — newest listings"></div>
 
     <section class="how-strip" aria-labelledby="howTitle">
       <div class="how-intro"><h2 id="howTitle">How it works</h2><p>From listing to sold in three simple steps.</p></div>
@@ -868,7 +907,7 @@ function openMessageThread(x){
       const totalPages=Math.max(1,Math.ceil(rows.length/PER_PAGE));if(currentPage>totalPages)currentPage=totalPages;
       const pageRows=rows.slice((currentPage-1)*PER_PAGE,currentPage*PER_PAGE);
       resultsNote.textContent=`${rows.length} listing${rows.length===1?'':'s'}`;
-      grid.innerHTML=pageRows.length?pageRows.map((x,i)=>`<article class="listing"${(x.live && String(x.seller_id||'')!==String(window.__cfMyId||''))?' data-listing-id="'+x.id+'"':''}><div class="listing-media" data-view="${x.id}"><span class="badge">${x.boostedEffective?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED':(String(x.promotion||'').startsWith('<svg')?x.promotion:safe(x.promotion||x.postingLabel||(i<2?'Fresh':'Local')))}</span><button class="save ${saved.has(String(x.id))?'saved':''}" data-save="${x.id}" aria-label="${saved.has(String(x.id))?'Remove from':'Save to'} favourites"><span aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span></button>${x.photo?'<img src="'+cfT(x.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">':(x.live?cfNoPhotoTile():icons[x.icon])}</div><div class="listing-body"><div class="price">${displayPrice(x)}</div><h3 data-view="${x.id}">${x.title}</h3>${(window.CFCars&&window.CFCars.chipsHtml)?window.CFCars.chipsHtml(x):''}${(window.CFHomes&&window.CFHomes.chipsHtml)?window.CFHomes.chipsHtml(x):''}<div class="meta"><span>${x.condition}</span><span>•</span><span>${x.location}</span></div>${x.live&&x.verified?verifiedMark:''}<div class="listing-footer"><span class="prototype-tag">${x.live?'LIVE LISTING':'SAMPLE'}</span>${(loggedIn&&x.live&&window.__cfMyId&&String(x.seller_id||'')===String(window.__cfMyId)&&!x.boostedEffective)?'<button class="view" data-cf-real-boost="'+x.id+'">Boost · $2.99</button>':''}${dealerPageBtn(x)}<button class="view" data-view="${x.id}">View details →</button></div></div></article>`).join(''):'<div class="empty">No sample listings match those filters. Try another category or search.</div>';
+      grid.innerHTML=pageRows.length?pageRows.map((x,i)=>`<article class="listing"${(x.live && String(x.seller_id||'')!==String(window.__cfMyId||''))?' data-listing-id="'+x.id+'"':''}><div class="listing-media" data-view="${x.id}"><span class="badge${x.boostedEffective?' cf-sway':''}">${x.boostedEffective?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED':(String(x.promotion||'').startsWith('<svg')?x.promotion:safe(x.promotion||x.postingLabel||(i<2?'Fresh':'Local')))}</span><button class="save ${saved.has(String(x.id))?'saved':''}" data-save="${x.id}" aria-label="${saved.has(String(x.id))?'Remove from':'Save to'} favourites"><span aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span></button>${(typeof cfDropBadge==='function')?cfDropBadge(x):''}${x.photo?'<img src="'+cfT(x.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">':(x.live?cfNoPhotoTile():icons[x.icon])}</div><div class="listing-body"><div class="price">${displayPrice(x)}</div><h3 data-view="${x.id}">${x.title}</h3>${(window.CFCars&&window.CFCars.chipsHtml)?window.CFCars.chipsHtml(x):''}${(window.CFHomes&&window.CFHomes.chipsHtml)?window.CFHomes.chipsHtml(x):''}<div class="meta"><span>${x.condition}</span><span>•</span><span>${x.location}</span></div>${x.live&&x.verified?verifiedMark:''}<div class="listing-footer"><span class="prototype-tag">${x.live?'LIVE LISTING':'SAMPLE'}</span>${(loggedIn&&x.live&&window.__cfMyId&&String(x.seller_id||'')===String(window.__cfMyId)&&!x.boostedEffective)?'<button class="view" data-cf-real-boost="'+x.id+'">Boost · $2.99</button>':''}${dealerPageBtn(x)}<button class="view" data-view="${x.id}">View details →</button></div></div></article>`).join(''):'<div class="empty">No sample listings match those filters. Try another category or search.</div>';
       try { if (typeof window.__cfObserveImpressions === 'function') window.__cfObserveImpressions(); } catch (e) {}
       renderPagination(totalPages);
       document.getElementById('savedCount').textContent=saved.size;
@@ -1410,6 +1449,42 @@ window.addEventListener('focus',updateMsgsDot);
   }
   tick();
   setInterval(tick, 2500);
+})();
+</script>
+<script>/* CF reskin v1 (Nov 25, 2026): launch countdown + price-drop badge helper.
+   cfDropBadge(x): orange pill when the mapped row carries prevPrice (listings.prev_price,
+   set by the cf-prev-price migration trigger) and the current price is a real drop. */
+window.cfDropBadge = function (x) {
+  try {
+    var pp = Number(x && x.prevPrice), p = Number(x && x.price);
+    if (pp > 0 && p > 0 && p < pp) {
+      var pct = Math.round((1 - p / pp) * 100);
+      if (pct >= 1) return '<span class="cf-drop-badge">\u25bc ' + pct + '% less</span>';
+    }
+  } catch (e) {}
+  return '';
+};
+(function () {
+  var box = document.getElementById('cfCountdown');
+  if (!box) return;
+  var target = new Date('2027-01-01T00:00:00-05:00').getTime(); /* Jan 1, 2027 00:00 America/Toronto (EST) */
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function set(k, v) { var el = box.querySelector('[data-cd="' + k + '"]'); if (el) el.textContent = pad(v); }
+  var timer = null;
+  function tick() {
+    var diff = target - Date.now();
+    if (diff <= 0) {
+      box.innerHTML = '<span class="cf-cd-live">We\'re live!</span>';
+      if (timer) clearInterval(timer);
+      return;
+    }
+    set('d', Math.floor(diff / 864e5));
+    set('h', Math.floor(diff / 36e5) % 24);
+    set('m', Math.floor(diff / 6e4) % 60);
+    set('s', Math.floor(diff / 1e3) % 60);
+  }
+  timer = setInterval(tick, 1000);
+  tick();
 })();
 </script>
 </body>

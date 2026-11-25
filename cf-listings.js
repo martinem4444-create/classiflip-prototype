@@ -360,7 +360,12 @@
       boostedEffective: !!(boostedIds && boostedIds[r.id]),
       boostExpires: (boostedIds && boostedIds[r.id]) || null,
       boostActivatedMs: (boostSort && boostSort[r.id]) ? boostSort[r.id].ms : null,
-      bstNum: (boostSort && boostSort[r.id]) ? boostSort[r.id].bst : null
+      bstNum: (boostSort && boostSort[r.id]) ? boostSort[r.id].bst : null,
+      /* Reskin v1 (Nov 25, 2026): previous price before the most recent
+         drop (listings.prev_price, maintained by a BEFORE UPDATE
+         trigger). The card renderer turns it into the orange
+         %-drop badge; null whenever there is no live drop. */
+      prevPrice: (r.prev_price != null && !isNaN(Number(r.prev_price))) ? Number(r.prev_price) : null
     };
   }
 
@@ -408,6 +413,35 @@
     } catch (e) {}
   }
 
+  /* Reskin v1 (Nov 25, 2026): "Just flipped" ticker. Populates the
+     #cfTicker strip (index.html, under the hero) with the newest
+     active listings from the fetch that just succeeded — rows arrive
+     ordered created_at DESC, so the first 10 ARE the newest; no
+     extra query. The track content is duplicated once so the CSS
+     tick animation (translateX 0 -> -50%) loops seamlessly; it
+     pauses on hover and is disabled under prefers-reduced-motion
+     (CSS lives in the index.html reskin style block). No listings
+     (or no strip on the page) = the strip stays hidden. */
+  function renderTicker(rows) {
+    var strip = document.getElementById('cfTicker');
+    if (!strip) return;
+    var esc = function (s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+    var items = (rows || []).filter(function (r) { return r && r.title; }).slice(0, 10);
+    if (!items.length) { strip.hidden = true; return; }
+    var html = items.map(function (r) {
+      var priceTxt;
+      if (typeof displayPrice === 'function') { try { priceTxt = displayPrice(r); } catch (e) { priceTxt = ''; } }
+      if (!priceTxt) { var p = Number(r.price); priceTxt = p > 0 ? ('$' + (p % 1 ? p.toFixed(2) : String(p))) : 'FREE'; }
+      var city = String(r.location || '').split(',')[0].trim();
+      return '<span class="cf-tick-item">' + esc(r.title) + ' \u00b7 ' + esc(priceTxt) + (city ? ' \u00b7 ' + esc(city) : '') + '</span>';
+    }).join('');
+    strip.innerHTML = '<span class="cf-tick-label">JUST FLIPPED</span>' +
+      '<div class="cf-tick-viewport"><div class="cf-tick-track" style="animation-duration:' + Math.max(20, items.length * 4) + 's">' + html + html + '</div></div>';
+    strip.hidden = false;
+  }
+
   /* Fetch active listings, newest first. Returns true only when the
      page was actually switched to database rows; false means "leave
      the demo listings exactly as they are". */
@@ -439,7 +473,7 @@
     try {
       var res = await client
         .from('listings')
-        .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags,specs,address_text,latitude,longitude,show_area_only')
+        .select('id,title,description,price,prev_price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags,specs,address_text,latitude,longitude,show_area_only')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
       if (res.error) {
@@ -450,9 +484,21 @@
         try { console.warn('[ClassiFlip] listings.specs read failed - retrying without specs (Cars migration not pasted yet).'); } catch (e) {}
         res = await client
           .from('listings')
-          .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags')
+          .select('id,title,description,price,prev_price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags')
           .eq('status', 'active')
           .order('created_at', { ascending: false });
+        if (res.error) {
+          /* Reskin v1 (Nov 25, 2026): prev_price exists only after the
+             cf-prev-price migration. Retry once more with the original
+             spec-less, prev_price-less select so the marketplace NEVER
+             breaks before that SQL lands — rows just carry no
+             prevPrice and price-drop badges stay hidden. */
+          res = await client
+            .from('listings')
+            .select('id,title,description,price,category,condition,location,status,boosted,photo_url,created_at,seller_id,tags')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false });
+        }
       }
       if (res.error || !res.data || !res.data.length) return false;
       /* Multi-photo (v1.7): one extra read for every fetched ad's
@@ -546,6 +592,7 @@
       if (typeof render === 'function') render();
       if (typeof renderFeatured === 'function') renderFeatured();
       if (typeof renderHeroCarousel === 'function') renderHeroCarousel();
+      try { renderTicker(rows); } catch (e) {}
       var rn = document.getElementById('resultsNote');
       if (rn) rn.textContent = rows.length + (rows.length === 1 ? ' live listing' : ' live listings');
       try { maybeOpenDeepLink(); } catch (e) {}

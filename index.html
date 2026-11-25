@@ -296,6 +296,40 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 @media(min-width:901px){.listing-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.brand .brand-mark{transition:none}.brand:hover .brand-mark{transform:none}.badge.cf-sway{animation:none}.cf-tick-track{animation:none}}
 </style>
+<style>
+/* CF reskin v2 (Nov 25, 2026) — concept pill nav + enlarged hero carousel. CSS only: no markup, ids, handlers or data changed. */
+/* Pill nav (desktop): theme variables keep the same treatment legible in light and dark modes. */
+@media(min-width:901px){
+.nav-actions a.ghostlink,.nav-actions button.ghost,.nav-actions button.account-create{border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--navy);padding:0 16px;transition:border-color .18s ease,color .18s ease,background-color .18s ease,transform .18s ease}
+.nav-actions a.ghostlink:hover,.nav-actions button.ghost:hover{border-color:var(--orange);color:var(--orange);transform:translateY(-1px)}
+.nav-actions button.account-create{background:var(--surface);border-color:var(--orange);color:var(--orange)}
+.nav-actions button.account-create:hover{background:color-mix(in srgb,var(--orange) 8%,var(--surface));border-color:var(--orange);color:var(--orange);transform:translateY(-1px)}
+.nav-actions #savedBtn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--navy);padding:0 14px 0 16px}
+.nav-actions #savedBtn::before{content:"♡";font-size:16px;line-height:1;color:var(--navy);margin-right:6px}
+.nav-actions #savedBtn #savedCount{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#17345D;color:#fff;font-size:12px;font-weight:800;line-height:1;margin-left:4px!important}
+.nav-actions #postAdBtn{border-radius:999px}
+/* Enlarged hero carousel (desktop): the photo card now fills the hero's right column; the logo disc becomes a small corner badge. */
+.hero{min-height:440px}
+.hero-art{min-height:440px;padding:20px 16px}
+.hero-side{position:relative;display:block;width:100%;max-width:560px;margin:0 auto;padding:0}
+.hero-logo-small{position:absolute;top:-14px;left:-14px;z-index:4;flex:none;width:90px;height:90px;border:3px solid var(--surface)}
+.hcar{width:100%;min-height:400px;aspect-ratio:4/3;border-radius:24px}
+.hcar-tag{top:14px;left:104px}
+.hcar-cap{padding:34px 18px 16px}
+.hcar-cap .t{font-size:17px}
+.hcar-cap .p{font-size:15px}
+.hcar-btn{width:38px;height:38px}
+}
+/* Mobile/tablet: keep the v7–v17 header sizing and Option A visibility rules; soften radii only. The carousel stacks full-width under the hero copy. */
+@media(max-width:900px){
+.nav-actions a.ghostlink,.nav-actions button.ghost,.nav-actions button.account-create,.nav-actions #postAdBtn{border-radius:999px}
+.hero-art{padding:22px 16px 26px}
+.hero-side{position:relative;display:block;width:100%;max-width:680px;margin:0 auto;padding:0}
+.hero-logo-small{position:absolute;top:-12px;left:-8px;z-index:4;flex:none;width:82px;height:82px;border:3px solid var(--surface)}
+.hcar{width:100%;min-height:260px;aspect-ratio:4/3;border-radius:24px}
+.hcar-tag{top:12px;left:86px}
+}
+</style>
 </head>
 <body>
   <header class="topbar">

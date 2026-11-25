@@ -1,5 +1,6 @@
-/* ClassiFlip real listings v1.20 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
+/* ClassiFlip real listings v1.21 — Supabase (marketplace-dev). Preview restored + multi-photo upload + post lands on View All + real rows marked LIVE LISTING + demo filler merged below real ads + step 5 Boost pinning + FCFS boost ordering (v1.9) + marketplace real boost button (v1.9) + package-default (v1.10) + dealer pages (v1.11) + dealer-choice gate (v1.12) + holder postNotice hide (v1.13) + v1.14 small-fix batch: fail message survives the modal reopen (was overwritten by the form updater) + business stats (v1.15): per-ad impressions/clicks recorded for the dashboard. + v1.17: mapRow passes created_at through for the marketplace fair-rotation ordering (Nov 8, 2026).
  * Step 4: new posts insert as status='pending' (approval gate — hidden from the public fetch until an admin approves) + admin email notification via the notify-admin-pending-ad Edge Function (no key in site code).
+ * v1.21 (Nov 25, 2026): package-holder auto-approve — a seller holding an Active, unexpired package for the ad's category (dashboard label map, see pkgCategoryOf) with quota left inserts as status='active' instead and gets no admin email; the success UI says the ad is live. The step-4 guard trigger permits that one transition for matching package holders once cf-pkg-autoapprove-migration.sql has run (ships with this version).
  *
  * WHAT IT DOES:
  * - On page load, fetches listings with status 'active' (newest first)
@@ -786,7 +787,10 @@
         location: document.getElementById('adLocation').value.trim() || 'Mississauga, ON',
         /* Step 4 approval gate: pending, NOT active. The public fetch
            reads only status='active' rows (and the seller's own rows),
-           so a pending ad stays hidden until an admin approves it. */
+           so a pending ad stays hidden until an admin approves it.
+           The package-holder check right before the insert flips
+           this to 'active' when the seller's package covers the
+           category (v1.21). */
         status: 'pending'
       };
       if (photoUrl) newRow.photo_url = photoUrl;
@@ -827,6 +831,43 @@
         var pd = window.__cfPkgDefault;
         if (pd && pd.orderId && pd.category === newRow.category) newRow.order_id = pd.orderId;
       } catch (e) {}
+      /* Package-holder auto-approve (v1.21, Nov 25, 2026 — Martin's
+         ruling: package holders post straight to live). When the
+         seller holds an Active, unexpired package whose category —
+         per pkgCategoryOf (the dashboard's label map) — matches this
+         ad's category, AND that package still has quota (the same
+         order_id count pkgRefresh runs), the row inserts as
+         'active' instead of 'pending'. pkgFetchOrders is the same
+         orders read the form default uses (Active + expires_at in
+         the future, newest first). The step-4 guard trigger allows
+         exactly this transition for matching package holders once
+         cf-pkg-autoapprove-migration.sql has run — this file ships
+         with that migration. Any check failure or no-match leaves
+         the ad pending, exactly as today. Categories with no
+         packages (Clothes, Computers, Electronics, Home, Sports,
+         Tools, Free) can never match a label, so they always queue. */
+      var pkgAutoApproved = false;
+      try {
+        var myOrders = await pkgFetchOrders(client, user.id);
+        var matchOrder = null;
+        for (var moi = 0; moi < myOrders.length; moi++) {
+          if (pkgCategoryOf(myOrders[moi].package) === newRow.category) { matchOrder = myOrders[moi]; break; }
+        }
+        if (matchOrder) {
+          var mLimit = pkgQuotaOf(matchOrder.package);
+          if (mLimit === Infinity) {
+            pkgAutoApproved = true;
+          } else {
+            var mCnt = await client.from('listings')
+              .select('id', { count: 'exact', head: true })
+              .eq('order_id', matchOrder.id)
+              .in('status', ['active', 'pending']);
+            if (mCnt.error) throw mCnt.error;
+            pkgAutoApproved = (typeof mCnt.count === 'number' && mCnt.count < mLimit);
+          }
+        }
+      } catch (e) { pkgAutoApproved = false; }
+      if (pkgAutoApproved) newRow.status = 'active';
       var ins = await client.from('listings').insert([newRow]).select().single();
       if (ins.error && newRow.specs && /specs/i.test(ins.error.message || '')) {
         /* Specs column missing (Cars migration not pasted yet):
@@ -873,21 +914,24 @@
           throw phIns.error;
         }
       }
-      /* Auto-moderation safety net (cf-auto-moderate.js v1, OFF by
-         default): if the switch is on and this is a clean trusted-
-         seller ad, flip it to active now; otherwise it stays pending
-         and the admin email below fires exactly as before. A failed
-         check or update always leaves the ad pending — never live. */
-      var autoApproved = false;
+      /* A package-holder ad (v1.21) was already inserted active —
+         it skips the safety net entirely. Otherwise the auto-
+         moderation safety net (cf-auto-moderate.js v1, OFF by
+         default) gets its chance: if the switch is on and this is a
+         clean trusted-seller ad, flip it to active now; otherwise
+         it stays pending and the admin email below fires exactly as
+         before. A failed check or update always leaves the ad
+         pending — never live. */
+      var autoApproved = pkgAutoApproved;
       try {
-        if (window.CFAutoMod && typeof window.CFAutoMod.tryAutoApprove === 'function') {
+        if (!autoApproved && window.CFAutoMod && typeof window.CFAutoMod.tryAutoApprove === 'function') {
           autoApproved = await window.CFAutoMod.tryAutoApprove(client, user, ins.data.id, {
             title: title,
             description: document.getElementById('adDescription').value.trim(),
             category: newRow.category, price: price, photo_url: photoUrl
           });
         }
-      } catch (e) { autoApproved = false; }
+      } catch (e) { if (!pkgAutoApproved) autoApproved = false; }
       /* Admin email: fire-and-forget, never blocks the post flow.
          Skipped for auto-approved ads — there is nothing pending. */
       try {
@@ -941,8 +985,10 @@
          (the page's demo post did), so a stale category could leave
          the grid empty after posting. Clicking the page's own All chip
          resets category, search and Saved through its own handler.
-         Note: the new ad itself will NOT appear here until an admin
-         approves it — that is the approval gate working as intended. */
+         Note: a pending ad will NOT appear here until an admin
+         approves it — that is the approval gate working as intended.
+         A package-holder's auto-approved ad is already active, so
+         the refresh above lands it in the grid right away. */
       try {
         var allChip = document.querySelector('[data-category="All"]');
         if (allChip) allChip.click();
@@ -1045,6 +1091,26 @@
     if (l.indexOf('Services') === 0) return 'services';
     if (l.indexOf('Jobs') === 0) return 'jobs';
     return null; /* Founding + anything else: no family in v1 */
+  }
+  /* Package-holder auto-approve (Nov 25, 2026): package label ->
+     listing category, mirroring cf-dashboard.js categoryOfPackageD
+     regex-for-regex so the post flow, the dashboard and the
+     cf_block_self_approve trigger all agree on which package covers
+     which category: Dealer->Cars, Agent->Homes, Rentals->Rentals,
+     Services->Services, Jobs->Jobs. Founding labels carry the same
+     lead words, so they map too. (pkgFamilyOf above is the older
+     family map the form-default flow uses; the two differ in the
+     Agent/Rentals corner — for auto-approval the dashboard map
+     wins, per Martin's ruling: Homes packages cover Homes,
+     Rentals packages cover Rentals.) */
+  function pkgCategoryOf(pkgLabel) {
+    var n = String(pkgLabel || '');
+    if (/dealer/i.test(n)) return 'Cars';
+    if (/agent/i.test(n)) return 'Homes';
+    if (/rental/i.test(n)) return 'Rentals';
+    if (/service/i.test(n)) return 'Services';
+    if (/job/i.test(n)) return 'Jobs';
+    return null;
   }
   function pkgQuotaOf(pkgLabel) {
     var l = String(pkgLabel || '');

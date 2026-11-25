@@ -1,4 +1,4 @@
-/* ClassiFlip dashboard wiring v1.5 (step 4 + multi-photo + step 5 Boost + ad manager + business stats) — Supabase (marketplace-dev).
+/* ClassiFlip dashboard wiring v1.6 (step 4 + multi-photo + step 5 Boost + ad manager + business stats + package-holder auto-approve, Nov 25, 2026) — Supabase (marketplace-dev).
  *
  * WHAT IT DOES (signed-in users only; logged-out visitors keep the demo):
  * - Replaces the demo listing cards with the signed-in user's REAL listings
@@ -3069,6 +3069,20 @@
           }
         } catch (e10) {}
       }
+      /* Package-holder auto-approve (Nov 25, 2026 — Martin's ruling:
+         package holders post straight to live). pkgDefaultForD is
+         this file's own match: an Active, unexpired order whose
+         package label maps to this category (categoryOfPackageD).
+         When one matches and the finite-package quota is not full,
+         the ad inserts as 'active' instead of 'pending' — the
+         step-4 guard trigger permits that one transition for
+         matching package holders once the migration
+         cf-pkg-autoapprove-migration.sql has run (it ships with
+         this version). A quota-full ad
+         stays parked on its order exactly as today, and everyone
+         else queues exactly as today. */
+      var pkgAutoApproved = !!defOrd && !quotaFull;
+      if (pkgAutoApproved) newRow.status = 'active';
       var ins = await client.from('listings').insert([newRow]).select('id').single();
       if (ins.error && (edCarSpecs || edHomeSpecs || edSvcSpecs) && /specs/i.test(ins.error.message || '')) {
         delete newRow.specs;
@@ -3098,14 +3112,17 @@
           return;
         }
       }
-      var autoApproved = false;
+      /* A package-holder ad was already inserted active (above) —
+         it skips the CFAutoMod safety net; the net still gets its
+         chance on every other new ad, exactly as before. */
+      var autoApproved = pkgAutoApproved;
       try {
-        if (user2 && window.CFAutoMod && typeof window.CFAutoMod.tryAutoApprove === 'function') {
+        if (!autoApproved && user2 && window.CFAutoMod && typeof window.CFAutoMod.tryAutoApprove === 'function') {
           autoApproved = await window.CFAutoMod.tryAutoApprove(client, user2, newId, {
             title: title, description: newRow.description, category: st.category, price: price, photo_url: cover
           });
         }
-      } catch (e13) { autoApproved = false; }
+      } catch (e13) { if (!pkgAutoApproved) autoApproved = false; }
       if (!autoApproved) {
         notifyAdminPendingAdD(client, { listing_id: newId, title: title, category: st.category, price: price });
       }

@@ -267,7 +267,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 #postModal .dialog-body,#jobPostModal .dialog-body{overflow-y:auto;flex:1;min-height:0;padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 }</style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-<style>/* CF reskin v1 (Nov 25, 2026) — caps wordmark polish, logo spin, mobile header Option A, hero waitlist link + launch countdown, just-flipped ticker, boosted-badge sway, price-drop badge, 3-across wide grid. Concept keyframes (sway/tick) ported from the reskin concept; no demo data. */
+<style>/* CF reskin v1 (Nov 25, 2026) — caps wordmark polish, logo spin, mobile header Option A, hero waitlist link (countdown lives on waitlist.html), just-flipped ticker, boosted-badge sway, price-drop badge, 3-across wide grid. Concept keyframes (sway/tick) ported from the reskin concept; no demo data. */
 /* Logo spin on hover */
 .brand .brand-mark{transition:transform .6s ease}
 .brand:hover .brand-mark{transform:rotate(360deg)}
@@ -278,13 +278,6 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 /* Hero waitlist link (replaces the header Waitlist button removed on mobile; shown at all sizes) */
 .cf-waitlist-link{font-size:13.5px;font-weight:700;color:var(--orange);text-decoration:none;white-space:nowrap}
 .cf-waitlist-link:hover{text-decoration:underline}
-/* Launch countdown (hero launch area) */
-.cf-countdown{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:18px}
-.cf-cd-cell{background:var(--navy);color:#fff;border-radius:10px;padding:7px 10px;text-align:center;min-width:54px}
-.cf-cd-cell b{display:block;font-size:18px;line-height:1.1;font-variant-numeric:tabular-nums}
-.cf-cd-cell small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
-.cf-cd-note{color:var(--muted);font-size:12.5px;font-weight:600}
-.cf-cd-live{font-weight:800;color:var(--orange);font-size:17px}
 /* Just-flipped ticker (populated by cf-listings.js renderTicker; hidden until real listings land) */
 #cfTicker{display:flex;align-items:stretch;background:var(--orange);color:#fff;overflow:hidden;border-radius:12px;margin-top:20px}
 #cfTicker[hidden]{display:none!important}
@@ -327,7 +320,7 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
         <h1>Local finds. <em>Better flips.</em></h1>
         <p>A focused marketplace concept for neighbours to buy, sell and discover great value close to home.</p>
         <div class="hero-actions"><button class="primary" id="browseBtn">Browse listings</button><div class="launch-tally" aria-label="Launching soon — be one of the first"><span class="tally-dot" aria-hidden="true"></span><span><strong>Launching soon</strong><small>Be one of the first</small></span></div><a class="cf-waitlist-link" href="waitlist.html">Join the waitlist →</a></div>
-        <div class="cf-countdown" id="cfCountdown" aria-label="Countdown to launch, January 1, 2027"><span class="cf-cd-cell"><b data-cd="d">--</b><small>days</small></span><span class="cf-cd-cell"><b data-cd="h">--</b><small>hrs</small></span><span class="cf-cd-cell"><b data-cd="m">--</b><small>min</small></span><span class="cf-cd-cell"><b data-cd="s">--</b><small>sec</small></span><span class="cf-cd-note">to launch · Jan 1, 2027</span></div>
+        
         <div class="trust">
           <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>Email verified</span>
           <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>Phone verified sellers</span>
@@ -1451,7 +1444,7 @@ window.addEventListener('focus',updateMsgsDot);
   setInterval(tick, 2500);
 })();
 </script>
-<script>/* CF reskin v1 (Nov 25, 2026): launch countdown + price-drop badge helper.
+<script>/* CF reskin v1 (Nov 25, 2026): price-drop badge helper.
    cfDropBadge(x): orange pill when the mapped row carries prevPrice (listings.prev_price,
    set by the cf-prev-price migration trigger) and the current price is a real drop. */
 window.cfDropBadge = function (x) {
@@ -1464,28 +1457,7 @@ window.cfDropBadge = function (x) {
   } catch (e) {}
   return '';
 };
-(function () {
-  var box = document.getElementById('cfCountdown');
-  if (!box) return;
-  var target = new Date('2027-01-01T00:00:00-05:00').getTime(); /* Jan 1, 2027 00:00 America/Toronto (EST) */
-  function pad(n) { return (n < 10 ? '0' : '') + n; }
-  function set(k, v) { var el = box.querySelector('[data-cd="' + k + '"]'); if (el) el.textContent = pad(v); }
-  var timer = null;
-  function tick() {
-    var diff = target - Date.now();
-    if (diff <= 0) {
-      box.innerHTML = '<span class="cf-cd-live">We\'re live!</span>';
-      if (timer) clearInterval(timer);
-      return;
-    }
-    set('d', Math.floor(diff / 864e5));
-    set('h', Math.floor(diff / 36e5) % 24);
-    set('m', Math.floor(diff / 6e4) % 60);
-    set('s', Math.floor(diff / 1e3) % 60);
-  }
-  timer = setInterval(tick, 1000);
-  tick();
-})();
+
 </script>
 </body>
 </html>

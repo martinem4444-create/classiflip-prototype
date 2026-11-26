@@ -15,6 +15,12 @@
  *     Sample jobs keep the demo apply flow untouched.
  *   - Fixes the demo copy ("prototype job", "demo only") when the
  *     open detail/form belongs to a real job.
+ *   - Auto-approve (Nov 26, 2026): a package-covered post inserts
+ *     as 'active' with a 30-day expiry and skips the admin pending
+ *     ping; the cf_guard_job_posting trigger re-verifies coverage
+ *     server-side and forces 'pending' when coverage doesn't hold,
+ *     and the success message follows the status the insert
+ *     actually returns. Founding Jobs packages count as coverage.
  *   - Package coverage: an employer with an Active jobs package
  *     ('jobs-single' / 'jobs-unlimited' order) never sees the plan
  *     picker — the post is covered and linked to the order. A Single
@@ -98,7 +104,7 @@
       var res = await client.from('orders')
         .select('id,package,status,expires_at,created_at')
         .eq('buyer_id', uid)
-        .in('package', ['jobs-single', 'jobs-unlimited', 'Jobs Single Job Post', 'Jobs Employer Unlimited'])
+        .in('package', ['jobs-single', 'jobs-unlimited', 'Jobs Single Job Post', 'Jobs Employer Unlimited', 'Jobs Founding Single Job Post', 'Jobs Founding Employer Unlimited'])
         .in('status', ['Active', 'Expiring soon'])
         .order('created_at', { ascending: false });
       if (!res.error && res.data && res.data.length) {
@@ -108,8 +114,8 @@
         });
         var unl = null, sgl = null;
         rows.forEach(function (o) {
-          if ((o.package === 'jobs-unlimited' || o.package === 'Jobs Employer Unlimited') && !unl) unl = o;
-          if ((o.package === 'jobs-single' || o.package === 'Jobs Single Job Post') && !sgl) sgl = o;
+          if ((o.package === 'jobs-unlimited' || o.package === 'Jobs Employer Unlimited' || o.package === 'Jobs Founding Employer Unlimited') && !unl) unl = o;
+          if ((o.package === 'jobs-single' || o.package === 'Jobs Single Job Post' || o.package === 'Jobs Founding Single Job Post') && !sgl) sgl = o;
         });
         if (unl) {
           jobPkg = { kind: 'unlimited', orderId: unl.id, covered: true };
@@ -153,8 +159,8 @@
       if (radio) radio.checked = true;
       if (notice) {
         notice.textContent = jobPkg.kind === 'unlimited'
-          ? '✓ Your Unlimited jobs package is active — post as many jobs as you like. Each post goes to a quick approval, then runs for 30 days.'
-          : '✓ Your Single job post package is active — this post is covered by it. It goes to a quick approval, then runs for 30 days.';
+          ? '✓ Your Unlimited jobs package is active — post as many jobs as you like. Each post goes live right away and runs for 30 days.'
+          : '✓ Your Single job post package is active — this post is covered by it. It goes live right away and runs for 30 days.';
       }
     } else {
       if (fieldset) fieldset.style.display = '';
@@ -260,21 +266,27 @@
       description: val('jobDescriptionInput'),
       plan: covered ? jobPkg.kind : (planEl && planEl.value === 'unlimited' ? 'unlimited' : 'single'),
       order_id: covered ? jobPkg.orderId : null,
-      status: 'pending'
+      status: covered ? 'active' : 'pending',
+      expires_at: covered ? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString() : null
     };
     if (!row.title || !row.company) { fail('Please add a job title and company name.'); return; }
     try {
-      var ins = await client.from('job_postings').insert([row]).select('id').single();
+      var ins = await client.from('job_postings').insert([row]).select('id,status').single();
       if (ins.error || !ins.data) { fail('Could not post the job — please try again.'); return; }
-      notify('notify-admin-pending-job', { job_id: ins.data.id, title: row.title, company: row.company });
+      var liveNow = covered && ins.data.status === 'active';
+      if (!liveNow) {
+        notify('notify-admin-pending-job', { job_id: ins.data.id, title: row.title, company: row.company });
+      }
       var body = form.closest('.dialog-body');
       if (body) {
         body.innerHTML =
           '<div class="apply-success">' +
           '<div class="big"><svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg></div>' +
-          '<h3>Job post received</h3>' +
+          '<h3>' + (liveNow ? 'Your job post is live' : 'Job post received') + '</h3>' +
           '<p>Your post for <strong>' + esc(row.title) + '</strong> at ' + esc(row.company) +
-          ' is in the approval queue. Once it is approved it goes live for 30 days and job seekers can apply right on ClassiFlip — applications land in your dashboard under <strong>Job Applications</strong>.</p>' +
+          (liveNow
+            ? ' is live now — it runs for 30 days and job seekers can apply right on ClassiFlip — applications land in your dashboard under <strong>Job Applications</strong>.</p>'
+            : ' is in the approval queue. Once it is approved it goes live for 30 days and job seekers can apply right on ClassiFlip — applications land in your dashboard under <strong>Job Applications</strong>.</p>') +
           '<button type="button" class="primary" data-close style="width:100%;min-height:48px">Done</button></div>';
       }
       posting = false;

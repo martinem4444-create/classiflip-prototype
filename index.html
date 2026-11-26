@@ -340,6 +340,13 @@ html:not([data-theme="light"]) .cftabs a.on{color:#FF6B35}
 @media(min-width:901px) and (max-width:1500px){.nav{grid-template-columns:auto minmax(190px,1fr) minmax(0,720px)}}
 @media(min-width:1501px){.nav{grid-template-columns:auto minmax(190px,520px) minmax(0,940px)}}
 </style>
+<style>
+/* CF reskin v2.2 (Nov 25, 2026) — price-drop price row (Martin's pick from the concept):
+   big orange price (existing .price style), old price struck through, orange % pill. */
+.cf-price-was{color:var(--muted);font:700 15px/1.2 'Manrope',sans-serif;text-decoration:line-through;margin-left:9px}
+.cf-pct-pill{display:inline-block;background:#F4511E;color:#fff;font:800 11.5px/1 'Manrope',sans-serif;padding:4px 9px;border-radius:999px;margin-left:9px;vertical-align:3px;white-space:nowrap}
+</style>
+
 
 </head>
 <body>
@@ -945,7 +952,7 @@ function openMessageThread(x){
       const totalPages=Math.max(1,Math.ceil(rows.length/PER_PAGE));if(currentPage>totalPages)currentPage=totalPages;
       const pageRows=rows.slice((currentPage-1)*PER_PAGE,currentPage*PER_PAGE);
       resultsNote.textContent=`${rows.length} listing${rows.length===1?'':'s'}`;
-      grid.innerHTML=pageRows.length?pageRows.map((x,i)=>`<article class="listing"${(x.live && String(x.seller_id||'')!==String(window.__cfMyId||''))?' data-listing-id="'+x.id+'"':''}><div class="listing-media" data-view="${x.id}"><span class="badge${x.boostedEffective?' cf-sway':''}">${x.boostedEffective?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED':(String(x.promotion||'').startsWith('<svg')?x.promotion:safe(x.promotion||x.postingLabel||(i<2?'Fresh':'Local')))}</span><button class="save ${saved.has(String(x.id))?'saved':''}" data-save="${x.id}" aria-label="${saved.has(String(x.id))?'Remove from':'Save to'} favourites"><span aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span></button>${(typeof cfDropBadge==='function')?cfDropBadge(x):''}${x.photo?'<img src="'+cfT(x.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">':(x.live?cfNoPhotoTile():icons[x.icon])}</div><div class="listing-body"><div class="price">${displayPrice(x)}</div><h3 data-view="${x.id}">${x.title}</h3>${(window.CFCars&&window.CFCars.chipsHtml)?window.CFCars.chipsHtml(x):''}${(window.CFHomes&&window.CFHomes.chipsHtml)?window.CFHomes.chipsHtml(x):''}<div class="meta"><span>${x.condition}</span><span>•</span><span>${x.location}</span></div>${x.live&&x.verified?verifiedMark:''}<div class="listing-footer"><span class="prototype-tag">${x.live?'LIVE LISTING':'SAMPLE'}</span>${(loggedIn&&x.live&&window.__cfMyId&&String(x.seller_id||'')===String(window.__cfMyId)&&!x.boostedEffective)?'<button class="view" data-cf-real-boost="'+x.id+'">Boost · $2.99</button>':''}${dealerPageBtn(x)}<button class="view" data-view="${x.id}">View details →</button></div></div></article>`).join(''):'<div class="empty">No sample listings match those filters. Try another category or search.</div>';
+      grid.innerHTML=pageRows.length?pageRows.map((x,i)=>`<article class="listing"${(x.live && String(x.seller_id||'')!==String(window.__cfMyId||''))?' data-listing-id="'+x.id+'"':''}><div class="listing-media" data-view="${x.id}"><span class="badge${x.boostedEffective?' cf-sway':''}">${x.boostedEffective?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> BOOSTED':(String(x.promotion||'').startsWith('<svg')?x.promotion:safe(x.promotion||x.postingLabel||(i<2?'Fresh':'Local')))}</span><button class="save ${saved.has(String(x.id))?'saved':''}" data-save="${x.id}" aria-label="${saved.has(String(x.id))?'Remove from':'Save to'} favourites"><span aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span></button>${(typeof cfDropBadge==='function')?cfDropBadge(x):''}${x.photo?'<img src="'+cfT(x.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">':(x.live?cfNoPhotoTile():icons[x.icon])}</div><div class="listing-body"><div class="price">${(typeof cfPriceRow==='function')?cfPriceRow(x):displayPrice(x)}</div><h3 data-view="${x.id}">${x.title}</h3>${(window.CFCars&&window.CFCars.chipsHtml)?window.CFCars.chipsHtml(x):''}${(window.CFHomes&&window.CFHomes.chipsHtml)?window.CFHomes.chipsHtml(x):''}<div class="meta"><span>${x.condition}</span><span>•</span><span>${x.location}</span></div>${x.live&&x.verified?verifiedMark:''}<div class="listing-footer"><span class="prototype-tag">${x.live?'LIVE LISTING':'SAMPLE'}</span>${(loggedIn&&x.live&&window.__cfMyId&&String(x.seller_id||'')===String(window.__cfMyId)&&!x.boostedEffective)?'<button class="view" data-cf-real-boost="'+x.id+'">Boost · $2.99</button>':''}${dealerPageBtn(x)}<button class="view" data-view="${x.id}">View details →</button></div></div></article>`).join(''):'<div class="empty">No sample listings match those filters. Try another category or search.</div>';
       try { if (typeof window.__cfObserveImpressions === 'function') window.__cfObserveImpressions(); } catch (e) {}
       renderPagination(totalPages);
       document.getElementById('savedCount').textContent=saved.size;
@@ -1502,6 +1509,26 @@ window.cfDropBadge = function (x) {
   } catch (e) {}
   return '';
 };
+/* CF reskin v2.2 (Nov 25, 2026): price-row renderer for dropped prices.
+   Returns displayPrice(x) untouched unless the row carries a live drop
+   (prevPrice > price), in which case: orange price + struck-through old
+   price + orange "{pct}% less" pill. The photo-corner badge is separate
+   (cfDropBadge above) and BOOSTED keeps the photo's top-left corner. */
+window.cfPriceRow = function (x) {
+  try {
+    var p = Number(x && x.price), pp = Number(x && x.prevPrice);
+    if (isFinite(p) && isFinite(pp) && pp > 0 && p > 0 && p < pp) {
+      var pct = Math.round((1 - p / pp) * 100);
+      if (pct >= 1) {
+        var was = (typeof money === 'function') ? money(pp) : ('$' + pp);
+        if (x.category === 'Rentals') was += '/mo';
+        return displayPrice(x) + '<s class="cf-price-was">' + was + '</s><span class="cf-pct-pill">' + pct + '% less</span>';
+      }
+    }
+  } catch (e) {}
+  return displayPrice(x);
+};
+
 
 </script>
 </body>

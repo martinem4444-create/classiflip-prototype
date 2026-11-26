@@ -1482,6 +1482,27 @@
     postAd().then(function () { posting = false; }, function () { posting = false; });
   }, true);
 
+  /* Enter-key guard (Nov 26, 2026 - Martin's catch): pressing
+     Enter inside a single-line input of the post form (he hit it
+     in Service areas) implicitly submits the form, throwing the
+     poster into the preview and making the half-filled ad look
+     lost. Enter is now swallowed on inputs/selects inside the
+     form; textareas keep their newline and buttons keep their
+     click. */
+  try {
+    var _pf = document.getElementById('postForm');
+    if (_pf && !_pf.__cfEnterGuard) {
+      _pf.__cfEnterGuard = true;
+      _pf.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var t = e.target;
+        if (!t || !t.tagName) return;
+        if (t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON') return;
+        if (t.tagName === 'INPUT' || t.tagName === 'SELECT') e.preventDefault();
+      });
+    }
+  } catch (e) {}
+
   /* Dashboard deep link (Nov 14, 2026 — Steve's catch): the dashboard
      Post button lands on index.html?post=1, so open the post form
      directly once the signed-in session is live instead of leaving

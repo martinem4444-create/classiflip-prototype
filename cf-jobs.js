@@ -21,6 +21,15 @@
  *     server-side and forces 'pending' when coverage doesn't hold,
  *     and the success message follows the status the insert
  *     actually returns. Founding Jobs packages count as coverage.
+ *   - Paywall (Nov 26, 2026 - Martin's ruling): Jobs is a paid
+ *     category, so a signed-in employer WITHOUT package coverage
+ *     can no longer queue a post - the submit shows a package
+ *     wall (Single $8.99 / Unlimited $49.99, founding 50% off)
+ *     routing to advertise.html, and nothing is inserted. The
+ *     paid-category wall matches the main form, where business
+ *     postings in Cars/Homes/Rentals/Services already redirect
+ *     to advertise.html without a package; free/private posting
+ *     is untouched. Covered posts keep the path below.
  *   - Package coverage: an employer with an Active jobs package
  *     ('jobs-single' / 'jobs-unlimited' order) never sees the plan
  *     picker — the post is covered and linked to the order. A Single
@@ -255,6 +264,26 @@
     var val = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
     var planEl = document.querySelector('input[name="jobPlan"]:checked');
     var covered = pkgCovered();
+    if (!covered) {
+      /* Paywall (Nov 26, 2026): no coverage -> no insert, no
+         pending row, no admin ping. Just the wall. */
+      var wbody = form ? form.closest('.dialog-body') : null;
+      if (wbody) {
+        wbody.innerHTML =
+          '<div class="apply-success">' +
+          '<h3>Posting a job takes a Jobs package</h3>' +
+          '<p>Jobs is a paid board - it keeps every posting a real employer. ' +
+          '<strong>Single job post - $8.99</strong> (one post, live 30 days) or ' +
+          '<strong>Employer Unlimited - $49.99/mo</strong> (post as many as you like). ' +
+          'Founding employers save 50%, locked for 12 months.</p>' +
+          '<a class="primary" href="advertise.html" style="display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;text-decoration:none;margin-bottom:10px">See Jobs packages \u2192</a>' +
+          '<button type="button" class="ghost" data-close style="width:100%;min-height:44px">Not now</button></div>';
+      } else if (submitBtn) {
+        submitBtn.disabled = false; submitBtn.textContent = 'Post job';
+      }
+      posting = false;
+      return;
+    }
     var row = {
       employer_id: uid,
       title: val('jobTitleInput'),

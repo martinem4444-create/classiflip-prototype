@@ -1684,6 +1684,39 @@
     }
   } catch (e) {}
 
+  /* Cancel clears the form (Nov 26, 2026 - Martin's catch): the
+     post modal's Cancel button and x only closed the modal, so
+     reopening Post an ad brought back everything the seller had
+     typed - Cancel read as "close", not "throw it away". Now a
+     genuine close of the post modal (Cancel, x, or a backdrop
+     click) also resets the form and drops any staged photos, so
+     the next Post an ad starts blank. Editing an existing ad is
+     untouched: that lives in the dashboard editor, not this form.
+     Posting and Save draft keep their own resets. */
+  try {
+    var _pm = document.getElementById('postModal');
+    if (_pm && !_pm.__cfCancelClear) {
+      _pm.__cfCancelClear = true;
+      _pm.addEventListener('click', function (e) {
+        var t = e.target;
+        var viaClose = t && t.closest ? t.closest('[data-close]') : null;
+        if (!viaClose && t !== _pm) return;
+        var f = document.getElementById('postForm');
+        if (f) f.reset();
+        try {
+          if (typeof pendingPhotos !== 'undefined') pendingPhotos = [];
+          if (typeof renderPhotoStrip === 'function') renderPhotoStrip();
+        } catch (e2) {}
+        var pf = document.getElementById('pkgDefaultField');
+        if (pf) pf.hidden = true;
+        var pl = document.getElementById('pkgDefaultLine');
+        if (pl) pl.textContent = '';
+        var as = document.getElementById('addrSuggest');
+        if (as) as.hidden = true;
+      });
+    }
+  } catch (e) {}
+
   /* Dashboard deep link (Nov 14, 2026 — Steve's catch): the dashboard
      Post button lands on index.html?post=1, so open the post form
      directly once the signed-in session is live instead of leaving

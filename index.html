@@ -1512,7 +1512,8 @@ window.cfDropBadge = function (x) {
 /* CF reskin v2.2 (Nov 25, 2026): price-row renderer for dropped prices.
    Returns displayPrice(x) untouched unless the row carries a live drop
    (prevPrice > price), in which case: orange price + struck-through old
-   price + orange "{pct}% less" pill. The photo-corner badge is separate
+   price. The % lives ONLY on the photo-corner badge (cfDropBadge) —
+   Martin: the pill in the photo stands out, so no % duplicate in the row.
    (cfDropBadge above) and BOOSTED keeps the photo's top-left corner. */
 window.cfPriceRow = function (x) {
   try {
@@ -1522,7 +1523,7 @@ window.cfPriceRow = function (x) {
       if (pct >= 1) {
         var was = (typeof money === 'function') ? money(pp) : ('$' + pp);
         if (x.category === 'Rentals') was += '/mo';
-        return displayPrice(x) + '<s class="cf-price-was">' + was + '</s><span class="cf-pct-pill">' + pct + '% less</span>';
+        return displayPrice(x) + '<s class="cf-price-was">' + was + '</s>';
       }
     }
   } catch (e) {}

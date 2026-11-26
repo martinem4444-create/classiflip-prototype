@@ -1063,6 +1063,167 @@
     }
   }
 
+
+  /* Save draft (Nov 26, 2026 - Martin's ask after losing a
+     half-typed Services ad to the Enter-key bounce): the post form
+     used to save NOTHING until Post, so any interruption lost the
+     ad. saveDraft() is postAd()'s lenient twin: no title, price or
+     spec validation (a draft is allowed to be half done - title
+     defaults to 'Untitled draft', price to 0, specs ride only when
+     their collector returns cleanly), photos upload exactly like a
+     real post, and the row inserts with status='draft' (needs
+     cf-drafts-migration.sql - the status check constraint). No
+     package attach, no boost, no auto-approve, no admin email: a
+     draft is private to the seller until they finish it from
+     Dashboard -> My Ads (Continue -> Post ad), where the editor's
+     save runs the normal post rules. The self-approve guard
+     trigger only blocks transitions INTO 'active', so a draft
+     insert passes untouched, and the public fetch is active-only,
+     so a draft can never leak onto the marketplace. */
+  async function saveDraft() {
+    var noticeEl = document.getElementById('postNotice');
+    function fail(msg) {
+      if (noticeEl) { noticeEl.textContent = msg; noticeEl.style.display = ''; }
+    }
+    try {
+      var client = getClient();
+      if (!client) { fail('Could not save your draft: not connected. Please reload the page and try again.'); return; }
+      var userRes = await client.auth.getUser();
+      var user = userRes && userRes.data && userRes.data.user;
+      if (!user) { fail('Could not save your draft: you are not signed in. Please log in again.'); return; }
+      var title = document.getElementById('adTitle').value.trim() || 'Untitled draft';
+      var price = Number(document.getElementById('adPrice').value);
+      if (isNaN(price) || price < 0) price = 0;
+      var category = document.getElementById('adCategory').value;
+      /* Specs: collect-only, never validated - a half-filled Cars /
+         Homes / Services section still drafts; the editor enforces
+         the required fields later, when the draft is posted. */
+      var specs = null;
+      try { if (category === 'Cars') specs = collectCarSpecs(); } catch (e) { specs = null; }
+      try { if (category === 'Homes' || category === 'Rentals') specs = collectHomeSpecs(); } catch (e) { specs = null; }
+      try { if (category === 'Services') specs = collectSvcSpecs(); } catch (e) { specs = null; }
+      var _capEl2 = document.getElementById('adCategory');
+      var MAX_PHOTOS = (_capEl2 && _capEl2.value === 'Cars') ? 20 : (_capEl2 && _capEl2.value === 'Homes') ? 40 : 8;
+      var picked = [];
+      try {
+        if (typeof pendingPhotos !== 'undefined' && pendingPhotos.length) picked = pendingPhotos.slice();
+      } catch (e) {}
+      if (picked.length > MAX_PHOTOS) {
+        fail('You can add up to ' + MAX_PHOTOS + ' photos per ad - please remove ' + (picked.length - MAX_PHOTOS) + ' and try again.');
+        return;
+      }
+      var uploaded = [];
+      var thumbPaths = [];
+      try {
+        for (var pi = 0; pi < picked.length; pi++) {
+          var blob = dataUrlToBlob(picked[pi]);
+          if (!blob) throw new Error('Could not read photo ' + (pi + 1) + '. Please pick it again.');
+          var photoPath = user.id + '/' + Date.now() + '-' + pi + '.jpg';
+          var up = await client.storage.from('listing-photos').upload(photoPath, blob, { contentType: 'image/jpeg', upsert: false });
+          if (up.error) throw up.error;
+          var pub = client.storage.from('listing-photos').getPublicUrl(photoPath);
+          var purl = pub && pub.data && pub.data.publicUrl ? pub.data.publicUrl : null;
+          if (!purl) throw new Error('Could not get a public link for photo ' + (pi + 1) + '.');
+          uploaded.push({ path: photoPath, url: purl });
+          try {
+            var tBlob = await makeThumbBlob(picked[pi]);
+            if (tBlob) {
+              var tPath = thumbPathFor(photoPath);
+              var tup = await client.storage.from('listing-photos').upload(tPath, tBlob, { contentType: 'image/jpeg', upsert: false });
+              if (!tup.error) thumbPaths.push(tPath);
+            }
+          } catch (te) {}
+        }
+      } catch (upErr) {
+        try {
+          if (uploaded.length) await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }).concat(thumbPaths));
+        } catch (e) {}
+        throw upErr;
+      }
+      var photoUrl = uploaded.length ? uploaded[0].url : null;
+      var newRow = {
+        seller_id: user.id,
+        title: title,
+        description: document.getElementById('adDescription').value.trim(),
+        price: price,
+        category: category,
+        location: document.getElementById('adLocation').value.trim() || 'Mississauga, ON',
+        status: 'draft'
+      };
+      if (photoUrl) newRow.photo_url = photoUrl;
+      if (category !== 'Cars' && category !== 'Homes' && category !== 'Rentals') newRow.condition = document.getElementById('adCondition').value;
+      if (specs) newRow.specs = specs;
+      try {
+        if (category === 'Homes' || category === 'Rentals') {
+          var _aoEl2 = document.getElementById('adAreaOnly');
+          newRow.show_area_only = !!(_aoEl2 && _aoEl2.checked);
+          var _pk3 = window.__cfAddrPick;
+          if (_pk3 && _pk3.text) { newRow.address_text = _pk3.text; newRow.latitude = _pk3.lat; newRow.longitude = _pk3.lng; }
+        }
+      } catch (e) {}
+      try {
+        var _tagsEl2 = document.getElementById('adTags');
+        var _tags2 = _tagsEl2 ? parseTags(_tagsEl2.value) : [];
+        if (_tags2.length) newRow.tags = _tags2;
+      } catch (e) {}
+      var ins = await client.from('listings').insert([newRow]).select().single();
+      if (ins.error && newRow.specs && /specs/i.test(ins.error.message || '')) {
+        delete newRow.specs;
+        ins = await client.from('listings').insert([newRow]).select().single();
+      }
+      if (ins.error && (newRow.address_text !== undefined || newRow.show_area_only !== undefined) && /address_text|latitude|longitude|show_area_only/i.test(ins.error.message || '')) {
+        delete newRow.address_text; delete newRow.latitude; delete newRow.longitude; delete newRow.show_area_only;
+        ins = await client.from('listings').insert([newRow]).select().single();
+      }
+      if (ins.error || !ins.data || !ins.data.id) {
+        try {
+          if (uploaded.length) await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }).concat(thumbPaths));
+        } catch (e) {}
+        if (ins.error) throw ins.error;
+        throw new Error('Could not save your draft. Please try again.');
+      }
+      if (uploaded.length) {
+        var photoRows = uploaded.map(function (u, idx) {
+          return { listing_id: ins.data.id, photo_url: u.url, position: idx };
+        });
+        var phIns = await client.from('listing_photos').insert(photoRows);
+        if (phIns.error) {
+          try { await client.from('listings').delete().eq('id', ins.data.id); } catch (e) {}
+          try { await client.storage.from('listing-photos').remove(uploaded.map(function (u) { return u.path; }).concat(thumbPaths)); } catch (e) {}
+          throw phIns.error;
+        }
+      }
+      var form = document.getElementById('postForm');
+      if (form) form.reset();
+      try {
+        if (typeof pendingPhotos !== 'undefined') pendingPhotos = [];
+        if (typeof renderPhotoStrip === 'function') renderPhotoStrip();
+      } catch (e) {}
+      if (typeof closeModals === 'function') closeModals();
+      var rn2 = document.getElementById('resultsNote');
+      if (rn2) rn2.textContent = 'Draft saved - find it any time in Dashboard -> My Ads.';
+      try {
+        document.getElementById('detailTitle').textContent = 'Draft saved';
+        document.getElementById('detailBody').innerHTML =
+          '<div style="max-width:440px;margin:0 auto;text-align:center">' +
+          '<div style="line-height:1"><svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="var(--navy-2)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg></div>' +
+          '<div style="margin:12px 0 6px"><span style="display:inline-block;padding:7px 16px;border-radius:999px;font-weight:800;font-size:13px;letter-spacing:.5px;color:#fff;background:var(--navy-2)">DRAFT SAVED</span></div>' +
+          '<h3 style="margin:8px 0 6px">Your draft is saved</h3>' +
+          '<p>It is private - only you can see it. Finish it any time from <b>Dashboard -&gt; My Ads</b>: tap <b>Continue</b>, polish it, then hit <b>Post ad</b>.</p>' +
+          '<p>Ad: <b>' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</b></p>' +
+          '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px"><button class="primary" id="cfDraftDashBtn">Go to My Ads</button><button class="ghost" id="cfDraftDoneBtn">Done</button></div>' +
+          '</div>';
+        if (typeof openModal === 'function') openModal('detailModal');
+        var _dd = document.getElementById('cfDraftDoneBtn');
+        if (_dd && typeof closeModals === 'function') _dd.addEventListener('click', function () { closeModals(); });
+        var _dg = document.getElementById('cfDraftDashBtn');
+        if (_dg) _dg.addEventListener('click', function () { location.href = 'dashboard.html'; });
+      } catch (e) {}
+    } catch (err) {
+      fail('Could not save your draft: ' + (err && err.message ? err.message : 'Something went wrong. Please try again.'));
+    }
+  }
+
   /* Package-default (v1.10): when a signed-in user has a bought
      Active package for the form's category, the form shows it as a
      label line (no dropdown) and the post attaches
@@ -1480,6 +1641,26 @@
     if (posting) return;
     posting = true;
     postAd().then(function () { posting = false; }, function () { posting = false; });
+  }, true);
+
+
+  /* Save draft wiring (Nov 26, 2026): the form's Save draft button
+     runs saveDraft() - never the preview, never a post. Logged-out
+     clicks just get the notice (the form is a signed-in tool). */
+  var drafting = false;
+  document.addEventListener('click', function (e) {
+    var db = e.target && e.target.closest ? e.target.closest('#saveDraftBtn') : null;
+    if (!db) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var noticeEl = document.getElementById('postNotice');
+    if (!getClient() || !isLoggedIn()) {
+      if (noticeEl) { noticeEl.textContent = 'Please log in to save a draft.'; noticeEl.style.display = ''; }
+      return;
+    }
+    if (drafting) return;
+    drafting = true;
+    saveDraft().then(function () { drafting = false; }, function () { drafting = false; });
   }, true);
 
   /* Enter-key guard (Nov 26, 2026 - Martin's catch): pressing

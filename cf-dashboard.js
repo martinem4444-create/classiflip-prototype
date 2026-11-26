@@ -121,7 +121,8 @@
     rejected: ['rej', 'Rejected'],
     sold: ['pause', 'Sold'],
     expired: ['pause', 'Expired'],
-    hidden: ['pause', 'Hidden']
+    hidden: ['pause', 'Hidden'],
+    draft: ['pause', 'Draft']
   };
 
   function pillFor(status) {
@@ -698,13 +699,13 @@
         var cardsHtml = listings.map(function (x) {
           var viewBtn = x.status === 'active'
             ? '<a class="btn gho" href="index.html?ad=' + esc(x.id) + '">View</a>'
-            : '<span class="btn gho" style="opacity:.55">' + (x.status === 'pending' ? 'Awaiting approval' : esc(x.status)) + '</span>';
+            : '<span class="btn gho" style="opacity:.55">' + (x.status === 'pending' ? 'Awaiting approval' : (x.status === 'draft' ? 'Not posted yet' : esc(x.status))) + '</span>';
           var boostPill = liveBoostByListing[x.id]
             ? ' <span class="pill boost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1em;height:1em;vertical-align:-0.15em"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg> Boosted until ' + fullDate(new Date(liveBoostByListing[x.id]).toISOString()) + '</span>' : '';
           var boostBtn = (x.status === 'active' && !liveBoostByListing[x.id])
             ? '<button class="btn pri" data-cf-boost="' + esc(x.id) + '" data-cf-boost-title="' + esc(x.title) + '">Boost · $2.99</button>' : '';
-          var editBtn = (x.status === 'active' || x.status === 'pending' || x.status === 'rejected')
-            ? '<button class="btn gho" data-cf-edit="' + esc(x.id) + '">Edit</button>' : '';
+          var editBtn = (x.status === 'active' || x.status === 'pending' || x.status === 'rejected' || x.status === 'draft')
+            ? '<button class="btn gho" data-cf-edit="' + esc(x.id) + '">' + (x.status === 'draft' ? 'Continue' : 'Edit') + '</button>' : '';
           var delBtn = '<button class="btn gho danger" data-cf-del="' + esc(x.id) + '">Delete</button>';
           /* Mark sold (Oct 29, Martin): a dealer/agent sells a car or
              a home, they tap Mark sold — status -> 'sold', ad leaves
@@ -2810,8 +2811,8 @@
     if (!lr || !lr.data) { say('Could not load that ad.'); return; }
     var ad = lr.data;
     if (String(ad.seller_id || '') !== String(user.id)) { say('That ad is not yours.'); return; }
-    if (['active', 'pending', 'rejected'].indexOf(ad.status) === -1) {
-      say('Only active, pending, or rejected ads can be edited — post a new ad for the rest.');
+    if (['active', 'pending', 'rejected', 'draft'].indexOf(ad.status) === -1) {
+      say('Only active, pending, rejected or draft ads can be edited — post a new ad for the rest.');
       return;
     }
     var photos = [];
@@ -2833,8 +2834,8 @@
         .eq('buyer_id', user.id).order('created_at', { ascending: false }).limit(50);
       if (orr2 && orr2.data) svcOrdersD = orr2.data;
     } catch (e4) {}
-    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit, category: ad.category || '', isAdvertiser: isAdv, origSellerType: (parseCarSpecs(ad.specs).seller_type || ''), origAddr: { text: ad.address_text || '', lat: ad.latitude == null ? null : Number(ad.latitude), lng: ad.longitude == null ? null : Number(ad.longitude), area: !!ad.show_area_only } };
-    var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = 'Edit ad';
+    realEdit = { id: id, uid: user.id, origUrls: photos.slice(), newFiles: {}, limit: limit, category: ad.category || '', isAdvertiser: isAdv, origSellerType: (parseCarSpecs(ad.specs).seller_type || ''), origStatus: ad.status || '', origAddr: { text: ad.address_text || '', lat: ad.latitude == null ? null : Number(ad.latitude), lng: ad.longitude == null ? null : Number(ad.longitude), area: !!ad.show_area_only } };
+    var edTitle = el('edTitle'); if (edTitle) edTitle.textContent = ad.status === 'draft' ? 'Finish draft' : 'Edit ad';
     var edSub = el('edSub');
     /* Rejected-editor guidance (Oct 29, best-solution build):
        category is LOCKED here on purpose, so say so plainly and
@@ -2844,6 +2845,8 @@
         edSub.innerHTML = 'Category stays as-is and cannot be changed here. Posting as a business? <a href="advertise.html">Get a services package</a>, then post a new ad under Services.';
       } else if (ad.status === 'rejected') {
         edSub.textContent = 'Category stays as-is and cannot be changed here. Post a new ad in the correct category instead.';
+      } else if (ad.status === 'draft') {
+        edSub.textContent = 'This draft is not posted yet - only you can see it. Finish it here, then hit Post ad to send it in. Category stays as-is.';
       } else {
         edSub.textContent = 'Saved edits go back for approval before they show again. Category stays as-is.';
       }
@@ -2881,7 +2884,7 @@
       grid.innerHTML = tiles + '<div class="ptile add" title="Add photo" data-cf-add-photo>+</div>';
     }
     var save = el('edSave');
-    if (save) save.onclick = function () { realSave(); };
+    if (save) { save.onclick = function () { realSave(); }; save.textContent = ad.status === 'draft' ? 'Post ad' : 'Save changes'; }
     syncFreePriceD();
     try { if (typeof openM === 'function') openM('mEditor'); } catch (e3) {}
   }
@@ -3172,13 +3175,38 @@
     } catch (e6) {
       say('Photos saved, but the photo list could not be updated: ' + (e6 && e6.message ? e6.message : ''));
     }
+    /* Draft post (Nov 26, 2026): saving a DRAFT from the editor
+       is its first real post, so it follows the same rules as the
+       isNew branch above - a matching Active package with quota
+       left sends it straight live (the guard trigger permits that
+       one transition for package holders), everyone else queues as
+       pending and the admin email fires in the tail below.
+       Non-draft edits keep today's behaviour exactly. */
+    var draftPosted = st.origStatus === 'draft';
+    var draftLive = false;
+    if (draftPosted) {
+      var dOrd3 = pkgDefaultForD(st.orders || svcOrdersD || [], st.category);
+      if (dOrd3) {
+        var dLimit3 = packageLimitForD(dOrd3);
+        if (dLimit3 == null) {
+          draftLive = true;
+        } else {
+          try {
+            var cnt3 = await client.from('listings').select('id', { count: 'exact', head: true })
+              .eq('seller_id', st.uid).eq('category', st.category)
+              .in('status', ['active', 'pending']).gte('created_at', dOrd3.created_at);
+            draftLive = !(cnt3 && typeof cnt3.count === 'number' && cnt3.count >= dLimit3);
+          } catch (e15) { draftLive = false; }
+        }
+      }
+    }
     var upd = {
       title: title,
       price: price,
       description: el('edDesc') ? el('edDesc').value : '',
       location: el('edLoc') ? el('edLoc').value : '',
       photo_url: cover,
-      status: 'pending'
+      status: draftPosted ? (draftLive ? 'active' : 'pending') : 'pending'
     };
     if (edCarSpecs) upd.specs = edCarSpecs;
     if (edHomeSpecs) upd.specs = edHomeSpecs;
@@ -3198,9 +3226,24 @@
       res = await client.from('listings').update(upd).eq('id', st.id);
     }
     if (res.error) { say('Could not save: ' + res.error.message); return; }
+    if (draftPosted && !draftLive) {
+      try {
+        var autoOk3 = false;
+        try {
+          var user3 = await getUser(client);
+          if (user3 && window.CFAutoMod && typeof window.CFAutoMod.tryAutoApprove === 'function') {
+            autoOk3 = await window.CFAutoMod.tryAutoApprove(client, user3, st.id, {
+              title: title, description: upd.description, category: st.category, price: price, photo_url: cover
+            });
+          }
+        } catch (e16) {}
+        if (autoOk3) draftLive = true;
+        else notifyAdminPendingAdD(client, { listing_id: st.id, title: title, category: st.category, price: price });
+      } catch (e17) {}
+    }
     closeRealEditor();
     try { if (typeof closeM === 'function') closeM('mEditor'); } catch (e7) {}
-    say('Edits saved — back for approval');
+    say(draftPosted ? (draftLive ? 'Ad posted \u2014 live now' : 'Ad posted \u2014 pending approval') : 'Edits saved \u2014 back for approval');
     refresh();
   }
 

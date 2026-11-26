@@ -3529,6 +3529,23 @@
     if (e.key === 'Escape' && realEdit) { closeRealEditor(); }
   });
 
+  /* Enter adds a comma in the editor's Service areas field
+     (Nov 26, 2026 - Martin's ask, matching the post form): the
+     field is a comma-separated list of up to 6 areas, so Enter
+     drops in the ", " separator and keeps the cursor in place. */
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target || e.target.id !== 'cfEdS_areas') return;
+    e.preventDefault();
+    var inp = e.target, v = inp.value;
+    if (v.length + 2 > 160) return;
+    var s = (typeof inp.selectionStart === 'number') ? inp.selectionStart : v.length;
+    var en = (typeof inp.selectionEnd === 'number') ? inp.selectionEnd : s;
+    var before = v.slice(0, s), after = v.slice(en);
+    if (!/,\s*$/.test(before)) before = before.replace(/\s+$/, '') + ', ';
+    inp.value = before + after;
+    try { inp.setSelectionRange(before.length, before.length); } catch (e2) {}
+  });
+
 
   /* Admin Jobs queue (Nov 26, 2026): pending job_postings finally
      render in the dashboard instead of hiding in the Supabase table

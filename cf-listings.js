@@ -1717,6 +1717,32 @@
     }
   } catch (e) {}
 
+  /* Enter adds a comma in Service areas (Nov 26, 2026 - Martin's
+     ask): the field is a comma-separated list of up to 6 areas, so
+     pressing Enter after an area drops in the ", " separator and
+     keeps the cursor in the field, ready for the next area -
+     instead of making the seller type commas by hand. The post
+     form's Enter guard still swallows the submit; this handler
+     just adds the separator. */
+  try {
+    var _sa = document.getElementById('svcAreas');
+    if (_sa && !_sa.__cfAreaComma) {
+      _sa.__cfAreaComma = true;
+      _sa.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        var v = _sa.value;
+        if (v.length + 2 > 160) return;
+        var s = (typeof _sa.selectionStart === 'number') ? _sa.selectionStart : v.length;
+        var en = (typeof _sa.selectionEnd === 'number') ? _sa.selectionEnd : s;
+        var before = v.slice(0, s), after = v.slice(en);
+        if (!/,\s*$/.test(before)) before = before.replace(/\s+$/, '') + ', ';
+        _sa.value = before + after;
+        try { _sa.setSelectionRange(before.length, before.length); } catch (e2) {}
+      });
+    }
+  } catch (e) {}
+
   /* Dashboard deep link (Nov 14, 2026 — Steve's catch): the dashboard
      Post button lands on index.html?post=1, so open the post form
      directly once the signed-in session is live instead of leaving

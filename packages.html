@@ -56,6 +56,7 @@ h1 span{color:var(--rt)}
 .sect h2{font-size:27px}
 .sect>p{color:var(--mu);margin:8px 0 18px}
 .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.plans.solo{grid-template-columns:minmax(240px,360px);justify-content:center}
 .plan{position:relative;background:var(--sf);border:1px solid var(--ln);border-radius:18px;padding:22px;box-shadow:var(--sh)}
 .plan.hl{border-color:var(--rose)}
 .chip{position:absolute;top:-11px;left:18px;background:var(--rose);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.05em;padding:4px 10px;border-radius:999px}
@@ -145,7 +146,7 @@ html[data-theme="light"]{--bg:#F7F6F2;--sf:#FFFFFF;--ink:#18365F;--mu:#5E6078;--
 <div class="sect" data-cat="services">
 <h2>Services — for pros &amp; local shops</h2>
 <p>Plumbers, electricians, cleaners, barbers, salons — get found by neighbours.</p>
-<div class="plans">
+<div class="plans solo">
 <div class="plan hl"><div class="price">$19.99 <small>/ mo</small></div><div class="nm">Solo Operator</div><div class="ds">Your trade, one listing — built for one-person operations. Live one month.</div><div class="frow"><span class="fnd">Founding: <b>$10</b></span></div></div>
 </div>
 </div>

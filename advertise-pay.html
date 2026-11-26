@@ -28,6 +28,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Hel
 .sect>h2{font-size:22px;margin:0 0 4px;color:var(--navy)}
 .sect>p{margin:0 0 18px;color:var(--mu);font-size:14.5px}
 .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+.plans.solo{grid-template-columns:minmax(240px,360px);justify-content:center}
+.plans.solo .plan a.pay{align-self:center;width:78%;margin-left:auto;margin-right:auto;padding-top:9px;padding-bottom:9px;font-size:13.5px}
 .plan{background:linear-gradient(160deg,#1E3A6E,#16294E);border:1px solid #2C4A80;border-radius:18px;padding:22px;color:#fff;position:relative;display:flex;flex-direction:column;gap:6px}
 .plan.hl{border:2px solid var(--orange)}
 .plan .chip{position:absolute;top:-12px;left:18px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:999px}
@@ -175,7 +177,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="sect">
 <h2>Local services</h2>
 <p>Plumbers, electricians, cleaners, barbers, salons — get found by neighbours.</p>
-<div class="plans">
+<div class="plans solo">
 <div class="plan hl"><div class="price">$19.99 <small>/ mo</small></div><div class="nm">Solo Operator</div><div class="ds">Your trade, one listing, live for one month in front of customers near you — built for one-person operations. Manage it any time from your advertiser dashboard.</div>
 <!-- TODO: replace with the real Stripe Payment Link for this package -->
 <a class="pay" data-package="services-single" href="https://buy.stripe.com/REPLACE_WITH_LINK">Pay securely</a>

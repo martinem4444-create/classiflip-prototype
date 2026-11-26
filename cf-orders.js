@@ -44,8 +44,7 @@
     'founding-agent-unlimited': ['Agent Founding Unlimited', 45.00],
     'founding-rentals-single': ['Rentals Founding Single Listing', 4.50],
     'founding-rentals-unlimited': ['Rentals Founding Landlord Unlimited', 25.00],
-    'founding-services-single': ['Services Founding Solo Operator', 4.50],
-    'founding-services-unlimited': ['Services Founding Pro Unlimited', 20.00],
+    'founding-services-single': ['Services Founding Solo Operator', 10.00],
     'founding-jobs-single': ['Jobs Founding Single Job Post', 4.50],
     'founding-jobs-unlimited': ['Jobs Founding Employer Unlimited', 25.00],
     'dealer-single': ['Dealer Single Ad', 9.99],
@@ -56,8 +55,7 @@
     'agent-unlimited': ['Agent Unlimited', 89.99],
     'rentals-single': ['Rentals Single Listing', 8.99],
     'rentals-unlimited': ['Rentals Landlord Unlimited', 49.99],
-    'services-single': ['Services Solo Operator', 8.99],
-    'services-unlimited': ['Services Pro Unlimited', 39.99],
+    'services-single': ['Services Solo Operator', 19.99],
     'jobs-single': ['Jobs Single Job Post', 8.99],
     'jobs-unlimited': ['Jobs Employer Unlimited', 49.99]
   };
@@ -76,7 +74,6 @@
     'rentals-single': 'rentals-single',
     'rentals-unlimited': 'rentals-unlimited',
     'services-single': 'services-single',
-    'services-unlimited': 'services-unlimited',
     'jobs-single': 'jobs-single',
     'jobs-unlimited': 'jobs-unlimited'
   };
@@ -136,7 +133,7 @@
     'founding-dealer-single': 'dealers', 'founding-dealer-lot-pack': 'dealers', 'founding-dealer-unlimited': 'dealers',
     'founding-agent-single': 'agents', 'founding-agent-5-pack': 'agents', 'founding-agent-unlimited': 'agents',
     'founding-rentals-single': 'rentals', 'founding-rentals-unlimited': 'rentals',
-    'founding-services-single': 'services', 'founding-services-unlimited': 'services',
+    'founding-services-single': 'services',
     'founding-jobs-single': 'jobs', 'founding-jobs-unlimited': 'jobs'
   };
 

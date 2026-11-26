@@ -2112,7 +2112,7 @@
      hides the extras everywhere and a renewal restores them — the
      data in specs is never deleted. */
   function svcIsProOrder(o) {
-    return !!o && pkgFamilyOf(o.package) === 'services' && String(o.package).indexOf('Pro Unlimited') !== -1;
+    return !!o && pkgFamilyOf(o.package) === 'services';
   }
   function _chk(id) { var n = document.getElementById(id); return !!(n && n.checked); }
   function svcRefresh() {

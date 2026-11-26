@@ -1594,7 +1594,7 @@
       var now = new Date();
       return ords.some(function (o) {
         return o && o.status === 'Active' && (!o.expires_at || new Date(o.expires_at) > now) &&
-          categoryOfPackageD(o.package) === 'Services' && String(o.package).indexOf('Pro Unlimited') !== -1;
+          categoryOfPackageD(o.package) === 'Services';
       });
     } catch (e) { return false; }
   }
@@ -1614,7 +1614,7 @@
     box.id = 'cfEdSvcBox';
     var pays = ['Cash', 'Interac e-Transfer', 'Credit card', 'Debit', 'Cheque'];
     box.innerHTML =
-      '<div style="font-weight:800;margin:16px 0 4px">\uD83D\uDEE0\uFE0F Pro Unlimited extras</div>' +
+      '<div style="font-weight:800;margin:16px 0 4px">\uD83D\uDEE0\uFE0F Solo Operator extras</div>' +
       '<div class="fld"><label>Services &amp; prices (up to 8)</label><div id="cfEdS_priceRows"></div><button type="button" id="cfEdS_addRow" style="margin-top:6px">+ Add a service</button></div>' +
       '<div class="f2">' +
       '<div class="fld"><label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:400"><input type="checkbox" id="cfEdS_licensed"> Licensed</label></div>' +

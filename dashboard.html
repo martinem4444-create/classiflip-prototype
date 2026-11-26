@@ -353,6 +353,7 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div class="atabs">
 <button type="button" class="atab on" data-cf-atab="approvals">Approvals<span class="n" id="atabNApprovals" hidden></span></button>
 <button type="button" class="atab" data-cf-atab="users">Users<span class="n" id="atabNUsers" hidden></span></button>
+<button type="button" class="atab" data-cf-atab="jobs">Jobs<span class="n" id="atabNJobs" hidden></span></button>
 <button type="button" class="atab" data-cf-atab="orders">Orders<span class="n" id="atabNOrders" hidden></span></button>
 <button type="button" class="atab" data-cf-atab="revenue">Revenue</button>
 <button type="button" class="atab" data-cf-atab="boosts">Boosts<span class="n" id="atabNBoosts" hidden></span></button>
@@ -363,6 +364,11 @@ html[data-theme="dark"] .cftabs a.on{color:#FF6B35}
 <div data-cf-apanel="approvals">
 <h3 style="margin:16px 0 8px">Ads awaiting approval</h3>
 <div id="adminAdsList"></div>
+</div>
+<div data-cf-apanel="jobs" hidden>
+<h3 style="margin:16px 0 8px">Job postings awaiting approval</h3>
+<p class="hint">Jobs posted before the paywall, or by employers whose package check fell back to the queue. Approve makes the job public for 30 days; Reject keeps it hidden and shows the employer your reason in their dashboard.</p>
+<div id="adminJobsList"></div>
 </div>
 <div data-cf-apanel="users" hidden>
 <h3 style="margin:16px 0 8px">Users</h3>

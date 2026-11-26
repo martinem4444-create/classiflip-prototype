@@ -644,6 +644,7 @@
           '<div class="stat"><div class="n" id="ovUsers">…</div><div class="l">Total users</div></div>' +
           '<div class="stat"><div class="n" id="ovAds">…</div><div class="l">Total ads</div></div>' +
           '<div class="stat" data-cf-ovgo="approvals" style="cursor:pointer"><div class="n" id="ovPendingAds">…</div><div class="l">Pending ads · tap to review</div></div>' +
+          '<div class="stat" data-cf-ovgo="jobs" style="cursor:pointer"><div class="n" id="ovPendingJobs">…</div><div class="l">Pending jobs · tap to review</div></div>' +
           '<div class="stat" data-cf-ovgo="orders" style="cursor:pointer"><div class="n" id="ovPendingOrders">…</div><div class="l">Pending packages · tap to activate</div></div>' +
           '<div class="stat"><div class="n" id="ovWaitlist">…</div><div class="l" id="ovWaitlistLabel">Waitlist signups</div></div>' +
           '<div class="stat" data-cf-ovgo="reports" style="cursor:pointer"><div class="n" id="ovReported">…</div><div class="l">Reported ads · tap to view</div></div>' +
@@ -1804,6 +1805,7 @@
     try {
       setOv('ovAds', await client.from('listings').select('id', { count: 'exact', head: true }), false);
       setOv('ovPendingAds', await client.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending'), true);
+      setOv('ovPendingJobs', await client.from('job_postings').select('id', { count: 'exact', head: true }).eq('status', 'pending'), true);
       setOv('ovPendingOrders', await client.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'Pending'), true);
       /* Pending boosts count (Nov 16, 2026, Martin's ask): same chip
          pattern as Reported ads — head-count of boosts rows still
@@ -1852,6 +1854,7 @@
     try { await renderAdminWaitlist(client); } catch (e) {}
     try { await renderAdminUsers(client); } catch (e) {}
     try { await renderAdminReports(client); } catch (e) {}
+    try { await renderAdminJobs(client); } catch (e) {}
     try { await renderAdminCarRequests(client); } catch (e) {}
     try { await renderAdminViewingRequests(client); } catch (e) {}
     try { await renderAdminRevenue(client); } catch (e) {}
@@ -3481,6 +3484,86 @@
       runAdminSearch();
     }
     if (e.key === 'Escape' && realEdit) { closeRealEditor(); }
+  });
+
+
+  /* Admin Jobs queue (Nov 26, 2026): pending job_postings finally
+     render in the dashboard instead of hiding in the Supabase table
+     editor. Approve = public for 30 days (the same expiry the
+     package auto-approve path sets); Reject keeps the row hidden
+     with an optional reason the employer sees. Admin RLS on
+     job_postings (admin_read / admin_update) already covers this. */
+  async function renderAdminJobs(client) {
+    var box = el('adminJobsList');
+    if (!box) return;
+    var rows = [];
+    try {
+      var jr = await client.from('job_postings')
+        .select('id,title,company,category,type,location,pay,description,plan,status,created_at,employer_id')
+        .eq('status', 'pending').order('created_at', { ascending: true }).limit(100);
+      if (jr && jr.data) rows = jr.data;
+    } catch (e) {}
+    setTabBadge('atabNJobs', rows.length, false);
+    if (!rows.length) {
+      box.innerHTML = '<div class="notice">No job postings waiting. New jobs from package holders go live on their own; anything without a package now hits the paywall before it can post.</div>';
+      return;
+    }
+    var empById = {};
+    try {
+      var eids = rows.map(function (r) { return r.employer_id; }).filter(Boolean);
+      if (eids.length) {
+        var er = await client.from('profiles').select('id,display_name,email').in('id', eids);
+        (er.data || []).forEach(function (p) { empById[p.id] = p; });
+      }
+    } catch (e) {}
+    box.innerHTML = rows.map(function (r) {
+      var emp = empById[r.employer_id] || {};
+      var who = (emp.display_name || emp.email || 'Unknown employer') + (emp.email && emp.display_name ? ' · ' + emp.email : '');
+      var meta = [r.category, r.type, r.location, r.pay].filter(Boolean).join(' · ');
+      var desc = (r.description || '').trim();
+      return '<div class="lcard"><div class="inf"><div class="t">' + esc(r.title || '(untitled job)') + ' — ' + esc(r.company || '') + '</div>' +
+        '<div class="s">' + esc(meta) + '</div>' +
+        '<div class="s">Posted by ' + esc(who) + ' · ' + shortDate(r.created_at) + ' · plan: ' + esc(r.plan || 'single') + '</div>' +
+        (desc ? '<div class="s" style="white-space:pre-wrap">' + esc(desc.slice(0, 400)) + (desc.length > 400 ? '…' : '') + '</div>' : '') +
+        '</div>' +
+        '<div class="acts" style="width:300px;flex:none"><div style="margin-bottom:6px">' +
+        '<input data-cf-job-reject-reason="' + esc(r.id) + '" placeholder="Reject reason (optional)…" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:8px"></div>' +
+        '<button class="btn pri" data-cf-job-approve="' + esc(r.id) + '">Approve — go live</button> ' +
+        '<button class="btn gho danger" data-cf-job-reject="' + esc(r.id) + '">Reject</button></div></div>';
+    }).join('');
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target || !e.target.closest) return;
+    var ja = e.target.closest('[data-cf-job-approve]');
+    var jrj = e.target.closest('[data-cf-job-reject]');
+    var btn = ja || jrj;
+    if (!btn) return;
+    var client = getClient();
+    if (!client) return;
+    btn.disabled = true;
+    var orig = btn.textContent; btn.textContent = 'Working…';
+    var finish = function (res, okMsg) {
+      btn.disabled = false; btn.textContent = orig;
+      say(res && res.error ? 'Failed: ' + res.error.message : okMsg);
+      if (res && !res.error) refresh();
+    };
+    if (ja) {
+      var exp30 = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+      client.from('job_postings').update({ status: 'active', expires_at: exp30, rejection_reason: null })
+        .eq('id', ja.dataset.cfJobApprove)
+        .then(function (res) { finish(res, 'Job approved — it is live now for 30 days'); })
+        .catch(function (err) { finish({ error: err }, ''); });
+    } else {
+      var rId = jrj.dataset.cfJobReject, reason = '';
+      try {
+        var inp = document.querySelector('[data-cf-job-reject-reason="' + rId + '"]');
+        reason = inp && inp.value ? inp.value.trim() : '';
+      } catch (e2) {}
+      client.from('job_postings').update({ status: 'rejected', rejection_reason: reason || null })
+        .eq('id', rId)
+        .then(function (res) { finish(res, 'Job rejected' + (reason ? ' — reason: ' + reason : '')); })
+        .catch(function (err) { finish({ error: err }, ''); });
+    }
   });
 
   /* Admin tabs (Oct 31, 2026): the admin section grew into one long
